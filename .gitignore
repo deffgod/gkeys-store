@@ -60,3 +60,6 @@ coverage
 *.pem
 .cache
 .env*.local
+
+# Large binary files
+toolbox
