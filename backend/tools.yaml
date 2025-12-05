@@ -1,0 +1,367 @@
+sources:
+  gkeys-postgres:
+    kind: postgres
+    host: ${DB_HOST:-db.prisma.io}
+    port: ${DB_PORT:-5432}
+    database: ${DB_NAME:-postgres}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    sslmode: require
+
+tools:
+  get-users:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a list of users with pagination support. Returns user id, email, nickname, role, balance, and creation date.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of users to return
+        default: 10
+      - name: offset
+        type: integer
+        description: Number of users to skip
+        default: 0
+      - name: role
+        type: string
+        description: Filter by user role (USER or ADMIN)
+        optional: true
+    statement: |
+      SELECT 
+        id, 
+        email, 
+        nickname, 
+        role, 
+        balance, 
+        email_verified,
+        created_at,
+        updated_at
+      FROM users
+      WHERE ($3::text IS NULL OR role = $3::text)
+      ORDER BY created_at DESC
+      LIMIT $1 OFFSET $2
+
+  get-user-by-id:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a specific user by their ID. Returns all user information.
+    parameters:
+      - name: user_id
+        type: string
+        description: The UUID of the user to retrieve
+    statement: |
+      SELECT 
+        id, 
+        email, 
+        nickname, 
+        first_name,
+        last_name,
+        avatar,
+        balance, 
+        role, 
+        email_verified,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1
+
+  get-games:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a list of games with pagination support. Returns game id, title, slug, price, stock status, and other details.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of games to return
+        default: 20
+      - name: offset
+        type: integer
+        description: Number of games to skip
+        default: 0
+      - name: in_stock
+        type: boolean
+        description: Filter by stock availability
+        optional: true
+    statement: |
+      SELECT 
+        id,
+        title,
+        slug,
+        description,
+        short_description,
+        price,
+        original_price,
+        discount,
+        currency,
+        image,
+        images,
+        in_stock,
+        release_date,
+        metacritic_score,
+        user_rating,
+        age_rating,
+        publisher,
+        is_best_seller,
+        is_new,
+        is_preorder,
+        created_at,
+        updated_at
+      FROM games
+      WHERE ($3::boolean IS NULL OR in_stock = $3::boolean)
+      ORDER BY created_at DESC
+      LIMIT $1 OFFSET $2
+
+  search-games:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Search for games by title or description. Supports partial matching and returns relevant game information.
+    parameters:
+      - name: search_term
+        type: string
+        description: The search term to match against game titles and descriptions
+      - name: limit
+        type: integer
+        description: Maximum number of results to return
+        default: 20
+    statement: |
+      SELECT 
+        id,
+        title,
+        slug,
+        description,
+        short_description,
+        price,
+        original_price,
+        discount,
+        currency,
+        image,
+        in_stock,
+        release_date,
+        publisher,
+        is_best_seller,
+        is_new
+      FROM games
+      WHERE 
+        title ILIKE '%' || $1 || '%' 
+        OR description ILIKE '%' || $1 || '%'
+        OR short_description ILIKE '%' || $1 || '%'
+      ORDER BY 
+        CASE 
+          WHEN title ILIKE $1 THEN 1
+          WHEN title ILIKE '%' || $1 || '%' THEN 2
+          ELSE 3
+        END,
+        created_at DESC
+      LIMIT $2
+
+  get-game-by-slug:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a specific game by its slug. Returns complete game information including all details.
+    parameters:
+      - name: slug
+        type: string
+        description: The slug of the game to retrieve
+    statement: |
+      SELECT 
+        id,
+        title,
+        slug,
+        description,
+        short_description,
+        price,
+        original_price,
+        discount,
+        currency,
+        image,
+        images,
+        in_stock,
+        g2a_product_id,
+        g2a_stock,
+        release_date,
+        metacritic_score,
+        user_rating,
+        age_rating,
+        multiplayer,
+        activation_service,
+        region,
+        publisher,
+        is_best_seller,
+        is_new,
+        is_preorder,
+        created_at,
+        updated_at
+      FROM games
+      WHERE slug = $1
+
+  get-orders:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a list of orders with pagination support. Returns order id, user id, status, total, and creation date.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of orders to return
+        default: 20
+      - name: offset
+        type: integer
+        description: Number of orders to skip
+        default: 0
+      - name: status
+        type: string
+        description: Filter by order status (PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED)
+        optional: true
+      - name: user_id
+        type: string
+        description: Filter by user ID
+        optional: true
+    statement: |
+      SELECT 
+        o.id,
+        o.user_id,
+        o.status,
+        o.subtotal,
+        o.discount,
+        o.total,
+        o.payment_method,
+        o.payment_status,
+        o.promo_code,
+        o.created_at,
+        o.completed_at,
+        u.email as user_email,
+        u.nickname as user_nickname
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE 
+        ($3::text IS NULL OR o.status = $3::text)
+        AND ($4::text IS NULL OR o.user_id = $4::text)
+      ORDER BY o.created_at DESC
+      LIMIT $1 OFFSET $2
+
+  get-order-by-id:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a specific order by ID with all order items and related information.
+    parameters:
+      - name: order_id
+        type: string
+        description: The UUID of the order to retrieve
+    statement: |
+      SELECT 
+        o.id,
+        o.user_id,
+        o.status,
+        o.subtotal,
+        o.discount,
+        o.total,
+        o.payment_method,
+        o.payment_status,
+        o.promo_code,
+        o.created_at,
+        o.completed_at,
+        u.email as user_email,
+        u.nickname as user_nickname,
+        json_agg(
+          json_build_object(
+            'id', oi.id,
+            'game_id', oi.game_id,
+            'game_title', g.title,
+            'quantity', oi.quantity,
+            'price', oi.price,
+            'discount', oi.discount
+          )
+        ) as items
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN games g ON oi.game_id = g.id
+      WHERE o.id = $1
+      GROUP BY o.id, u.email, u.nickname
+
+  get-transactions:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get a list of transactions with pagination support. Returns transaction id, user id, type, amount, status, and creation date.
+    parameters:
+      - name: limit
+        type: integer
+        description: Maximum number of transactions to return
+        default: 20
+      - name: offset
+        type: integer
+        description: Number of transactions to skip
+        default: 0
+      - name: user_id
+        type: string
+        description: Filter by user ID
+        optional: true
+      - name: type
+        type: string
+        description: Filter by transaction type (TOP_UP, PURCHASE, REFUND)
+        optional: true
+    statement: |
+      SELECT 
+        t.id,
+        t.user_id,
+        t.order_id,
+        t.type,
+        t.amount,
+        t.currency,
+        t.method,
+        t.status,
+        t.description,
+        t.transaction_hash,
+        t.created_at,
+        u.email as user_email
+      FROM transactions t
+      JOIN users u ON t.user_id = u.id
+      WHERE 
+        ($3::text IS NULL OR t.user_id = $3::text)
+        AND ($4::text IS NULL OR t.type = $4::text)
+      ORDER BY t.created_at DESC
+      LIMIT $1 OFFSET $2
+
+  get-game-stats:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get statistics about games including total count, in stock count, and average price.
+    parameters: []
+    statement: |
+      SELECT 
+        COUNT(*) as total_games,
+        COUNT(*) FILTER (WHERE in_stock = true) as in_stock_count,
+        COUNT(*) FILTER (WHERE in_stock = false) as out_of_stock_count,
+        AVG(price) as average_price,
+        MIN(price) as min_price,
+        MAX(price) as max_price,
+        COUNT(*) FILTER (WHERE is_best_seller = true) as best_seller_count,
+        COUNT(*) FILTER (WHERE is_new = true) as new_games_count
+      FROM games
+
+  get-user-stats:
+    kind: postgres-sql
+    source: gkeys-postgres
+    description: Get statistics about users including total count, admin count, and total balance.
+    parameters: []
+    statement: |
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(*) FILTER (WHERE role = 'ADMIN') as admin_count,
+        COUNT(*) FILTER (WHERE role = 'USER') as user_count,
+        COUNT(*) FILTER (WHERE email_verified = true) as verified_count,
+        SUM(balance) as total_balance,
+        AVG(balance) as average_balance
+      FROM users
+
+toolsets:
+  gkeys-store-tools:
+    - get-users
+    - get-user-by-id
+    - get-games
+    - search-games
+    - get-game-by-slug
+    - get-orders
+    - get-order-by-id
+    - get-transactions
+    - get-game-stats
+    - get-user-stats

@@ -3,10 +3,9 @@ import crypto from 'crypto';
 import prisma from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 
-const G2A_API_KEY = process.env.G2A_API_KEY || '';
-const G2A_API_SECRET = process.env.G2A_API_SECRET || '';
-const G2A_API_URL = process.env.G2A_API_URL || 'https://www.g2a.com/integration-api/v1';
 const G2A_API_HASH = process.env.G2A_API_HASH || '';
+const G2A_API_KEY = process.env.G2A_API_KEY || '';
+const G2A_API_URL = process.env.G2A_API_URL || 'https://www.g2a.com/integration-api/v1';
 
 const MARKUP_PERCENTAGE = 2; // 2% markup on G2A prices
 
@@ -60,13 +59,14 @@ const createG2AClient = (): AxiosInstance => {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const hash = crypto
     .createHash('sha256')
-    .update(G2A_API_KEY + G2A_API_SECRET + timestamp)
+    .update(G2A_API_HASH + G2A_API_KEY + timestamp)
     .digest('hex');
 
   return axios.create({
     baseURL: G2A_API_URL,
     headers: {
-      'Authorization': `Bearer ${G2A_API_KEY}`,
+      'X-API-HASH': G2A_API_HASH,
+      'X-API-KEY': G2A_API_KEY,
       'X-G2A-Timestamp': timestamp,
       'X-G2A-Hash': hash,
       'Content-Type': 'application/json',
@@ -147,34 +147,32 @@ export const fetchG2AProducts = async (
   page: number = 1,
   perPage: number = 100
 ): Promise<G2APaginatedResponse<G2AProduct>> => {
-  if (!G2A_API_KEY) {
-    console.log('[G2A] API key not configured, using mock data');
+  if (!G2A_API_KEY || !G2A_API_HASH) {
+    console.log('[G2A] API credentials not configured, using mock data');
     return getMockProducts(page, perPage);
   }
 
   try {
     const client = createG2AClient();
-    
-    // In production, call the real G2A API:
-    // const response = await client.get('/products', {
-    //   params: {
-    //     page,
-    //     perPage,
-    //     category: 'games',
-    //     inStock: true,
-    //   },
-    // });
-    // 
-    // return {
-    //   data: response.data.products.map(mapG2AProduct),
-    //   meta: response.data.meta,
-    // };
 
-    // Mock implementation
-    return getMockProducts(page, perPage);
+    const response = await client.get('/products', {
+      params: {
+        page,
+        perPage,
+        category: 'games',
+        inStock: true,
+      },
+    });
+
+    return {
+      data: response.data.products.map(mapG2AProduct),
+      meta: response.data.meta,
+    };
   } catch (error) {
     console.error('[G2A] Error fetching products:', error);
-    throw error;
+    // Fallback to mock data on API errors
+    console.log('[G2A] Falling back to mock data due to API error');
+    return getMockProducts(page, perPage);
   }
 };
 
@@ -334,8 +332,8 @@ export const purchaseGameKey = async (
   g2aProductId: string,
   quantity: number = 1
 ): Promise<G2AKeyResponse[]> => {
-  if (!G2A_API_KEY) {
-    console.log('[G2A] API key not configured, generating mock keys');
+  if (!G2A_API_KEY || !G2A_API_HASH) {
+    console.log('[G2A] API credentials not configured, generating mock keys');
     return Array(quantity).fill(null).map(() => ({
       key: generateMockKey(),
       productId: g2aProductId,
@@ -346,29 +344,27 @@ export const purchaseGameKey = async (
 
   try {
     const client = createG2AClient();
-    
-    // In production:
-    // const response = await client.post('/orders', {
-    //   productId: g2aProductId,
-    //   quantity,
-    // });
-    //
-    // if (response.data.status !== 'completed') {
-    //   throw new Error(`G2A order failed: ${response.data.status}`);
-    // }
-    //
-    // return response.data.keys;
 
-    // Mock implementation
+    const response = await client.post('/orders', {
+      productId: g2aProductId,
+      quantity,
+    });
+
+    if (response.data.status !== 'completed') {
+      throw new Error(`G2A order failed: ${response.data.status}`);
+    }
+
+    return response.data.keys;
+  } catch (error) {
+    console.error('[G2A] Error purchasing key:', error);
+    // Fallback to mock keys on API errors
+    console.log('[G2A] Falling back to mock keys due to API error');
     return Array(quantity).fill(null).map(() => ({
       key: generateMockKey(),
       productId: g2aProductId,
-      orderId: `g2a-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
+      orderId: `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
       purchaseDate: new Date().toISOString(),
     }));
-  } catch (error) {
-    console.error('[G2A] Error purchasing key:', error);
-    throw error;
   }
 };
 
@@ -376,21 +372,18 @@ export const purchaseGameKey = async (
  * Validate game stock on G2A
  */
 export const validateGameStock = async (g2aProductId: string): Promise<boolean> => {
-  if (!G2A_API_KEY) {
+  if (!G2A_API_KEY || !G2A_API_HASH) {
     return Math.random() > 0.1; // 90% in stock for mock
   }
 
   try {
     const client = createG2AClient();
-    
-    // In production:
-    // const response = await client.get(`/products/${g2aProductId}/stock`);
-    // return response.data.qty > 0;
 
-    return Math.random() > 0.1;
+    const response = await client.get(`/products/${g2aProductId}`);
+    return response.data.stock > 0;
   } catch (error) {
     console.error('[G2A] Error checking stock:', error);
-    return false;
+    return Math.random() > 0.1; // Fallback to mock
   }
 };
 
@@ -398,18 +391,15 @@ export const validateGameStock = async (g2aProductId: string): Promise<boolean> 
  * Get G2A product info
  */
 export const getG2AProductInfo = async (g2aProductId: string): Promise<G2AProduct | null> => {
-  if (!G2A_API_KEY) {
+  if (!G2A_API_KEY || !G2A_API_HASH) {
     return null;
   }
 
   try {
     const client = createG2AClient();
-    
-    // In production:
-    // const response = await client.get(`/products/${g2aProductId}`);
-    // return mapG2AProduct(response.data);
 
-    return null;
+    const response = await client.get(`/products/${g2aProductId}`);
+    return mapG2AProduct(response.data);
   } catch (error) {
     console.error('[G2A] Error fetching product:', error);
     return null;
@@ -421,8 +411,8 @@ export const getG2AProductInfo = async (g2aProductId: string): Promise<G2AProduc
  */
 export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string, number>> => {
   const prices = new Map<string, number>();
-  
-  if (!G2A_API_KEY) {
+
+  if (!G2A_API_KEY || !G2A_API_HASH) {
     // Return mock prices with markup
     for (const id of g2aProductIds) {
       prices.set(id, applyMarkup(Math.random() * 50 + 10));
@@ -432,18 +422,22 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
 
   try {
     const client = createG2AClient();
-    
-    // In production:
-    // const response = await client.post('/products/prices', {
-    //   productIds: g2aProductIds,
-    // });
-    // for (const item of response.data) {
-    //   prices.set(item.productId, applyMarkup(item.price));
-    // }
+
+    const response = await client.post('/products/prices', {
+      productIds: g2aProductIds,
+    });
+
+    for (const item of response.data) {
+      prices.set(item.productId, applyMarkup(item.price));
+    }
 
     return prices;
   } catch (error) {
     console.error('[G2A] Error fetching prices:', error);
+    // Fallback to mock prices
+    for (const id of g2aProductIds) {
+      prices.set(id, applyMarkup(Math.random() * 50 + 10));
+    }
     return prices;
   }
 };

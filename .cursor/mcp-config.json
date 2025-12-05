@@ -1,0 +1,18 @@
+
+"mcpServers": {
+    "toolbox": {
+      "command": "./toolbox",
+      "args": [
+        "--tools-file",
+        "backend/tools.yaml"
+      ],
+      "env": {
+        "DB_HOST": "${DIRECT_URL_HOST}",
+        "DB_PORT": "${DIRECT_URL_PORT}",
+        "DB_NAME": "${DIRECT_URL_DATABASE}",
+        "DB_USER": "${DIRECT_URL_USER}",
+        "DB_PASSWORD": "${DIRECT_URL_PASSWORD}"
+      }
+    }
+  }
+}

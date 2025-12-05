@@ -24,16 +24,47 @@ const responsiveCSS = `
     .desktop-nav { display: none !important; }
     .desktop-search { display: none !important; }
     .desktop-login { display: none !important; }
-    .hero-section { height: auto !important; min-height: 400px !important; padding: 24px !important; }
-    .hero-content { max-width: 100% !important; }
+    .hero-section { 
+      height: auto !important; 
+      min-height: 400px !important; 
+      padding: 24px !important; 
+      flex-direction: column !important;
+      align-items: flex-start !important;
+    }
+    .hero-content { 
+      max-width: 100% !important; 
+      width: 100% !important;
+    }
     .hero-title { font-size: 28px !important; }
-    .hero-right { position: relative !important; margin-top: 24px !important; }
+    .hero-right { 
+      position: relative !important; 
+      margin-top: 24px !important; 
+      width: 100% !important;
+      align-items: flex-start !important;
+    }
     .info-grid { grid-template-columns: 1fr !important; }
     .similar-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .delivery-info { 
+      flex-direction: column !important; 
+      gap: 16px !important; 
+    }
+    .action-buttons { 
+      width: 100% !important; 
+    }
+    .buy-button { 
+      flex: 1 !important; 
+    }
   }
   @media (max-width: 480px) {
     .hero-title { font-size: 24px !important; }
+    .hero-section { padding: 16px !important; }
     .similar-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+    .price-container { 
+      flex-direction: column !important; 
+      align-items: flex-start !important; 
+      gap: 8px !important;
+    }
+    .current-price { font-size: 28px !important; }
   }
 `;
 
@@ -232,14 +263,18 @@ export default function GameDetailPage() {
       backgroundColor: theme.colors.background,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '48px',
       gap: '48px',
+      overflow: 'hidden',
     }),
     heroContent: {
       maxWidth: '500px',
+      zIndex: 1,
+      position: 'relative',
     },
     badgeContainer: {
       display: 'flex',
@@ -273,6 +308,7 @@ export default function GameDetailPage() {
       display: 'flex',
       gap: '24px',
       marginBottom: '24px',
+      flexWrap: 'wrap',
     },
     deliveryItem: {
       display: 'flex',
@@ -302,6 +338,8 @@ export default function GameDetailPage() {
       flexDirection: 'column',
       alignItems: 'flex-end',
       gap: '16px',
+      zIndex: 1,
+      position: 'relative',
     },
     priceContainer: {
       display: 'flex',
@@ -328,10 +366,13 @@ export default function GameDetailPage() {
     actionButtons: {
       display: 'flex',
       gap: '12px',
+      width: '100%',
+      maxWidth: '300px',
     },
     buyButton: {
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: '8px',
       padding: '14px 48px',
       backgroundColor: theme.colors.primary,
@@ -341,6 +382,8 @@ export default function GameDetailPage() {
       fontSize: '16px',
       fontWeight: '600',
       cursor: 'pointer',
+      flex: 1,
+      transition: 'opacity 0.2s ease, transform 0.2s ease',
     },
     wishlistButton: {
       width: '48px',
@@ -353,6 +396,7 @@ export default function GameDetailPage() {
       borderRadius: '8px',
       color: theme.colors.text,
       cursor: 'pointer',
+      transition: 'background-color 0.2s ease, transform 0.2s ease',
     },
     container: {
       maxWidth: '1280px',
@@ -533,8 +577,10 @@ export default function GameDetailPage() {
               ))}
             </div>
             <h1 style={styles.heroTitle} className="hero-title">{game.title}</h1>
-            <p style={styles.heroDescription}>{game.shortDescription || game.description}</p>
-            <div style={styles.deliveryInfo}>
+            <p style={styles.heroDescription}>
+              {game.shortDescription || (game.description ? game.description.substring(0, 200) + (game.description.length > 200 ? '...' : '') : '')}
+            </p>
+            <div style={styles.deliveryInfo} className="delivery-info">
               <div style={styles.deliveryItem}>
                 <span style={styles.deliveryLabel}>Delivery Method</span>
                 <span style={styles.deliveryBadge}><Icons.Key /> {deliveryMethod}</span>
@@ -543,20 +589,41 @@ export default function GameDetailPage() {
                 <span style={styles.deliveryLabel}>Platform</span>
                 <span style={styles.deliveryBadge}><Icons.Steam /> {mainPlatform}</span>
               </div>
-              <a href="#" style={styles.activateLink}>How to activate?</a>
+              <div style={styles.deliveryItem}>
+                <a href="#" style={styles.activateLink}>How to activate?</a>
+              </div>
             </div>
           </div>
           <div style={styles.heroRight} className="hero-right">
-            <div style={styles.priceContainer}>
-              <span style={styles.currentPrice}>{game.price}{game.currency || '€'}</span>
+            <div style={styles.priceContainer} className="price-container">
+              <span style={styles.currentPrice} className="current-price">{game.price}{game.currency || '€'}</span>
               {game.originalPrice && game.originalPrice > game.price && (
                 <span style={styles.originalPrice}>{game.originalPrice}{game.currency || '€'}</span>
               )}
               {discount && <span style={styles.discount}>{discount}</span>}
             </div>
-            <div style={styles.actionButtons}>
-              <button style={styles.buyButton}><Icons.Cart /> Buy</button>
-              <button style={styles.wishlistButton}><Icons.Heart /></button>
+            <div style={styles.actionButtons} className="action-buttons">
+              <button 
+                style={styles.buyButton} 
+                className="buy-button"
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                <Icons.Cart /> Buy
+              </button>
+              <button 
+                style={styles.wishlistButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceLight;
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surface;
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <Icons.Heart />
+              </button>
             </div>
           </div>
         </section>
