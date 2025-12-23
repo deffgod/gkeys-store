@@ -1,5 +1,6 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.DEV ? 'http://localhost:3001/api' : '');
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -12,7 +13,17 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(baseURL: string) {
-    this.baseURL = baseURL;
+    if (!baseURL) {
+      const errorMsg = 'VITE_API_BASE_URL is not set! Please configure it in Vercel Environment Variables.\n' +
+        'For production, set VITE_API_BASE_URL=https://your-project.vercel.app/api';
+      console.error('❌', errorMsg);
+      // В production выбрасываем ошибку, в dev используем fallback
+      if (!import.meta.env.DEV) {
+        throw new Error('API base URL is required. Set VITE_API_BASE_URL environment variable.');
+      }
+      console.warn('⚠️ Using development fallback: http://localhost:3001/api');
+    }
+    this.baseURL = baseURL || 'http://localhost:3001/api';
     this.loadToken();
   }
 
