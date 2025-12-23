@@ -180,4 +180,4 @@ vercel --prod
 - `FRONTEND_BACKEND_INTEGRATION.md` - Integration guide
 - `backend/DATABASE_SETUP.md` - Database setup
 - `backend/QUICK_START.md` - Quick start guide
-- `IMPLEMENTATION_SUMMARY.md` - What was implemented
+- See [CHANGELOG.md](CHANGELOG.md) for implementation details

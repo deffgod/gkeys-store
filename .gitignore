@@ -75,3 +75,20 @@ backend/prisma/*.d.ts
 backend/prisma/*.d.ts.map
 backend/prisma/*.js
 backend/prisma/*.js.map
+
+# Temporary documentation and plans
+*.plan.md
+*.backup
+*.old
+
+# Exclude local IDE settings (keep shared configs)
+.vscode/settings.json
+.vscode/launch.json
+
+# OS files
+Thumbs.db
+
+# Exclude temporary Cursor files
+.cursor/plans/
+.cursor/projects/
+.cursor/agent-transcripts/

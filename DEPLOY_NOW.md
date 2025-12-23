@@ -1,5 +1,8 @@
 # 🚀 Deploy to Vercel - Quick Guide
 
+> **📖 Для подробной инструкции см. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**  
+> **📋 Полный справочник переменных окружения: [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)**
+
 ## Step 1: Prepare Git
 
 ```bash

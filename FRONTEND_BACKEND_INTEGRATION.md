@@ -247,4 +247,4 @@ REDIS_URL=redis://localhost:6379
 2. Run migrations: `npm run prisma:migrate:deploy`
 3. Start server: `npm start`
 
-See `DEPLOYMENT_INFO.md` and `VERCEL_DEPLOY.md` for details.
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for details.

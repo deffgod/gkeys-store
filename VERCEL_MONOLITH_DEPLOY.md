@@ -1,5 +1,8 @@
 # Vercel Monolith Deployment Guide
 
+> **📖 Для подробной инструкции см. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**  
+> **📋 Полный справочник переменных окружения: [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)**
+
 ## Overview
 
 This project is configured for **monolith deployment** on Vercel:

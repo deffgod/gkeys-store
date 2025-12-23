@@ -475,30 +475,58 @@ npm run prisma:seed
 
 ## 🌐 Deployment
 
-### Vercel (Recommended for Frontend)
+### Quick Start
 
-1. Connect your GitHub repository to Vercel
-2. Configure environment variables:
-   ```
-   VITE_API_URL=https://your-backend-url.vercel.app/api
-   ```
-3. Deploy automatically on push to main branch
+Для быстрого деплоя на Vercel (монолитный деплой frontend + backend):
+
+```bash
+git add . && git commit -m "Deploy" && git push
+vercel --prod
+```
+
+### Detailed Guides
+
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное пошаговое руководство по деплою на Vercel
+- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник всех переменных окружения
+- **[DEPLOY_NOW.md](DEPLOY_NOW.md)** - Краткая инструкция по деплою
+
+### Vercel (Recommended - Monolith Deployment)
+
+Проект настроен для монолитного деплоя на Vercel:
+- **Frontend**: Статические файлы из `dist/`
+- **Backend**: Serverless functions через `api/index.ts`
+
+Все `/api/*` запросы автоматически маршрутизируются к serverless function.
+
+**Основные шаги:**
+1. Подключите GitHub репозиторий к Vercel
+2. Настройте environment variables (см. [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md))
+3. Деплой выполняется автоматически при push в main branch
 
 ### Other Platforms
 
-The project is ready to deploy on any Node.js-supporting platform:
+Проект готов к деплою на любых платформах с поддержкой Node.js:
 - **Netlify**
 - **Railway**
 - **Render**
 - **Heroku**
 
-See `VERCEL_DEPLOY.md` for detailed deployment instructions.
+См. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) для подробных инструкций.
 
 ## 📚 Additional Documentation
 
+### Deployment
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою на Vercel
+- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник переменных окружения
+- **[DEPLOY_NOW.md](DEPLOY_NOW.md)** - Краткая инструкция по деплою
+- **[VERCEL_MONOLITH_DEPLOY.md](VERCEL_MONOLITH_DEPLOY.md)** - Детали монолитного деплоя
+
+### Setup & Development
 - `QUICK_START.md` - Quick start guide
 - `SETUP.md` - Detailed setup instructions
-- `VERCEL_DEPLOY.md` - Vercel deployment guide
+- `FRONTEND_BACKEND_INTEGRATION.md` - Integration guide
+- `CONTRIBUTING.md` - Contributing guidelines
+- `CHANGELOG.md` - Changelog
 - `docs/` - Component documentation
 - `backend/README.md` - Backend-specific documentation
 
@@ -522,7 +550,16 @@ Private project - All rights reserved
 
 ## 👥 Contributing
 
-This is a private project. For contributions, please contact the project maintainers.
+Мы приветствуем вклад в проект! Пожалуйста, прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) для получения информации о процессе разработки и стандартах кода.
+
+**Основные шаги:**
+1. Fork репозиторий
+2. Создайте ветку для вашей функции (`git checkout -b feature/amazing-feature`)
+3. Закоммитьте изменения (`git commit -m 'Add amazing feature'`)
+4. Push в ветку (`git push origin feature/amazing-feature`)
+5. Откройте Pull Request
+
+Подробности см. в [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
