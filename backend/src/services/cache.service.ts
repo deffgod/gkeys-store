@@ -129,7 +129,13 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
     };
     
     if (genre) {
-      where.genre = genre;
+      where.genres = {
+        some: {
+          genre: {
+            name: { contains: genre, mode: 'insensitive' },
+          },
+        },
+      };
     }
     
     // Get top selling games
@@ -165,6 +171,23 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
     // Fetch full game data
     const games = await prisma.game.findMany({
       where: { id: { in: gameIds } },
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     // Randomly select 8 games
@@ -185,6 +208,23 @@ export const getNewInCatalog = async (): Promise<CachedGame[]> => {
       where: { inStock: true },
       orderBy: { createdAt: 'desc' },
       take: 15,
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     return games.map(g => ({
@@ -206,6 +246,23 @@ export const getPreorderGames = async (): Promise<CachedGame[]> => {
       },
       orderBy: { releaseDate: 'asc' },
       take: 10,
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     return games.map(mapGameToCache);
@@ -228,6 +285,23 @@ export const getNewGames = async (): Promise<CachedGame[]> => {
       },
       orderBy: { releaseDate: 'desc' },
       take: 10,
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     return games.map(g => ({
@@ -245,6 +319,23 @@ export const getRandomGames = async (count: number = 10): Promise<CachedGame[]> 
   const games = await prisma.game.findMany({
     where: { inStock: true },
     take: 100,
+    include: {
+      genres: {
+        include: {
+          genre: true,
+        },
+      },
+      platforms: {
+        include: {
+          platform: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+    },
   });
   
   // Shuffle and take requested count
@@ -263,11 +354,34 @@ export const getGamesByGenre = async (genre: string, count: number = 20): Promis
   return getCachedOrFetch(key, CACHE_TTL.GENRE_GAMES, async () => {
     const games = await prisma.game.findMany({
       where: {
-        genre: { contains: genre, mode: 'insensitive' },
+        genres: {
+          some: {
+            genre: {
+              name: { contains: genre, mode: 'insensitive' },
+            },
+          },
+        },
         inStock: true,
       },
       orderBy: { createdAt: 'desc' },
       take: count,
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     return games.map(mapGameToCache);
@@ -283,6 +397,23 @@ export const getCachedGame = async (slug: string): Promise<CachedGame | null> =>
   return getCachedOrFetch(key, CACHE_TTL.GAME_DETAILS, async () => {
     const game = await prisma.game.findUnique({
       where: { slug },
+      include: {
+        genres: {
+          include: {
+            genre: true,
+          },
+        },
+        platforms: {
+          include: {
+            platform: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
     
     return game ? mapGameToCache(game) : null;
@@ -299,16 +430,32 @@ export const getFilterOptions = async (): Promise<{
   priceRange: { min: number; max: number };
 }> => {
   return getCachedOrFetch(CACHE_KEYS.FILTER_OPTIONS, CACHE_TTL.FILTER_OPTIONS, async () => {
-    const [platforms, genres, publishers, priceRange] = await Promise.all([
-      prisma.game.findMany({
-        where: { inStock: true },
-        select: { platform: true },
-        distinct: ['platform'],
+    const [platformResults, genreResults, publishers, priceRange] = await Promise.all([
+      prisma.platform.findMany({
+        where: {
+          games: {
+            some: {
+              game: {
+                inStock: true,
+              },
+            },
+          },
+        },
+        select: { name: true },
+        distinct: ['name'],
       }),
-      prisma.game.findMany({
-        where: { inStock: true },
-        select: { genre: true },
-        distinct: ['genre'],
+      prisma.genre.findMany({
+        where: {
+          games: {
+            some: {
+              game: {
+                inStock: true,
+              },
+            },
+          },
+        },
+        select: { name: true },
+        distinct: ['name'],
       }),
       prisma.game.findMany({
         where: { inStock: true, publisher: { not: null } },
@@ -323,8 +470,8 @@ export const getFilterOptions = async (): Promise<{
     ]);
     
     return {
-      platforms: platforms.map(p => p.platform).filter(Boolean),
-      genres: genres.map(g => g.genre).filter(Boolean),
+      platforms: platformResults.map(p => p.name).filter(Boolean),
+      genres: genreResults.map(g => g.name).filter(Boolean),
       publishers: publishers.map(p => p.publisher).filter((p): p is string => p !== null),
       priceRange: {
         min: Number(priceRange._min.price || 0),
@@ -355,20 +502,7 @@ export const refreshNewInCatalog = async (): Promise<void> => {
 /**
  * Map Prisma Game to CachedGame
  */
-function mapGameToCache(game: {
-  id: string;
-  title: string;
-  slug: string;
-  price: number | { toNumber(): number };
-  originalPrice?: number | { toNumber(): number } | null;
-  imageUrl: string;
-  platform: string;
-  genre: string;
-  tags: string[];
-  inStock: boolean;
-  isPreorder: boolean;
-  createdAt: Date;
-}): CachedGame {
+function mapGameToCache(game: any): CachedGame {
   const price = typeof game.price === 'object' ? game.price.toNumber() : Number(game.price);
   const originalPrice = game.originalPrice 
     ? (typeof game.originalPrice === 'object' ? game.originalPrice.toNumber() : Number(game.originalPrice))
@@ -384,16 +518,27 @@ function mapGameToCache(game: {
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
   const isNew = game.createdAt >= twoWeeksAgo;
   
+  // Extract platform and genre from relations
+  const platform = game.platforms && game.platforms.length > 0 
+    ? game.platforms[0].platform?.name || '' 
+    : '';
+  const genre = game.genres && game.genres.length > 0 
+    ? game.genres[0].genre?.name || '' 
+    : '';
+  const tags = game.tags 
+    ? game.tags.map((t: any) => t.tag?.name || '').filter(Boolean)
+    : [];
+  
   return {
     id: game.id,
     title: game.title,
     slug: game.slug,
     price,
     originalPrice,
-    imageUrl: game.imageUrl,
-    platform: game.platform,
-    genre: game.genre,
-    tags: game.tags,
+    imageUrl: game.image || game.imageUrl || '',
+    platform,
+    genre,
+    tags,
     inStock: game.inStock,
     isPreorder: game.isPreorder,
     isNew,

@@ -15,13 +15,17 @@ export class AppError extends Error {
   }
 }
 
+function isAppError(err: Error | AppError): err is AppError {
+  return 'statusCode' in err && 'isOperational' in err;
+}
+
 export const errorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const statusCode = err.statusCode || 500;
+  const statusCode = isAppError(err) ? err.statusCode : 500;
   const message = err.message || 'Internal Server Error';
 
   console.error('Error:', {

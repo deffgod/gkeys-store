@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { processG2AWebhook, G2AWebhookEvent } from '../services/g2a-webhook.service';
+import { processG2AWebhook } from '../services/g2a-webhook.service';
+import { G2AWebhookEvent } from '../types/g2a';
 import { AppError } from '../middleware/errorHandler';
 
 /**
