@@ -24,8 +24,8 @@ import {
   getOrdersController,
   updateOrderStatusController,
   getG2AMetricsController,
-} from '../controllers/admin.controller';
-import { authenticate, requireAdmin } from '../middleware/auth';
+} from '../controllers/admin.controller.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { getFAQs, getFAQCategories } from '../services/faq.service';
-import { FAQFilters } from '../services/faq.service';
+import { getFAQs, getFAQCategories } from '../services/faq.service.js';
+import { FAQFilters } from '../services/faq.service.js';
 
 export const getFAQsController = async (
   req: Request,

@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.js';
 import {
   getWishlistController,
   addToWishlistController,
   removeFromWishlistController,
   checkWishlistController,
   migrateWishlistController,
-} from '../controllers/wishlist.controller';
+} from '../controllers/wishlist.controller.js';
 
 const router = Router();
 

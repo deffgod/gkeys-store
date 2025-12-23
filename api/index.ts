@@ -12,11 +12,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Import Express app from backend
 // Use dynamic import to avoid executing server startup code
-import type { Express } from 'express';
+// Note: Express type is inferred from the imported module, no need for explicit type import
 
-let app: Express | null = null;
+let app: any = null;
 
-async function getApp(): Promise<Express> {
+async function getApp(): Promise<any> {
   if (!app) {
     const distPath = '../backend/dist/index.js';
     const sourcePath = '../backend/src/index.js';
@@ -24,7 +24,7 @@ async function getApp(): Promise<Express> {
     try {
       // Try compiled version first (production)
       const backendModule = await import(distPath);
-      app = backendModule.default as Express;
+      app = backendModule.default;
       console.log('✅ Loaded backend from compiled dist');
     } catch (distError) {
       // Log warning but try source fallback
@@ -37,7 +37,7 @@ async function getApp(): Promise<Express> {
           throw new Error(`Production build requires compiled backend at ${distPath}. Build may have failed.`);
         }
         const backendModule = await import(sourcePath);
-        app = backendModule.default as Express;
+        app = backendModule.default;
         console.warn('⚠️  Using source backend (development mode)');
       } catch (sourceError) {
         const sourceErrorMessage = sourceError instanceof Error ? sourceError.message : String(sourceError);

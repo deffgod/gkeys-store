@@ -16,8 +16,8 @@ import {
   getFilterOptions,
   getCollections,
   getGameAutocomplete,
-} from '../services/game.service';
-import { GameFilters } from '../types/game';
+} from '../services/game.service.js';
+import { GameFilters } from '../types/game.js';
 
 export const getGamesController = async (
   req: Request,

@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
-import prisma from '../config/database';
-import redisClient from '../config/redis';
-import { AppError } from '../middleware/errorHandler';
-import { G2AWebhookEvent, IdempotencyRecord } from '../types/g2a';
-import { getG2AConfig } from '../config/g2a';
+import prisma from '../config/database.js';
+import redisClient from '../config/redis.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { G2AWebhookEvent, IdempotencyRecord } from '../types/g2a.js';
+import { getG2AConfig } from '../config/g2a.js';
 
 const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
 const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60; // 24 hours
@@ -182,12 +182,12 @@ export const processG2AWebhook = async (
     if (!validateG2AWebhookSignature(payloadString, signature, timestamp, nonce)) {
       await updateIdempotencyAttempts(idempotencyKey, 'failed', 'Invalid signature');
       // Record invalid webhook metric
-      import('./g2a-metrics.service').then(m => m.incrementMetric('webhook_invalid')).catch(() => {});
+      import('./g2a-metrics.service.js').then(m => m.incrementMetric('webhook_invalid')).catch(() => {});
       throw new AppError('Invalid webhook signature', 401);
     }
     
     // Record valid webhook metric
-    import('./g2a-metrics.service').then(m => m.incrementMetric('webhook_valid')).catch(() => {});
+    import('./g2a-metrics.service.js').then(m => m.incrementMetric('webhook_valid')).catch(() => {});
     
     // Process webhook based on type
     switch (type) {

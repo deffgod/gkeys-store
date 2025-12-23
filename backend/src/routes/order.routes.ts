@@ -3,8 +3,8 @@ import {
   createOrderController,
   getUserOrdersController,
   getOrderByIdController,
-} from '../controllers/order.controller';
-import { authenticate } from '../middleware/auth';
+} from '../controllers/order.controller.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 

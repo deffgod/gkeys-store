@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import { SessionRequest } from '../middleware/session.middleware';
+import { AuthRequest } from '../middleware/auth.js';
+import { SessionRequest } from '../middleware/session.middleware.js';
 import {
   getCart,
   addToCart,
@@ -8,7 +8,7 @@ import {
   removeFromCart,
   clearCart,
   migrateSessionCartToUser,
-} from '../services/cart.service';
+} from '../services/cart.service.js';
 
 /**
  * Get user's cart

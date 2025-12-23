@@ -3,12 +3,12 @@ import {
   registerController,
   loginController,
   refreshTokenController,
-} from '../controllers/auth.controller';
+} from '../controllers/auth.controller.js';
 import {
   registerValidator,
   loginValidator,
   refreshTokenValidator,
-} from '../validators/auth';
+} from '../validators/auth.js';
 
 const router = Router();
 

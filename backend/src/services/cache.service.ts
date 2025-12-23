@@ -1,5 +1,5 @@
-import redisClient from '../config/redis';
-import prisma from '../config/database';
+import redisClient from '../config/redis.js';
+import prisma from '../config/database.js';
 
 // Cache TTLs
 const CACHE_TTL = {
@@ -152,7 +152,7 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       take: 50,
     });
     
-    let gameIds = topGames.map(g => g.gameId);
+    let gameIds = topGames.map((g: any) => g.gameId);
     
     // If not enough top sellers, add random games
     if (gameIds.length < 20) {

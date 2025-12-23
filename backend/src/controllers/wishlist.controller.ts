@@ -1,13 +1,13 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import { SessionRequest } from '../middleware/session.middleware';
+import { AuthRequest } from '../middleware/auth.js';
+import { SessionRequest } from '../middleware/session.middleware.js';
 import {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
   isInWishlist,
   migrateSessionWishlistToUser,
-} from '../services/wishlist.service';
+} from '../services/wishlist.service.js';
 
 /**
  * Get user's wishlist

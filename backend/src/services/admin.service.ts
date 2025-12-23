@@ -95,7 +95,7 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
   });
 
   const topGamesWithDetails = await Promise.all(
-    topSellingGames.map(async (item) => {
+    topSellingGames.map(async (item: any) => {
       const game = await prisma.game.findUnique({
         where: { id: item.gameId },
         select: { id: true, title: true, slug: true },
@@ -104,8 +104,8 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
         id: item.gameId,
         title: game?.title || 'Unknown',
         slug: game?.slug || '',
-        salesCount: item._count.gameId,
-        revenue: Number(item._sum.price || 0),
+        salesCount: item._count?.gameId || 0,
+        revenue: Number(item._sum?.price || 0),
       };
     })
   );
@@ -285,9 +285,7 @@ export const getUserDetails = async (userId: string): Promise<UserDetailsRespons
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   return {

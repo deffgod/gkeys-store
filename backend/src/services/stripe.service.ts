@@ -1,4 +1,4 @@
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 
 // Stripe types
 interface StripeCheckoutSession {
@@ -45,9 +45,7 @@ export const createStripeCheckoutSession = async (
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!stripeSecretKey) {
-    const error: AppError = new Error('Stripe not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Stripe not configured', 500);
   }
 
   // Convert amount to cents (Stripe uses smallest currency unit)
@@ -106,9 +104,7 @@ export const createStripePaymentIntent = async (
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!stripeSecretKey) {
-    const error: AppError = new Error('Stripe not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Stripe not configured', 500);
   }
 
   const _amountInCents = Math.round(amount * 100);
@@ -244,9 +240,7 @@ export const createStripeRefund = async (
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!stripeSecretKey) {
-    const error: AppError = new Error('Stripe not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Stripe not configured', 500);
   }
 
   // In production:

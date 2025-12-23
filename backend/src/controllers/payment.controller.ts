@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.js';
 import {
   createBalanceTopUpIntent,
   processPaymentWebhook,
   processTerminalWebhook,
-} from '../services/payment.service';
-import { BalanceTopUpRequest, PaymentWebhook, TerminalWebhook } from '../types/payment';
+} from '../services/payment.service.js';
+import { BalanceTopUpRequest, PaymentWebhook, TerminalWebhook } from '../types/payment.js';
 
 export const createBalanceTopUpController = async (
   req: AuthRequest,
@@ -38,7 +38,7 @@ export const paymentWebhookController = async (
   next: NextFunction
 ) => {
   try {
-    const data = req.body as PaymentWebhook;
+    const data = req.body as unknown as PaymentWebhook;
     
     // Verify webhook signature in production
     // For now, we'll process it directly
@@ -60,7 +60,7 @@ export const terminalWebhookController = async (
   next: NextFunction
 ) => {
   try {
-    const data = req.body as TerminalWebhook;
+    const data = req.body as unknown as TerminalWebhook;
     
     // Verify webhook signature in production
     // For now, we'll process it directly

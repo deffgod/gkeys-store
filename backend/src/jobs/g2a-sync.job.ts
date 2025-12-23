@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { syncG2ACatalog, validateGameStock, getG2APrices } from '../services/g2a.service';
-import prisma from '../config/database';
+import { syncG2ACatalog, validateGameStock, getG2APrices } from '../services/g2a.service.js';
+import prisma from '../config/database.js';
 
 /**
  * Retry helper with exponential backoff
@@ -38,10 +38,10 @@ export const startG2ASyncJob = () => {
       const result = await retryWithBackoff(() => syncG2ACatalog({ 
         fullSync: true,
         includeRelationships: true 
-      }));
+      })) as any;
       console.log(`✅ [G2A Job] Catalog sync completed: ${result.added} added, ${result.updated} updated, ${result.removed} removed`);
       console.log(`📊 [G2A Job] Relationships: ${result.categoriesCreated} categories, ${result.genresCreated} genres, ${result.platformsCreated} platforms created`);
-      if (result.errors.length > 0) {
+      if (result.errors && result.errors.length > 0) {
         console.warn(`⚠️ [G2A Job] Sync completed with ${result.errors.length} errors`);
       }
     } catch (error) {
@@ -161,7 +161,7 @@ export const startStockCheckJob = () => {
             () => getG2APrices(productIds),
             2,
             1000
-          );
+          ) as Map<string, number>;
           
           // Update prices in database
           for (const game of games) {

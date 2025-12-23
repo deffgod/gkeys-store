@@ -1,9 +1,9 @@
-import prisma from '../config/database';
-import { CreateOrderRequest, OrderResponse } from '../types/order';
-import { AppError } from '../middleware/errorHandler';
-import { purchaseGameKey, validateGameStock } from './g2a.service';
-import { G2AError, G2AErrorCode } from '../types/g2a';
-import { sendGameKeyEmail } from './email.service';
+import prisma from '../config/database.js';
+import { CreateOrderRequest, OrderResponse } from '../types/order.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { purchaseGameKey, validateGameStock } from './g2a.service.js';
+import { G2AError, G2AErrorCode } from '../types/g2a.js';
+import { sendGameKeyEmail } from './email.service.js';
 
 export const createOrder = async (
   userId: string,
@@ -17,9 +17,7 @@ export const createOrder = async (
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   // Get games and calculate totals
@@ -34,18 +32,14 @@ export const createOrder = async (
   });
 
   if (games.length !== gameIds.length) {
-    const error: AppError = new Error('Some games not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('Some games not found', 404);
   }
 
   // Check stock (both local and G2A if applicable)
   for (const item of items) {
     const game = games.find((g) => g.id === item.gameId);
     if (!game || !game.inStock) {
-      const error: AppError = new Error(`Game ${game?.title || item.gameId} is out of stock`);
-      error.statusCode = 400;
-      throw error;
+      throw new AppError(`Game ${game?.title || item.gameId} is out of stock`, 400);
     }
     
     // Validate G2A stock if game has G2A product ID
@@ -53,11 +47,10 @@ export const createOrder = async (
       try {
         const stockResult = await validateGameStock(game.g2aProductId);
         if (!stockResult.available || stockResult.stock < item.quantity) {
-          const error: AppError = new Error(
-            `Game ${game.title} is out of stock on G2A. Available: ${stockResult.stock}, Requested: ${item.quantity}`
+          throw new AppError(
+            `Game ${game.title} is out of stock on G2A. Available: ${stockResult.stock}, Requested: ${item.quantity}`,
+            400
           );
-          error.statusCode = 400;
-          throw error;
         }
       } catch (error) {
         // If G2A validation fails, log but don't block order (graceful degradation)
@@ -104,9 +97,7 @@ export const createOrder = async (
 
   // Check balance
   if (Number(user.balance) < total) {
-    const error: AppError = new Error('Insufficient balance');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('Insufficient balance', 400);
   }
 
   // Check for existing order with same items (idempotency check)
@@ -124,9 +115,9 @@ export const createOrder = async (
     },
   });
 
-  if (existingOrder) {
+  if (existingOrder && 'items' in existingOrder && Array.isArray(existingOrder.items)) {
     // Check if items match (simple idempotency check)
-    const existingItemIds = existingOrder.items.map(i => i.gameId).sort().join(',');
+    const existingItemIds = existingOrder.items.map((i: any) => i.gameId).sort().join(',');
     const newItemIds = items.map(i => i.gameId).sort().join(',');
     
     if (existingItemIds === newItemIds) {
@@ -304,11 +295,10 @@ export const createOrder = async (
             },
           });
           
-          const error: AppError = new Error(
-            `Order failed: ${errorMessage}. Balance has been refunded.`
+          throw new AppError(
+            `Order failed: ${errorMessage}. Balance has been refunded.`,
+            400
           );
-          error.statusCode = 400;
-          throw error;
         }
         // For other errors, continue with other games
       }

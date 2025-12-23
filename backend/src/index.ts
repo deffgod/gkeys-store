@@ -4,11 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import { errorHandler } from './middleware/errorHandler';
-import { notFoundHandler } from './middleware/notFoundHandler';
-import { sessionMiddleware } from './middleware/session.middleware';
-import { startG2ASyncJob, startStockCheckJob } from './jobs/g2a-sync.job';
-import prisma, { initializeDatabase } from './config/database';
+import { errorHandler } from './middleware/errorHandler.js';
+import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { sessionMiddleware } from './middleware/session.middleware.js';
+import { startG2ASyncJob, startStockCheckJob } from './jobs/g2a-sync.job.js';
+import prisma, { initializeDatabase } from './config/database.js';
 
 // Load environment variables
 dotenv.config();
@@ -126,17 +126,17 @@ app.get('/health', async (req, res) => {
 });
 
 // API Routes
-import authRoutes from './routes/auth.routes';
-import gameRoutes from './routes/game.routes';
-import orderRoutes from './routes/order.routes';
-import paymentRoutes from './routes/payment.routes';
-import userRoutes from './routes/user.routes';
-import blogRoutes from './routes/blog.routes';
-import adminRoutes from './routes/admin.routes';
-import cartRoutes from './routes/cart.routes';
-import wishlistRoutes from './routes/wishlist.routes';
-import faqRoutes from './routes/faq.routes';
-import g2aWebhookRoutes from './routes/g2a-webhook.routes';
+import authRoutes from './routes/auth.routes.js';
+import gameRoutes from './routes/game.routes.js';
+import orderRoutes from './routes/order.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import userRoutes from './routes/user.routes.js';
+import blogRoutes from './routes/blog.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import cartRoutes from './routes/cart.routes.js';
+import wishlistRoutes from './routes/wishlist.routes.js';
+import faqRoutes from './routes/faq.routes.js';
+import g2aWebhookRoutes from './routes/g2a-webhook.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);

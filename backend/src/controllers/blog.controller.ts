@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { getArticles, getArticleById, getArticleBySlug, getCategories } from '../services/blog.service';
-import { ArticleFilters } from '../types/blog';
+import { getArticles, getArticleById, getArticleBySlug, getCategories } from '../services/blog.service.js';
+import { ArticleFilters } from '../types/blog.js';
 
 export const getArticlesController = async (
   req: Request,

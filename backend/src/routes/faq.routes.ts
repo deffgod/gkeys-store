@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   getFAQsController,
   getFAQCategoriesController,
-} from '../controllers/faq.controller';
+} from '../controllers/faq.controller.js';
 
 const router = Router();
 

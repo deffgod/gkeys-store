@@ -1,4 +1,4 @@
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 
 // Mollie types
 interface MolliePayment {
@@ -52,9 +52,7 @@ export const createMolliePayment = async (
   const apiKey = process.env.MOLLIE_API_KEY;
   
   if (!apiKey) {
-    const error: AppError = new Error('Mollie not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Mollie not configured', 500);
   }
 
   const baseUrl = 'https://api.mollie.com/v2';
@@ -192,9 +190,7 @@ export const createMollieRefund = async (
   const apiKey = process.env.MOLLIE_API_KEY;
   
   if (!apiKey) {
-    const error: AppError = new Error('Mollie not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Mollie not configured', 500);
   }
 
   const baseUrl = 'https://api.mollie.com/v2';
@@ -279,9 +275,7 @@ export const createMolliePaymentWithMethod = async (
   const apiKey = process.env.MOLLIE_API_KEY;
   
   if (!apiKey) {
-    const error: AppError = new Error('Mollie not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('Mollie not configured', 500);
   }
 
   const baseUrl = 'https://api.mollie.com/v2';

@@ -1,4 +1,4 @@
-import redisClient from '../config/redis';
+import redisClient from '../config/redis.js';
 
 interface G2AMetrics {
   requests_total: number;

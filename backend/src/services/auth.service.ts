@@ -1,8 +1,8 @@
-import prisma from '../config/database';
-import { hashPassword, comparePassword } from '../utils/bcrypt';
-import { generateAccessToken, generateRefreshToken, TokenPayload } from '../utils/jwt';
-import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth';
-import { AppError } from '../middleware/errorHandler';
+import prisma from '../config/database.js';
+import { hashPassword, comparePassword } from '../utils/bcrypt.js';
+import { generateAccessToken, generateRefreshToken, TokenPayload } from '../utils/jwt.js';
+import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
   if (!prisma) {
@@ -19,9 +19,7 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
   });
 
   if (existingUser) {
-    const error: AppError = new Error('User with this email already exists');
-    error.statusCode = 409;
-    throw error;
+    throw new AppError('User with this email already exists', 409);
   }
 
   // Hash password
@@ -59,7 +57,7 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
 
   // Send registration email
   try {
-    const { sendRegistrationEmail } = await import('./email.service');
+    const { sendRegistrationEmail } = await import('./email.service.js');
     await sendRegistrationEmail(user.email, { username: user.nickname || 'User' });
   } catch (error) {
     console.error('Failed to send registration email:', error);
@@ -89,18 +87,14 @@ export const login = async (data: LoginRequest): Promise<AuthResponse> => {
   });
 
   if (!user) {
-    const error: AppError = new Error('Invalid email or password');
-    error.statusCode = 401;
-    throw error;
+    throw new AppError('Invalid email or password', 401);
   }
 
   // Verify password
   const isValidPassword = await comparePassword(password, user.passwordHash);
 
   if (!isValidPassword) {
-    const error: AppError = new Error('Invalid email or password');
-    error.statusCode = 401;
-    throw error;
+    throw new AppError('Invalid email or password', 401);
   }
 
   // Generate tokens
@@ -146,9 +140,7 @@ export const refreshToken = async (refreshTokenString: string): Promise<{ token:
     });
 
     if (!user) {
-      const error: AppError = new Error('User not found');
-      error.statusCode = 401;
-      throw error;
+      throw new AppError('User not found', 401);
     }
 
     // Generate new tokens
@@ -167,9 +159,10 @@ export const refreshToken = async (refreshTokenString: string): Promise<{ token:
       expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
     };
   } catch (error) {
-    const appError: AppError = error instanceof Error ? error as AppError : new Error('Invalid refresh token');
-    appError.statusCode = 401;
-    throw appError;
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError('Invalid refresh token', 401);
   }
 };
 

@@ -1,5 +1,5 @@
-import prisma from '../config/database';
-import { AppError } from '../middleware/errorHandler';
+import prisma from '../config/database.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export interface CartItem {
   gameId: string;
@@ -24,9 +24,7 @@ export interface CartResponse {
  */
 export const getCart = async (userId?: string, sessionId?: string): Promise<CartResponse> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   const cartItems = await prisma.cartItem.findMany({
@@ -80,9 +78,7 @@ export const addToCart = async (
   sessionId?: string
 ): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   // Verify game exists and is in stock
@@ -91,15 +87,11 @@ export const addToCart = async (
   });
 
   if (!game) {
-    const error: AppError = new Error('Game not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('Game not found', 404);
   }
 
   if (!game.inStock) {
-    const error: AppError = new Error('Game is out of stock');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('Game is out of stock', 400);
   }
 
   const identifier = userId || sessionId!;
@@ -149,9 +141,7 @@ export const updateCartItem = async (
   sessionId?: string
 ): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   if (quantity <= 0) {
@@ -184,9 +174,7 @@ export const removeFromCart = async (
   sessionId?: string
 ): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   const identifier = userId || sessionId!;
@@ -206,9 +194,7 @@ export const removeFromCart = async (
  */
 export const clearCart = async (userId?: string, sessionId?: string): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   const identifier = userId || sessionId!;

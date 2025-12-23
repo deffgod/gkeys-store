@@ -1,7 +1,7 @@
-import prisma from '../config/database';
+import prisma from '../config/database.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { AppError } from '../middleware/errorHandler';
-import { convertCurrency, processTerminalWebhook } from './payment.service';
+import { AppError } from '../middleware/errorHandler.js';
+import { convertCurrency, processTerminalWebhook } from './payment.service.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { sendBalanceTopUpEmail } from './email.service';
 

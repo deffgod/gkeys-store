@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.js';
 import {
   getUserProfile,
   updateUserProfile,
@@ -10,8 +10,8 @@ import {
   getUserWishlist,
   addToWishlist,
   removeFromWishlist,
-} from '../services/user.service';
-import { UpdateProfileRequest, ChangePasswordRequest } from '../types/user';
+} from '../services/user.service.js';
+import { UpdateProfileRequest, ChangePasswordRequest } from '../types/user.js';
 
 export const getProfileController = async (
   req: AuthRequest,

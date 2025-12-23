@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.js';
 import {
   getDashboardStats,
   searchUsers,
@@ -17,8 +17,8 @@ import {
   deleteBlogPost,
   getAllOrders,
   updateOrderStatus,
-} from '../services/admin.service';
-import { UserSearchFilters, TransactionFilters } from '../types/admin';
+} from '../services/admin.service.js';
+import { UserSearchFilters, TransactionFilters } from '../types/admin.js';
 
 export const getDashboardController = async (
   req: AuthRequest,
@@ -185,7 +185,7 @@ export const getG2AStatusController = async (
   next: NextFunction
 ) => {
   try {
-    const { getG2ASyncStatus } = await import('../services/g2a.service');
+    const { getG2ASyncStatus } = await import('../services/g2a.service.js');
     const status = await getG2ASyncStatus();
 
     res.status(200).json({
@@ -229,7 +229,7 @@ export const syncG2AGenresController = async (
   next: NextFunction
 ) => {
   try {
-    const { syncG2AGenres } = await import('../services/g2a.service');
+    const { syncG2AGenres } = await import('../services/g2a.service.js');
     const result = await syncG2AGenres();
 
     res.status(200).json({
@@ -281,7 +281,7 @@ export const getG2ASyncProgressController = async (
   next: NextFunction
 ) => {
   try {
-    const { getG2ASyncProgress } = await import('../services/g2a.service');
+    const { getG2ASyncProgress } = await import('../services/g2a.service.js');
     const progress = await getG2ASyncProgress();
 
     res.status(200).json({
@@ -515,7 +515,7 @@ export const getG2AMetricsController = async (
   next: NextFunction
 ) => {
   try {
-    const { getG2AMetrics, getLatencyStats } = await import('../services/g2a-metrics.service');
+    const { getG2AMetrics, getLatencyStats } = await import('../services/g2a-metrics.service.js');
     const metrics = await getG2AMetrics();
     const latencyStats = await getLatencyStats();
 

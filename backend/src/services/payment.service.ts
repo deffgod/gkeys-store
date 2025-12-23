@@ -1,7 +1,7 @@
-import prisma from '../config/database';
-import { BalanceTopUpRequest, PaymentIntent, PaymentWebhook, TerminalWebhook } from '../types/payment';
-import { AppError } from '../middleware/errorHandler';
-import { sendBalanceTopUpEmail } from './email.service';
+import prisma from '../config/database.js';
+import { BalanceTopUpRequest, PaymentIntent, PaymentWebhook, TerminalWebhook } from '../types/payment.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { sendBalanceTopUpEmail } from './email.service.js';
 
 // Currency conversion rates (EUR to other currencies)
 const CURRENCY_RATES: Record<string, number> = {
@@ -26,9 +26,7 @@ export const createBalanceTopUpIntent = async (
 
   // Validate amount
   if (amount <= 0) {
-    const error: AppError = new Error('Amount must be greater than 0');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('Amount must be greater than 0', 400);
   }
 
   // Apply promo code if provided

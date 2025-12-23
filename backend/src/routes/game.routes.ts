@@ -16,7 +16,7 @@ import {
   getFilterOptionsController,
   getCollectionsController,
   getGameAutocompleteController,
-} from '../controllers/game.controller';
+} from '../controllers/game.controller.js';
 
 const router = Router();
 

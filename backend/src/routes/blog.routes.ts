@@ -4,7 +4,7 @@ import {
   getArticleByIdController,
   getArticleBySlugController,
   getCategoriesController,
-} from '../controllers/blog.controller';
+} from '../controllers/blog.controller.js';
 
 const router = Router();
 

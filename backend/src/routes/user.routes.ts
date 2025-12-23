@@ -9,8 +9,8 @@ import {
   getWishlistController,
   addToWishlistController,
   removeFromWishlistController,
-} from '../controllers/user.controller';
-import { authenticate } from '../middleware/auth';
+} from '../controllers/user.controller.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 

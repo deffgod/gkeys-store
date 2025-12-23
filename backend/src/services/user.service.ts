@@ -25,9 +25,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfileRespons
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   // Calculate stats
@@ -111,9 +109,7 @@ export const getUserBalance = async (userId: string): Promise<BalanceResponse> =
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   return {
@@ -181,9 +177,7 @@ export const addToWishlist = async (userId: string, gameId: string): Promise<voi
   });
 
   if (!game) {
-    const error: AppError = new Error('Game not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('Game not found', 404);
   }
 
   // Add to wishlist (upsert to avoid duplicates)
@@ -221,15 +215,13 @@ export const changeUserPassword = async (
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   // Verify current password
   const isValid = await comparePassword(data.currentPassword, user.passwordHash);
   if (!isValid) {
-    throw new Error('Current password is incorrect');
+    throw new AppError('Current password is incorrect', 401);
   }
 
   // Hash and update new password
@@ -254,9 +246,7 @@ export const getUserStats = async (userId: string): Promise<UserStatsResponse> =
   });
 
   if (!user) {
-    const error: AppError = new Error('User not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('User not found', 404);
   }
 
   // Calculate stats

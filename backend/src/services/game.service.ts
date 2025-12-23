@@ -114,9 +114,7 @@ export const getGames = async (
   // In Stock Only (default: true, hides Preorder)
   if (filters?.inStockOnly !== false) {
     where.inStock = true;
-    if (filters?.inStockOnly !== false) {
-      where.isPreorder = false;
-    }
+    where.isPreorder = false;
   }
 
   // Price range filter
@@ -693,9 +691,9 @@ export const getSimilarGames = async (
 
   // Score games by matching tags (minimum 2)
   const scored = similarGames
-    .map((g) => {
-      const matchingTags = g.tags.filter((t) => gameTagIds.includes(t.tagId)).length;
-      const matchingGenres = g.genres.filter((g) => gameGenreIds.includes(g.genreId)).length;
+    .map((g: any) => {
+      const matchingTags = g.tags ? g.tags.filter((t: any) => gameTagIds.includes(t.tagId)).length : 0;
+      const matchingGenres = g.genres ? g.genres.filter((gen: any) => gameGenreIds.includes(gen.genreId)).length : 0;
       return {
         game: g,
         score: matchingTags * 2 + matchingGenres,

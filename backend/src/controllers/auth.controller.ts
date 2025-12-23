@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { register, login, refreshToken } from '../services/auth.service';
-import { RegisterRequest, LoginRequest } from '../types/auth';
-import { AppError } from '../middleware/errorHandler';
+import { register, login, refreshToken } from '../services/auth.service.js';
+import { RegisterRequest, LoginRequest } from '../types/auth.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export const registerController = async (
   req: Request,
@@ -12,10 +12,7 @@ export const registerController = async (
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const error: AppError = new Error('Validation failed');
-      error.statusCode = 400;
-      error.errors = errors.array();
-      throw error;
+      throw new AppError('Validation failed', 400, errors.array());
     }
 
     const data: RegisterRequest = req.body;
@@ -38,10 +35,7 @@ export const loginController = async (
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const error: AppError = new Error('Validation failed');
-      error.statusCode = 400;
-      error.errors = errors.array();
-      throw error;
+      throw new AppError('Validation failed', 400, errors.array());
     }
 
     const data: LoginRequest = req.body;
@@ -64,10 +58,7 @@ export const refreshTokenController = async (
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const error: AppError = new Error('Validation failed');
-      error.statusCode = 400;
-      error.errors = errors.array();
-      throw error;
+      throw new AppError('Validation failed', 400, errors.array());
     }
 
     const { refreshToken: refreshTokenString } = req.body;

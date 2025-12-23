@@ -1,4 +1,4 @@
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 
 // PayPal types
 interface PayPalOrder {
@@ -93,9 +93,7 @@ export const createPayPalOrder = async (
   const clientId = process.env.PAYPAL_CLIENT_ID;
   
   if (!clientId) {
-    const error: AppError = new Error('PayPal not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('PayPal not configured', 500);
   }
 
   const accessToken = await getPayPalAccessToken();
@@ -155,9 +153,7 @@ export const capturePayPalOrder = async (
   const clientId = process.env.PAYPAL_CLIENT_ID;
   
   if (!clientId) {
-    const error: AppError = new Error('PayPal not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('PayPal not configured', 500);
   }
 
   const accessToken = await getPayPalAccessToken();
@@ -307,9 +303,7 @@ export const createPayPalRefund = async (
   const clientId = process.env.PAYPAL_CLIENT_ID;
   
   if (!clientId) {
-    const error: AppError = new Error('PayPal not configured');
-    error.statusCode = 500;
-    throw error;
+    throw new AppError('PayPal not configured', 500);
   }
 
   const _accessToken = await getPayPalAccessToken();

@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import { createOrder, getUserOrders, getOrderById } from '../services/order.service';
-import { CreateOrderRequest } from '../types/order';
+import { AuthRequest } from '../middleware/auth.js';
+import { createOrder, getUserOrders, getOrderById } from '../services/order.service.js';
+import { CreateOrderRequest } from '../types/order.js';
 
 export const createOrderController = async (
   req: AuthRequest,

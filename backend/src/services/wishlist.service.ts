@@ -1,5 +1,5 @@
-import prisma from '../config/database';
-import { AppError } from '../middleware/errorHandler';
+import prisma from '../config/database.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export interface WishlistItem {
   gameId: string;
@@ -26,9 +26,7 @@ export const getWishlist = async (
   sessionId?: string
 ): Promise<WishlistResponse> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   const wishlistItems = await prisma.wishlist.findMany({
@@ -75,9 +73,7 @@ export const addToWishlist = async (
   sessionId?: string
 ): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   // Verify game exists
@@ -86,9 +82,7 @@ export const addToWishlist = async (
   });
 
   if (!game) {
-    const error: AppError = new Error('Game not found');
-    error.statusCode = 404;
-    throw error;
+    throw new AppError('Game not found', 404);
   }
 
   const identifier = userId || sessionId!;
@@ -126,9 +120,7 @@ export const removeFromWishlist = async (
   sessionId?: string
 ): Promise<void> => {
   if (!userId && !sessionId) {
-    const error: AppError = new Error('User ID or session ID required');
-    error.statusCode = 400;
-    throw error;
+    throw new AppError('User ID or session ID required', 400);
   }
 
   const identifier = userId || sessionId!;

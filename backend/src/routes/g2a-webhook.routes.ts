@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { g2aWebhookController } from '../controllers/g2a-webhook.controller';
+import { g2aWebhookController } from '../controllers/g2a-webhook.controller.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
-import prisma from '../config/database';
+import prisma from '../config/database.js';
 
 export interface SessionRequest extends Request {
   sessionId?: string;

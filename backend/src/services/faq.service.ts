@@ -1,4 +1,5 @@
-import prisma from '../config/database';
+import prisma from '../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export interface FAQItem {
   id: string;
@@ -36,8 +37,8 @@ export const getFAQs = async (filters?: FAQFilters): Promise<FAQItem[]> => {
 
   if (filters?.search) {
     where.OR = [
-      { question: { contains: filters.search, mode: 'insensitive' } },
-      { answer: { contains: filters.search, mode: 'insensitive' } },
+      { question: { contains: filters.search, mode: 'insensitive' as const } },
+      { answer: { contains: filters.search, mode: 'insensitive' as const } },
     ];
   }
 

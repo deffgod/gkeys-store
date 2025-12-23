@@ -1,10 +1,10 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import crypto from 'node:crypto';
-import prisma from '../config/database';
-import { AppError } from '../middleware/errorHandler';
-import { G2AError, G2AErrorCode } from '../types/g2a';
-import redisClient from '../config/redis';
-import { getG2AConfig } from '../config/g2a';
+import prisma from '../config/database.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { G2AError, G2AErrorCode } from '../types/g2a.js';
+import redisClient from '../config/redis.js';
+import { getG2AConfig } from '../config/g2a.js';
 
 const { apiHash: G2A_API_HASH, apiKey: G2A_API_KEY, baseUrl: G2A_API_URL, timeoutMs: G2A_TIMEOUT_MS, retryMax: G2A_RETRY_MAX } = getG2AConfig();
 const G2A_API_URL_RAW = process.env.G2A_API_URL || 'https://api.g2a.com/integration-api/v1';
@@ -269,23 +269,29 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
       }
       return new G2AError(
         G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-        `Product not found: ${dataObj?.message || axiosError.message}`,
+        `Product not found: ${(dataObj && 'message' in dataObj && typeof dataObj.message === 'string') ? dataObj.message : axiosError.message}`,
         { status, operation }
       );
     }
 
     if (status === 429) {
+      const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
+        ? data.message 
+        : axiosError.message;
       return new G2AError(
         G2AErrorCode.G2A_RATE_LIMIT,
-        `Rate limit exceeded: ${data?.message || axiosError.message}`,
+        `Rate limit exceeded: ${errorMessage}`,
         { status, operation }
       );
     }
 
     if (status === 402) {
+      const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
+        ? data.message 
+        : axiosError.message;
       return new G2AError(
         G2AErrorCode.G2A_OUT_OF_STOCK,
-        `Product unavailable or insufficient funds: ${data?.message || axiosError.message}`,
+        `Product unavailable or insufficient funds: ${errorMessage}`,
         { status, operation }
       );
     }
@@ -306,9 +312,12 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
       );
     }
 
+    const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
+      ? data.message 
+      : axiosError.message;
     return new G2AError(
       G2AErrorCode.G2A_API_ERROR,
-      `G2A API error: ${data?.message || axiosError.message}`,
+      `G2A API error: ${errorMessage}`,
       { status, operation, data }
     );
   }
@@ -448,7 +457,7 @@ const createG2AClient = (): AxiosInstance => {
       });
       
       // Increment total requests metric (async, don't await)
-      import('./g2a-metrics.service').then(m => m.incrementMetric('requests_total')).catch(() => {});
+      import('./g2a-metrics.service.js').then(m => m.incrementMetric('requests_total')).catch(() => {});
       
       return config;
     },
@@ -513,7 +522,7 @@ const createG2AClient = (): AxiosInstance => {
         });
 
         // Record error metric (async, don't await)
-        import('./g2a-metrics.service').then(m => {
+        import('./g2a-metrics.service.js').then(m => {
           m.incrementMetric('requests_error');
           if (latency > 0) m.recordLatency(latency);
         }).catch(() => {});

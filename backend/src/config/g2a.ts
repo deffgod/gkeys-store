@@ -1,4 +1,4 @@
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 
 export type G2AEnvironment = 'sandbox' | 'live';
 

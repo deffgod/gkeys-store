@@ -1,5 +1,5 @@
-import prisma from '../config/database';
-import { ArticleFilters, ArticleResponse, PaginatedArticleResponse } from '../types/blog';
+import prisma from '../config/database.js';
+import { ArticleFilters, ArticleResponse, PaginatedArticleResponse } from '../types/blog.js';
 import { Prisma } from '@prisma/client';
 
 const DEFAULT_PAGE_SIZE = 20;
