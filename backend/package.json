@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmitOnError false --skipLibCheck 2>&1 || echo 'Build completed with warnings'",
+    "build": "tsc --noEmitOnError false --skipLibCheck",
+    "build:full": "prisma generate && tsc --noEmitOnError false --skipLibCheck",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -63,5 +64,6 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
-  }
+  },
+  "postinstall": "prisma generate"
 }

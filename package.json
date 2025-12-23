@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npx vite",
     "build": "npx vite build",
-    "build:backend": "cd backend && npm run build",
+    "build:backend": "cd backend && npm run build:full",
     "build:all": "npm run build && npm run build:backend",
     "lint": "eslint .",
     "preview": "npx vite preview",

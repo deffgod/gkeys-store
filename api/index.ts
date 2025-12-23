@@ -18,16 +18,31 @@ let app: Express | null = null;
 
 async function getApp(): Promise<Express> {
   if (!app) {
-    // Import the compiled backend (will be in backend/dist/index.js after build)
-    // For development, we can import from source
+    const distPath = '../backend/dist/index.js';
+    const sourcePath = '../backend/src/index.js';
+    
     try {
       // Try compiled version first (production)
-      const backendModule = await import('../backend/dist/index.js');
+      const backendModule = await import(distPath);
       app = backendModule.default as Express;
-    } catch {
-      // Fallback to source (development)
-      const backendModule = await import('../backend/src/index.js');
-      app = backendModule.default as Express;
+      console.log('✅ Loaded backend from compiled dist');
+    } catch (distError) {
+      // Log warning but try source fallback
+      const errorMessage = distError instanceof Error ? distError.message : String(distError);
+      console.warn(`⚠️  Compiled backend not found at ${distPath}, trying source fallback:`, errorMessage);
+      
+      try {
+        // Fallback to source (development only - should not happen in production)
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error(`Production build requires compiled backend at ${distPath}. Build may have failed.`);
+        }
+        const backendModule = await import(sourcePath);
+        app = backendModule.default as Express;
+        console.warn('⚠️  Using source backend (development mode)');
+      } catch (sourceError) {
+        const sourceErrorMessage = sourceError instanceof Error ? sourceError.message : String(sourceError);
+        throw new Error(`Failed to import backend. Dist error: ${errorMessage}. Source error: ${sourceErrorMessage}`);
+      }
     }
   }
   return app;
