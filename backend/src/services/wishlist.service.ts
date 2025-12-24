@@ -163,45 +163,79 @@ export const isInWishlist = async (
 
 /**
  * Migrate session wishlist to user wishlist (when guest logs in)
+ * Uses transaction to ensure atomicity
  */
 export const migrateSessionWishlistToUser = async (
   sessionId: string,
   userId: string
 ): Promise<void> => {
-  // Get session wishlist items
-  const sessionItems = await prisma.wishlist.findMany({
-    where: { userId: sessionId },
-  });
+  if (!sessionId || !userId) {
+    throw new AppError('Session ID and User ID are required for migration', 400);
+  }
 
-  // For each session item, add to user wishlist if not already there
-  for (const sessionItem of sessionItems) {
-    const userItem = await prisma.wishlist.findUnique({
-      where: {
-        userId_gameId: {
-          userId,
-          gameId: sessionItem.gameId,
-        },
-      },
+  // Use transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // Get session wishlist items
+    const sessionItems = await tx.wishlist.findMany({
+      where: { userId: sessionId },
     });
 
-    if (!userItem) {
-      // Add to user wishlist
-      await prisma.wishlist.create({
-        data: {
-          userId,
-          gameId: sessionItem.gameId,
+    if (sessionItems.length === 0) {
+      // No items to migrate
+      return;
+    }
+
+    // For each session item, add to user wishlist if not already there
+    for (const sessionItem of sessionItems) {
+      // Verify game still exists
+      const game = await tx.game.findUnique({
+        where: { id: sessionItem.gameId },
+        select: { id: true },
+      });
+
+      if (!game) {
+        // Game no longer exists, skip this item
+        console.warn(`[Wishlist Migration] Game ${sessionItem.gameId} not found, skipping`);
+        // Delete session item
+        await tx.wishlist.delete({
+          where: {
+            userId_gameId: {
+              userId: sessionId,
+              gameId: sessionItem.gameId,
+            },
+          },
+        });
+        continue;
+      }
+
+      const userItem = await tx.wishlist.findUnique({
+        where: {
+          userId_gameId: {
+            userId,
+            gameId: sessionItem.gameId,
+          },
+        },
+      });
+
+      if (!userItem) {
+        // Add to user wishlist
+        await tx.wishlist.create({
+          data: {
+            userId,
+            gameId: sessionItem.gameId,
+          },
+        });
+      }
+
+      // Delete session item
+      await tx.wishlist.delete({
+        where: {
+          userId_gameId: {
+            userId: sessionId,
+            gameId: sessionItem.gameId,
+          },
         },
       });
     }
-
-    // Delete session item
-    await prisma.wishlist.delete({
-      where: {
-        userId_gameId: {
-          userId: sessionId,
-          gameId: sessionItem.gameId,
-        },
-      },
-    });
-  }
+  });
 };

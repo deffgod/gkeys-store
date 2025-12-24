@@ -81,16 +81,23 @@ export const addToCart = async (
     throw new AppError('User ID or session ID required', 400);
   }
 
+  if (quantity <= 0) {
+    throw new AppError('Quantity must be greater than 0', 400);
+  }
+
   // Verify game exists and is in stock
   const game = await prisma.game.findUnique({
     where: { id: gameId },
+    select: { id: true, inStock: true, g2aStock: true },
   });
 
   if (!game) {
     throw new AppError('Game not found', 404);
   }
 
-  if (!game.inStock) {
+  // Check both inStock and g2aStock if g2aProductId exists
+  const isAvailable = game.inStock && (game.g2aStock !== false);
+  if (!isAvailable) {
     throw new AppError('Game is out of stock', 400);
   }
 
@@ -208,59 +215,108 @@ export const clearCart = async (userId?: string, sessionId?: string): Promise<vo
 
 /**
  * Migrate session cart to user cart (when guest logs in)
+ * Uses transaction to ensure atomicity
  */
 export const migrateSessionCartToUser = async (
   sessionId: string,
   userId: string
 ): Promise<void> => {
-  // Get session cart items
-  const sessionItems = await prisma.cartItem.findMany({
-    where: { userId: sessionId },
-  });
+  if (!sessionId || !userId) {
+    throw new AppError('Session ID and User ID are required for migration', 400);
+  }
 
-  // For each session item, merge with user cart
-  for (const sessionItem of sessionItems) {
-    const userItem = await prisma.cartItem.findUnique({
-      where: {
-        userId_gameId: {
-          userId,
-          gameId: sessionItem.gameId,
-        },
-      },
+  // Use transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // Get session cart items
+    const sessionItems = await tx.cartItem.findMany({
+      where: { userId: sessionId },
     });
 
-    if (userItem) {
-      // Merge quantities
-      await prisma.cartItem.update({
+    if (sessionItems.length === 0) {
+      // No items to migrate
+      return;
+    }
+
+    // For each session item, merge with user cart
+    for (const sessionItem of sessionItems) {
+      // Verify game still exists and is in stock
+      const game = await tx.game.findUnique({
+        where: { id: sessionItem.gameId },
+        select: { id: true, inStock: true },
+      });
+
+      if (!game) {
+        // Game no longer exists, skip this item
+        console.warn(`[Cart Migration] Game ${sessionItem.gameId} not found, skipping`);
+        // Delete session item
+        await tx.cartItem.delete({
+          where: {
+            userId_gameId: {
+              userId: sessionId,
+              gameId: sessionItem.gameId,
+            },
+          },
+        });
+        continue;
+      }
+
+      if (!game.inStock) {
+        // Game out of stock, skip this item
+        console.warn(`[Cart Migration] Game ${sessionItem.gameId} out of stock, skipping`);
+        // Delete session item
+        await tx.cartItem.delete({
+          where: {
+            userId_gameId: {
+              userId: sessionId,
+              gameId: sessionItem.gameId,
+            },
+          },
+        });
+        continue;
+      }
+
+      const userItem = await tx.cartItem.findUnique({
         where: {
           userId_gameId: {
             userId,
             gameId: sessionItem.gameId,
           },
         },
-        data: {
-          quantity: userItem.quantity + sessionItem.quantity,
-        },
       });
-    } else {
-      // Move item to user cart
-      await prisma.cartItem.create({
-        data: {
-          userId,
-          gameId: sessionItem.gameId,
-          quantity: sessionItem.quantity,
+
+      if (userItem) {
+        // Merge quantities
+        await tx.cartItem.update({
+          where: {
+            userId_gameId: {
+              userId,
+              gameId: sessionItem.gameId,
+            },
+          },
+          data: {
+            quantity: userItem.quantity + sessionItem.quantity,
+          },
+        });
+      } else {
+        // Move item to user cart
+        await tx.cartItem.create({
+          data: {
+            userId,
+            gameId: sessionItem.gameId,
+            quantity: sessionItem.quantity,
+          },
+        });
+      }
+
+      // Delete session item
+      await tx.cartItem.delete({
+        where: {
+          userId_gameId: {
+            userId: sessionId,
+            gameId: sessionItem.gameId,
+          },
         },
       });
     }
-
-    // Delete session item
-    await prisma.cartItem.delete({
-      where: {
-        userId_gameId: {
-          userId: sessionId,
-          gameId: sessionItem.gameId,
-        },
-      },
-    });
-  }
+  });
 };

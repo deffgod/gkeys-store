@@ -1,6 +1,7 @@
 // Wishlist Page - GKEYS Gaming Store
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { Icons } from '../components/UIKit';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../hooks/useWishlist';
@@ -742,7 +743,9 @@ export default function WishlistPage() {
             ) : (
               <>
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="text-6xl mb-4">💚</div>
+                  <div className="mb-4">
+                    <Heart className="h-16 w-16 text-[#00C8C2]" fill="#00C8C2" />
+                  </div>
                   <h2 className="text-2xl font-bold text-design-text mb-2">Your wishlist is empty</h2>
                   <p className="text-design-text-secondary mb-6">
                     Add items using the <Icons.Heart /> button. We'll notify you when they go on sale!

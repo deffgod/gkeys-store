@@ -8,7 +8,7 @@ Backend integration with G2A Integration API, including client calls, order crea
 - `plan.md`, `tasks.md`, `data-model.md`, `contracts/g2a-api-contracts.md`, `quickstart.md`, `backend-audit.md`
 
 ## Env & Config
-- Required: `G2A_API_URL` (must include `/integration-api/v1`), `G2A_API_KEY`, `G2A_SECRET`, `G2A_ENV` (sandbox|live)
+- Required: `G2A_API_URL` (must include `/integration-api/v1` for production Import API, `/v1` for Export API and sandbox), `G2A_API_KEY`, `G2A_API_HASH` (or `G2A_API_SECRET` for backward compatibility - deprecated), `G2A_ENV` (sandbox|live)
 - Optional: `G2A_TIMEOUT_MS` (default 8000), `G2A_RETRY_MAX` (default 2)
 - Non-prod should default to sandbox; enforce HTTPS and host allowlist.
 

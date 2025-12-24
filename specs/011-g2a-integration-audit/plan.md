@@ -39,14 +39,14 @@
 - Healthcheck SLA: respond <1s when dependencies healthy.
 
 ## Security & Config
-- Env vars: `G2A_API_URL`, `G2A_API_KEY`, `G2A_SECRET`, `G2A_ENV` (sandbox|live), optional `G2A_TIMEOUT_MS`, `G2A_RETRY_MAX`.
+- Env vars: `G2A_API_URL`, `G2A_API_KEY`, `G2A_API_HASH` (preferred) or `G2A_API_SECRET` (deprecated, backward compatibility only), `G2A_ENV` (sandbox|live), optional `G2A_TIMEOUT_MS`, `G2A_RETRY_MAX`.
 - Mask secrets in logs; never log full URLs with keys.
 - Require HTTPS; validate hostname matches expected G2A domain.
 - Webhook: verify signature/nonce/timestamp; reject stale (>5m skew) or replay (idempotency check).
 
 ## Testing Strategy
 - **Unit**: signature/timestamp/nonce validation; URL validator; mapping/parsing of responses; retry policy.
-- **Integration (sandbox)**: token fetch; product/price/stock calls; order create; negative cases (bad creds, 4xx); ensure base URL normalization.
+- **Integration (sandbox)**: OAuth2 token fetch and Redis caching; product/price/stock calls; order create; negative cases (bad creds, 4xx); ensure base URL normalization. MUST cover Redis caching, G2A API calls, and database idempotency store per constitution Principle VII.
 - **E2E smoke**: token → product/price → order create → simulate webhook (or manual callback) → verify idempotent processing.
 - **Load-light**: small concurrent calls to observe retries/timeouts.
 

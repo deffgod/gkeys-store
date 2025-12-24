@@ -2,6 +2,20 @@
 
 A modern, full-featured platform for selling game keys with an optimized interface, advanced visual effects, and high performance.
 
+## 📖 Documentation
+
+**👉 [Полная документация (DOCUMENTATION.md)](DOCUMENTATION.md)** - Полное руководство по установке, настройке, разработке и деплою проекта.
+
+Документация включает:
+- ✅ Быстрый старт и установка
+- ✅ Настройка Environment Variables
+- ✅ Руководство по разработке
+- ✅ Тестирование
+- ✅ Деплой на Vercel
+- ✅ G2A интеграция
+- ✅ Архитектура проекта
+- ✅ Troubleshooting и FAQ
+
 ## 🚀 Technology Stack
 
 ### Frontend
@@ -515,16 +529,24 @@ vercel --prod
 
 ## 📚 Additional Documentation
 
-### Deployment
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою на Vercel
-- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник переменных окружения
-- **[DEPLOY_NOW.md](DEPLOY_NOW.md)** - Краткая инструкция по деплою
-- **[VERCEL_MONOLITH_DEPLOY.md](VERCEL_MONOLITH_DEPLOY.md)** - Детали монолитного деплоя
+### Основная документация
+- **[DOCUMENTATION.md](DOCUMENTATION.md)** ⭐ - **Полная документация проекта** (рекомендуется начать отсюда)
+  - Быстрый старт
+  - Настройка Environment Variables
+  - Разработка
+  - Тестирование
+  - Деплой
+  - G2A интеграция
+  - Архитектура
+  - Troubleshooting и FAQ
 
-### Setup & Development
-- `QUICK_START.md` - Quick start guide
-- `SETUP.md` - Detailed setup instructions
-- `FRONTEND_BACKEND_INTEGRATION.md` - Integration guide
+### Специализированные руководства
+- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Детальный справочник переменных окружения
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою на Vercel
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Руководство по тестированию
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Чеклист готовности к деплою
+
+### Дополнительные материалы
 - `CONTRIBUTING.md` - Contributing guidelines
 - `CHANGELOG.md` - Changelog
 - `docs/` - Component documentation

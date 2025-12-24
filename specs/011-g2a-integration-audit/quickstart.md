@@ -4,7 +4,7 @@
 ```
 G2A_API_URL=https://api.g2a.com/integration-api/v1
 G2A_API_KEY=... (sandbox/live)
-G2A_SECRET=...
+G2A_API_HASH=... (or G2A_API_SECRET for backward compatibility - deprecated)
 G2A_ENV=sandbox
 G2A_TIMEOUT_MS=8000
 G2A_RETRY_MAX=2

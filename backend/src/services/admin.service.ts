@@ -95,7 +95,7 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
   });
 
   const topGamesWithDetails = await Promise.all(
-    topSellingGames.map(async (item: any) => {
+    topSellingGames.map(async (item: { gameId: string; _count: { gameId: number }; _sum: { price: number | null } }) => {
       const game = await prisma.game.findUnique({
         where: { id: item.gameId },
         select: { id: true, title: true, slug: true },
@@ -502,6 +502,8 @@ export const createGame = async (data: GameCreateInput) => {
       releaseDate: data.releaseDate ? new Date(data.releaseDate) : new Date(),
       isPreorder: data.isPreorder || false,
       inStock: data.inStock !== false,
+      g2aProductId: data.g2aProductId,
+      g2aStock: data.g2aStock !== undefined ? data.g2aStock : false,
       platforms: {
         create: {
           platformId: platform.id,
@@ -517,6 +519,17 @@ export const createGame = async (data: GameCreateInput) => {
       },
     },
   });
+
+  // Invalidate cache after game creation
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+    await invalidateCache('catalog:*');
+  } catch (cacheError) {
+    console.warn('Failed to invalidate cache after game creation', cacheError);
+    // Don't fail creation if cache invalidation fails
+  }
 
   return {
     id: game.id,
@@ -540,6 +553,10 @@ export const updateGame = async (id: string, data: GameUpdateInput) => {
   if (data.releaseDate !== undefined) updateData.releaseDate = data.releaseDate ? new Date(data.releaseDate) : new Date();
   if (data.isPreorder !== undefined) updateData.isPreorder = data.isPreorder;
   if (data.inStock !== undefined) updateData.inStock = data.inStock;
+  // G2A fields
+  if (data.g2aProductId !== undefined) updateData.g2aProductId = data.g2aProductId;
+  if (data.g2aStock !== undefined) updateData.g2aStock = data.g2aStock;
+  if (data.g2aLastSync !== undefined) updateData.g2aLastSync = data.g2aLastSync ? new Date(data.g2aLastSync) : null;
 
   // Handle platform update - do this before the main update
   if (data.platform !== undefined) {
@@ -623,6 +640,17 @@ export const updateGame = async (id: string, data: GameUpdateInput) => {
     data: updateData,
   });
 
+  // Invalidate cache after game update
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+    await invalidateCache('catalog:*');
+  } catch (cacheError) {
+    console.warn('Failed to invalidate cache after game update', cacheError);
+    // Don't fail update if cache invalidation fails
+  }
+
   return {
     id: game.id,
     title: game.title,
@@ -636,6 +664,18 @@ export const deleteGame = async (id: string) => {
   await prisma.game.delete({
     where: { id },
   });
+
+  // Invalidate cache after game deletion
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+    await invalidateCache('catalog:*');
+  } catch (cacheError) {
+    console.warn('Failed to invalidate cache after game deletion', cacheError);
+    // Don't fail deletion if cache invalidation fails
+  }
+
   return { success: true };
 };
 

@@ -2,14 +2,18 @@
   ============================================================================
   SYNC IMPACT REPORT
   ============================================================================
-  Version Change: 1.0.0 → 1.0.1 (PATCH)
-  Bump Rationale: Template consistency update - added explicit constitution check gates to plan-template.md
+  Version Change: 1.0.1 → 1.1.0 (MINOR)
+  Bump Rationale: Added new principles for G2A integration, Redis caching, and updated deployment strategy. Expanded backend technology stack and security requirements.
   
   Modified Sections:
-  - None (constitution content unchanged)
+  - Added Principle VI: External API Integration Standards
+  - Added Principle VII: Caching and Performance Strategy
+  - Updated Technology Stack Constraints: Added Redis, G2A API integration details
+  - Updated Security Requirements: Added JWT authentication specifics
+  - Updated Deployment: Added monolith deployment strategy details
   
   Templates Updated:
-  ✅ .specify/templates/plan-template.md - Added explicit constitution check gates based on core principles
+  ✅ .specify/templates/plan-template.md - Added check gates for External API Integration Standards and Caching Strategy principles
   
   Templates Reviewed (no changes needed):
   ✅ .specify/templates/spec-template.md - No constitution references to update
@@ -58,10 +62,29 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - Comments for complex logic only
 - No commented-out code in production
 
+### VI. External API Integration Standards
+- All external API integrations must have proper error handling
+- API credentials must be stored in environment variables
+- Implement retry logic with exponential backoff for transient failures
+- Use appropriate authentication methods (OAuth2, hash-based, etc.)
+- Cache API responses when appropriate to reduce external calls
+- Monitor API rate limits and implement throttling
+- Document API contracts and error codes
+- Support both sandbox and production environments
+
+### VII. Caching and Performance Strategy
+- Use Redis for caching when available (graceful degradation if unavailable)
+- Cache invalidation must be explicit and timely
+- Cache keys must follow consistent naming patterns
+- OAuth2 tokens must be cached with appropriate TTL
+- Database query results should be cached for frequently accessed data
+- Cache invalidation must occur on data mutations (create, update, delete)
+- Session data for guest users must be properly managed
+
 ## Technology Stack Constraints
 
 ### Frontend
-- **Framework**: React 19 with TypeScript
+- **Framework**: React 19 with TypeScript 5.9
 - **Build Tool**: Vite 7
 - **Styling**: Tailwind CSS 3 + inline styles for complex components
 - **UI Library**: shadcn/ui components (40+ available)
@@ -70,9 +93,12 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - **State Management**: React hooks (useState, useContext, useReducer)
 
 ### Backend
-- **Runtime**: Node.js with Express
-- **Database**: PostgreSQL with Prisma ORM
+- **Runtime**: Node.js 20+ with Express.js
+- **Database**: PostgreSQL 15+ with Prisma ORM
+- **Caching**: Redis (optional but recommended for production)
 - **Type Safety**: Full TypeScript coverage
+- **Authentication**: JWT with access and refresh tokens
+- **External APIs**: G2A Integration API (Import and Export)
 
 ### Design System
 - **Primary Color**: `#00FF66` (Bright Green)
@@ -96,6 +122,7 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - Unit tests for utility functions
 - Component tests for complex UI logic
 - Integration tests for API endpoints
+- Integration tests for Redis, database, and G2A service
 - E2E tests for critical user flows (optional but recommended)
 
 ### Code Review Checklist
@@ -106,6 +133,9 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - [ ] Accessibility requirements met
 - [ ] Performance impact considered
 - [ ] Code follows project conventions
+- [ ] External API error handling is robust
+- [ ] Cache invalidation is implemented for data mutations
+- [ ] Environment variables are properly documented
 
 ## Performance Standards
 
@@ -119,14 +149,25 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - Time to Interactive: < 3s
 - Lighthouse Performance Score: > 90
 
+### Backend Performance
+- API response time: < 200ms (p95)
+- Database query optimization required
+- Redis caching for frequently accessed data
+- G2A API calls must respect rate limits (600 req/min)
+
 ## Security Requirements
 
 - All API calls must include proper authentication
+- JWT tokens must use strong secrets (minimum 32 characters)
+- JWT access tokens and refresh tokens must use different secrets
 - Sensitive data must not be exposed in client-side code
 - Environment variables for API keys and secrets
 - Input validation on both client and server
 - XSS protection: Sanitize user inputs
 - CSRF protection for state-changing operations
+- G2A API credentials must never be committed to version control
+- Redis connections must use authentication in production
+- Database connections must use SSL in production
 
 ## Deployment
 
@@ -137,10 +178,22 @@ All code must be fully typed with TypeScript. No `any` types without explicit ju
 - Environment variables properly configured
 - Database migrations applied
 
-### Vercel Configuration
+### Vercel Monolith Deployment
+- Frontend and backend deployed as single Vercel project
+- Frontend: Static files from `dist/`
+- Backend: Serverless functions via `api/index.ts`
+- All `/api/*` requests automatically routed to serverless function
 - Automatic deployments from main branch
 - Preview deployments for PRs
 - Environment variables configured in Vercel dashboard
+- Database migrations must be run manually after first deployment
+
+### Environment Variables Management
+- All required variables must be documented in DOCUMENTATION.md
+- Variables must be set for Production, Preview, and Development environments
+- Frontend variables must be prefixed with `VITE_`
+- Backend variables must not be exposed to frontend
+- Secrets must be rotated regularly in production
 
 ## Governance
 
@@ -149,4 +202,4 @@ This constitution supersedes all other development practices. All code must comp
 2. Approved through code review
 3. Added as amendments to this constitution if permanent
 
-**Version**: 1.0.1 | **Ratified**: 2024-12-05 | **Last Amended**: 2024-12-05
+**Version**: 1.1.0 | **Ratified**: 2024-12-05 | **Last Amended**: 2024-12-23

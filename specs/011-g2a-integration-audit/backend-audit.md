@@ -1,7 +1,7 @@
 # Backend Audit Checklist (G2A Integration)
 
 ## Configuration
-- [ ] Env vars present: `G2A_API_URL` (with /integration-api/v1), `G2A_API_KEY`, `G2A_SECRET`, `G2A_ENV`, optional `G2A_TIMEOUT_MS`, `G2A_RETRY_MAX`.
+- [ ] Env vars present: `G2A_API_URL` (with /integration-api/v1 for production Import API, /v1 for Export API and sandbox), `G2A_API_KEY`, `G2A_API_HASH` (or `G2A_API_SECRET` for backward compatibility - deprecated), `G2A_ENV`, optional `G2A_TIMEOUT_MS`, `G2A_RETRY_MAX`.
 - [ ] Non-prod defaults to sandbox.
 - [ ] URLs validated (HTTPS, correct host); secrets masked in logs.
 
@@ -12,7 +12,8 @@
 - [ ] Correlation-id propagation.
 
 ## Auth
-- [ ] Token cache with refresh-before-expiry.
+- [ ] OAuth2 token cache (Redis) with refresh-before-expiry (<5min remaining); cache key pattern `g2a:token:{env}`; graceful degradation if Redis unavailable.
+- [ ] Hash-based auth for Export API (SHA-256 hash of G2A_API_HASH + G2A_API_KEY + timestamp).
 - [ ] Fast-fail on invalid creds.
 
 ## Operations

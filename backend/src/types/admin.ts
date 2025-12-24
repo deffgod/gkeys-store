@@ -96,9 +96,13 @@ export interface GameCreateInput {
   releaseDate?: string;
   isPreorder?: boolean;
   inStock?: boolean;
+  g2aProductId?: string;
+  g2aStock?: boolean;
 }
 
-export interface GameUpdateInput extends Partial<GameCreateInput> {}
+export interface GameUpdateInput extends Partial<GameCreateInput> {
+  g2aLastSync?: string; // ISO date string
+}
 
 export interface BlogPostCreateInput {
   title: string;

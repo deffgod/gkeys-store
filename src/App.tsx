@@ -103,9 +103,11 @@ function AnimatedRoutes() {
         <Route
           path="/wishlist"
           element={
-            <PageTransition>
-              <WishlistPage />
-            </PageTransition>
+            <ProtectedRoute redirectTo="/login">
+              <PageTransition>
+                <WishlistPage />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route

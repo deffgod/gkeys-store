@@ -38,7 +38,7 @@ export const startG2ASyncJob = () => {
       const result = await retryWithBackoff(() => syncG2ACatalog({ 
         fullSync: true,
         includeRelationships: true 
-      })) as any;
+      }));
       console.log(`✅ [G2A Job] Catalog sync completed: ${result.added} added, ${result.updated} updated, ${result.removed} removed`);
       console.log(`📊 [G2A Job] Relationships: ${result.categoriesCreated} categories, ${result.genresCreated} genres, ${result.platformsCreated} platforms created`);
       if (result.errors && result.errors.length > 0) {
@@ -119,6 +119,13 @@ export const startStockCheckJob = () => {
               updated++;
               if (stockChanged) {
                 console.log(`[G2A Job] Stock changed for game ${game.id}: ${game.inStock} → ${stockResult.available}`);
+                // Invalidate cache for this specific game
+                try {
+                  const { invalidateCache } = await import('../services/cache.service.js');
+                  await invalidateCache(`game:*${game.id}*`);
+                } catch (cacheError) {
+                  console.warn(`[G2A Job] Failed to invalidate cache for game ${game.id}`, cacheError);
+                }
               }
             } else {
               // Update sync timestamp even if stock didn't change

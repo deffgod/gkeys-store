@@ -66,16 +66,37 @@
 - [ ] No commented-out code in production
 
 ### Technology Stack Compliance
-- [ ] Frontend: React 19 + TypeScript, Vite 7, Tailwind CSS 3, shadcn/ui, Framer Motion/GSAP
-- [ ] Backend: Node.js + Express, PostgreSQL + Prisma, Full TypeScript
+- [ ] Frontend: React 19 + TypeScript 5.9, Vite 7, Tailwind CSS 3, shadcn/ui, Framer Motion/GSAP
+- [ ] Backend: Node.js 20+ + Express, PostgreSQL 15+ + Prisma, Full TypeScript
+- [ ] Redis caching strategy defined (if applicable)
 - [ ] No unauthorized technology additions
 
+### External API Integration Standards (if applicable)
+- [ ] External API error handling strategy defined
+- [ ] API credentials stored in environment variables
+- [ ] Retry logic with exponential backoff for transient failures
+- [ ] Appropriate authentication method identified (OAuth2, hash-based, etc.)
+- [ ] API response caching strategy defined
+- [ ] Rate limiting and throttling considered
+- [ ] API contracts and error codes documented
+- [ ] Sandbox and production environment support
+
+### Caching and Performance Strategy (if applicable)
+- [ ] Redis caching strategy defined (with graceful degradation)
+- [ ] Cache invalidation strategy for data mutations
+- [ ] Cache key naming patterns defined
+- [ ] OAuth2 token caching with appropriate TTL (if applicable)
+- [ ] Database query result caching strategy
+- [ ] Session data management for guest users
+
 ### Security Requirements
-- [ ] API authentication strategy defined
+- [ ] API authentication strategy defined (JWT with access/refresh tokens)
+- [ ] JWT secrets meet minimum requirements (32+ characters, different for access/refresh)
 - [ ] Sensitive data handling plan defined
-- [ ] Environment variables usage identified
+- [ ] Environment variables usage identified and documented
 - [ ] Input validation strategy (client + server)
 - [ ] XSS/CSRF protection considered
+- [ ] External API credentials never committed to version control
 
 ## Project Structure
 

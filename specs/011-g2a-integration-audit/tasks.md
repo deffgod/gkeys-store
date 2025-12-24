@@ -8,14 +8,14 @@
 
 ## Phase 2 – HTTP Client & Auth
 - [ ] T03 Implement `g2aHttpClient` with timeout (5–10s), bounded retries (429/5xx) with jitter; no retry on 4xx; structured logs/metrics.
-- [ ] T04 Implement `authService` to fetch/cache token; refresh before expiry; handle invalid creds fast-fail.
+- [ ] T04 Implement OAuth2 token service with Redis caching: fetch access token via `GET /token` using hash-based auth; cache in Redis with key pattern `g2a:token:{env}` and TTL matching `expires_in`; refresh when <5min remaining; graceful degradation if Redis unavailable (fetch on-demand); handle invalid creds fast-fail.
 
 ## Phase 3 – Operations
 - [ ] T05 Implement product list/query and product detail (price/stock) with response validation/mapping.
 - [ ] T06 Implement order create with payload validation and error taxonomy.
 
 ## Phase 4 – Webhooks & Idempotency
-- [ ] T07 Implement signature + nonce + timestamp validation (clock-skew window) for webhooks; reject stale/invalid.
+- [ ] T07 Implement HMAC-SHA256 signature validation (signature = HMAC-SHA256(payload + timestamp + nonce + G2A_API_HASH)), nonce uniqueness check, timestamp validation (clock-skew tolerance ±5min) for webhooks; use timing-safe comparison; reject stale/invalid.
 - [ ] T08 Implement idempotency store (DB/Redis) and atomic processing for webhook events; prevent double updates.
 
 ## Phase 5 – Observability & Health
