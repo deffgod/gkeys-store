@@ -275,3 +275,100 @@ export const getUserStats = async (userId: string): Promise<UserStatsResponse> =
   };
 };
 
+/**
+ * Update user balance (admin function)
+ */
+export const updateUserBalance = async (
+  userId: string,
+  amount: number,
+  reason: string
+): Promise<{
+  userId: string;
+  previousBalance: number;
+  newBalance: number;
+  amount: number;
+  reason: string;
+}> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { balance: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const previousBalance = Number(user.balance);
+  const newBalance = previousBalance + amount;
+
+  // Prevent negative balance (or allow if business logic requires)
+  if (newBalance < 0) {
+    throw new AppError('Balance cannot be negative', 400);
+  }
+
+  // Update balance and create transaction record atomically
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { balance: newBalance },
+    });
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        type: amount > 0 ? 'DEPOSIT' : 'WITHDRAWAL',
+        amount,
+        currency: 'EUR',
+        status: 'COMPLETED',
+        description: reason || `Admin balance adjustment: ${amount > 0 ? '+' : ''}${amount} EUR`,
+      },
+    });
+  });
+
+  // Invalidate user-related cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:*`);
+  } catch (cacheError) {
+    console.warn('[User Balance Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    userId,
+    previousBalance,
+    newBalance,
+    amount,
+    reason,
+  };
+};
+
+/**
+ * Update user role (admin function)
+ */
+export const updateUserRole = async (
+  userId: string,
+  role: 'USER' | 'ADMIN'
+): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role },
+  });
+
+  // Invalidate user-related cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:*`);
+  } catch (cacheError) {
+    console.warn('[User Role Update] Failed to invalidate cache:', cacheError);
+  }
+};
+

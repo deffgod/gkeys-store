@@ -139,6 +139,7 @@ G2A_API_URL=https://sandboxapi.g2a.com/v1
 G2A_API_KEY=your-g2a-api-key
 G2A_API_HASH=your-g2a-api-hash
 G2A_ENV=sandbox
+G2A_EMAIL=Welcome@nalytoo.com
 
 # Redis (опционально)
 REDIS_URL=redis://localhost:6379
@@ -635,6 +636,30 @@ G2A_ENV=sandbox
 
 ---
 
+#### G2A_EMAIL
+
+**Описание**: Email адрес, связанный с G2A аккаунтом. Используется для генерации API ключа для Export API в production.
+
+**Тип**: `string` (email)
+
+**Обязательно**: ❌ Нет (требуется только для Export API в production)
+
+**Пример**:
+```
+G2A_EMAIL=Welcome@nalytoo.com
+```
+
+**Где используется**:
+- `backend/scripts/test-g2a-production.ts` - для тестирования production API
+- Генерация API ключа для Export API: `SHA256(G2A_API_KEY + G2A_EMAIL + G2A_API_HASH)`
+
+**Важно**: 
+- Требуется реальный email от G2A аккаунта для работы с Export API в production
+- Используется только для тестирования и генерации API ключей
+- Не используется в основном коде приложения (только в тестовых скриптах)
+
+---
+
 #### G2A_TIMEOUT_MS
 
 **Описание**: Таймаут для запросов к G2A API в миллисекундах.
@@ -912,6 +937,20 @@ npm run format
 6. **Profile Pages** (`/profile/*`) - Профиль пользователя, заказы, баланс
 7. **Game Detail** (`/game/:id`) - Детальная страница игры
 8. **Admin Panel** (`/admin/*`) - Админ-панель для управления контентом
+   - **Dashboard** (`/admin`) - Статистика и обзор системы
+   - **Games** (`/admin/games`) - Управление играми (CRUD)
+   - **Orders** (`/admin/orders`) - Управление заказами
+   - **Transactions** (`/admin/transactions`) - Просмотр транзакций
+   - **Users** (`/admin/users`) - Управление пользователями (поиск, баланс, роли, активность)
+   - **Payment Management** (`/admin/payments`) - Управление методами оплаты и возвратами
+   - **Cart Management** (`/admin/carts`) - Просмотр и управление корзинами пользователей
+   - **Wishlist Management** (`/admin/wishlists`) - Просмотр избранного и статистика
+   - **FAQ Management** (`/admin/faqs`) - Управление FAQ (CRUD)
+   - **G2A Offers** (`/admin/g2a/offers`) - Просмотр G2A предложений
+   - **G2A Reservations** (`/admin/g2a/reservations`) - Управление G2A резервациями
+   - **G2A Sync** (`/admin/g2a/sync`) - Синхронизация с G2A API
+   - **Cache Management** (`/admin/cache`) - Статистика и управление кешем
+   - **Blog Posts** (`/admin/blog`) - Управление блог-постами
 
 ---
 
@@ -1608,7 +1647,7 @@ cd backend
 G2A_API_KEY="your-client-id" \
 G2A_API_HASH="your-client-secret" \
 G2A_API_URL="https://api.g2a.com" \
-G2A_EMAIL="your-actual-email@g2a.com" \
+G2A_EMAIL="Welcome@nalytoo.com" \
 npx tsx scripts/test-g2a-production.ts
 ```
 
@@ -1804,6 +1843,20 @@ const profile = await apiClient.get('/user/profile'); // Auto-adds token
 - `/api/cart/*` - Shopping cart (protected)
 - `/api/wishlist/*` - Wishlist (protected)
 - `/api/admin/*` - Admin panel (admin only)
+  - `/api/admin/dashboard` - Dashboard statistics
+  - `/api/admin/games` - Games CRUD
+  - `/api/admin/orders` - Orders management
+  - `/api/admin/transactions` - Transactions viewing
+  - `/api/admin/users` - User management (search, balance, roles, activity)
+  - `/api/admin/payments/*` - Payment methods and transaction management
+  - `/api/admin/carts/*` - Cart management (view, update, clear)
+  - `/api/admin/wishlists/*` - Wishlist management (view, statistics)
+  - `/api/admin/faqs/*` - FAQ CRUD operations
+  - `/api/admin/g2a/offers/*` - G2A offers viewing
+  - `/api/admin/g2a/reservations/*` - G2A reservations management
+  - `/api/admin/g2a/sync` - G2A synchronization
+  - `/api/admin/cache/*` - Cache statistics and invalidation
+  - `/api/admin/blog/*` - Blog posts CRUD
 - `/api/g2a/*` - G2A webhooks (public)
 
 #### Authentication Flow

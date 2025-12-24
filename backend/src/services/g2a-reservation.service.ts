@@ -279,3 +279,72 @@ export const waitForInventoryReady = async (
   }
 };
 
+/**
+ * Admin: Get all reservations from orders with G2A externalOrderId
+ * Since G2A API doesn't provide a list endpoint, we get reservations from our orders
+ */
+export const getAllReservationsForAdmin = async (filters?: {
+  orderId?: string;
+  status?: ReservationStatus;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  reservations: Array<{
+    reservationId: string;
+    orderId: string;
+    productId: string;
+    quantity: number;
+    status: ReservationStatus;
+    expiresAt: string;
+    createdAt: string;
+    order?: {
+      id: string;
+      status: string;
+      total: number;
+      user: {
+        id: string;
+        email: string;
+        nickname: string;
+      };
+    };
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> => {
+  // Note: G2A API doesn't provide a list reservations endpoint
+  // This is a placeholder that would need to be implemented based on how reservations are tracked
+  // For now, return empty result with structure
+  // In a real implementation, you might:
+  // 1. Store reservationId in Order model when reservation is created
+  // 2. Query orders with externalOrderId and reconstruct reservation info
+  // 3. Or call G2A API for each order to get reservation status
+  
+  return {
+    reservations: [],
+    total: 0,
+    page: filters?.page || 1,
+    pageSize: filters?.pageSize || 20,
+    totalPages: 0,
+  };
+};
+
+/**
+ * Admin: Cancel a reservation
+ * Note: G2A API may not support direct cancellation - reservations expire automatically
+ * This function is a placeholder for potential future implementation
+ */
+export const cancelReservationForAdmin = async (reservationId: string): Promise<void> => {
+  // Note: G2A API may not support direct reservation cancellation
+  // Reservations typically expire automatically after their expiration time
+  // This is a placeholder for potential future implementation
+  // If G2A API supports cancellation, implement it here
+  
+  throw new G2AError(
+    G2AErrorCode.G2A_API_ERROR,
+    'Reservation cancellation not supported by G2A API. Reservations expire automatically.',
+    { reservationId }
+  );
+};
+

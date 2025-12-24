@@ -2,6 +2,9 @@ import prisma from '../config/database.js';
 import { BalanceTopUpRequest, PaymentIntent, PaymentWebhook, TerminalWebhook } from '../types/payment.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendBalanceTopUpEmail } from './email.service.js';
+import { createStripeRefund } from './stripe.service.js';
+import { createPayPalRefund } from './paypal.service.js';
+import { createMollieRefund } from './mollie.service.js';
 
 // Currency conversion rates (EUR to other currencies)
 const CURRENCY_RATES: Record<string, number> = {
@@ -279,5 +282,209 @@ export const processTerminalWebhook = async (data: TerminalWebhook): Promise<voi
   }
 
   // NO EMAIL SENT for terminal transactions
+};
+
+/**
+ * Refund result interface
+ */
+export interface RefundResult {
+  refundId: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  message?: string;
+}
+
+/**
+ * Refund a transaction through the appropriate payment gateway
+ */
+export const refundTransaction = async (
+  transactionId: string,
+  amount?: number,
+  reason?: string
+): Promise<RefundResult> => {
+  // Find the transaction
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!transaction) {
+    throw new AppError('Transaction not found', 404);
+  }
+
+  // Check if transaction is refundable
+  if (transaction.type !== 'TOP_UP' && transaction.type !== 'PURCHASE') {
+    throw new AppError('Transaction type is not refundable', 400);
+  }
+
+  if (transaction.status !== 'COMPLETED') {
+    throw new AppError('Only completed transactions can be refunded', 400);
+  }
+
+  // Check if already refunded
+  const existingRefund = await prisma.transaction.findFirst({
+    where: {
+      orderId: transaction.orderId,
+      type: 'REFUND',
+      status: 'COMPLETED',
+    },
+  });
+
+  if (existingRefund) {
+    throw new AppError('Transaction has already been refunded', 400);
+  }
+
+  const refundAmount = amount ? Number(amount) : Math.abs(Number(transaction.amount));
+  const paymentMethod = transaction.method?.toLowerCase() || '';
+
+  let refundResult: RefundResult;
+
+  // Route to appropriate gateway
+  if (paymentMethod.includes('stripe')) {
+    const paymentIntentId = transaction.transactionHash || '';
+    refundResult = await refundStripeTransaction(paymentIntentId, refundAmount);
+  } else if (paymentMethod.includes('paypal')) {
+    const captureId = transaction.transactionHash || '';
+    refundResult = await refundPayPalTransaction(captureId, refundAmount, transaction.currency);
+  } else if (paymentMethod.includes('mollie')) {
+    const paymentId = transaction.transactionHash || '';
+    refundResult = await refundMollieTransaction(paymentId, refundAmount, reason);
+  } else if (paymentMethod.includes('terminal')) {
+    refundResult = await refundTerminalTransaction(transactionId, refundAmount, reason);
+  } else {
+    throw new AppError(`Refund not supported for payment method: ${paymentMethod}`, 400);
+  }
+
+  // Update user balance and create refund transaction atomically
+  await prisma.$transaction(async (tx) => {
+    // Update user balance (add refund amount)
+    await tx.user.update({
+      where: { id: transaction.userId },
+      data: {
+        balance: {
+          increment: refundAmount,
+        },
+      },
+    });
+
+    // Create refund transaction record
+    await tx.transaction.create({
+      data: {
+        userId: transaction.userId,
+        orderId: transaction.orderId,
+        type: 'REFUND',
+        amount: refundAmount,
+        currency: transaction.currency,
+        method: transaction.method,
+        status: refundResult.status === 'succeeded' || refundResult.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING',
+        description: reason || `Refund for transaction ${transactionId}`,
+        transactionHash: refundResult.refundId,
+        gatewayResponse: refundResult as unknown as Record<string, unknown>,
+      },
+    });
+  });
+
+  return {
+    ...refundResult,
+    amount: refundAmount,
+    currency: transaction.currency,
+  };
+};
+
+/**
+ * Refund Stripe transaction
+ */
+const refundStripeTransaction = async (
+  paymentIntentId: string,
+  amount?: number
+): Promise<RefundResult> => {
+  try {
+    const result = await createStripeRefund(paymentIntentId, amount);
+    return {
+      refundId: result.refundId,
+      status: result.status,
+    };
+  } catch (error) {
+    throw new AppError(
+      `Stripe refund failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      500
+    );
+  }
+};
+
+/**
+ * Refund PayPal transaction
+ */
+const refundPayPalTransaction = async (
+  captureId: string,
+  amount?: number,
+  currency: string = 'EUR'
+): Promise<RefundResult> => {
+  try {
+    const result = await createPayPalRefund(captureId, amount, currency);
+    return {
+      refundId: result.refundId,
+      status: result.status,
+    };
+  } catch (error) {
+    throw new AppError(
+      `PayPal refund failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      500
+    );
+  }
+};
+
+/**
+ * Refund Mollie transaction
+ */
+const refundMollieTransaction = async (
+  paymentId: string,
+  amount?: number,
+  description?: string
+): Promise<RefundResult> => {
+  try {
+    const result = await createMollieRefund(paymentId, amount, description);
+    return {
+      refundId: result.refundId,
+      status: result.status,
+    };
+  } catch (error) {
+    throw new AppError(
+      `Mollie refund failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      500
+    );
+  }
+};
+
+/**
+ * Refund Terminal transaction
+ * Note: Terminal payments may be non-refundable; verify with business requirements
+ */
+const refundTerminalTransaction = async (
+  transactionId: string,
+  amount: number,
+  reason?: string
+): Promise<RefundResult> => {
+  // Terminal payments are typically bank transfers and may not support refunds
+  // This is a placeholder implementation - verify business requirements
+  // For now, we'll create a manual refund record without calling an external API
+  
+  const refundId = `TERM-REF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  
+  console.log('[Terminal] Created manual refund:', {
+    refundId,
+    transactionId,
+    amount,
+    reason,
+  });
+
+  return {
+    refundId,
+    status: 'COMPLETED',
+    message: 'Terminal refund processed manually (no gateway API available)',
+  };
 };
 

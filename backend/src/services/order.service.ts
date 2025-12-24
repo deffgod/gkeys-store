@@ -129,70 +129,86 @@ export const createOrder = async (
     }
   }
 
-  // Create order with PENDING status initially
-  const order = await prisma.order.create({
-    data: {
-      userId,
-      status: 'PENDING', // Will be updated to PROCESSING when G2A API call starts
-      subtotal,
-      discount,
-      total,
-      promoCode,
-      paymentStatus: 'PENDING',
-      items: {
-        create: orderItems,
+  // Create order, deduct balance, and create transaction atomically
+  const order = await prisma.$transaction(async (tx) => {
+    // Create order with PENDING status initially
+    const newOrder = await tx.order.create({
+      data: {
+        userId,
+        status: 'PENDING', // Will be updated to PROCESSING when G2A API call starts
+        subtotal,
+        discount,
+        total,
+        promoCode,
+        paymentStatus: 'PENDING',
+        items: {
+          create: orderItems,
+        },
       },
-    },
-    include: {
-      items: {
-        include: {
-          game: {
-            select: {
-              id: true,
-              title: true,
-              image: true,
-              slug: true,
-              g2aProductId: true,
-              platforms: {
-                include: { platform: true },
+      include: {
+        items: {
+          include: {
+            game: {
+              select: {
+                id: true,
+                title: true,
+                image: true,
+                slug: true,
+                g2aProductId: true,
+                platforms: {
+                  include: { platform: true },
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  // Deduct balance
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      balance: {
-        decrement: total,
+    // Deduct balance
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        balance: {
+          decrement: total,
+        },
       },
-    },
+    });
+
+    // Create transaction
+    await tx.transaction.create({
+      data: {
+        userId,
+        orderId: newOrder.id,
+        type: 'PURCHASE',
+        amount: -total,
+        currency: 'EUR',
+        status: 'COMPLETED',
+        description: `Order ${newOrder.id}`,
+      },
+    });
+
+    // Update order status to PROCESSING when G2A API calls start
+    await tx.order.update({
+      where: { id: newOrder.id },
+      data: {
+        status: 'PROCESSING',
+      },
+    });
+
+    return newOrder;
   });
 
-  // Create transaction
-  await prisma.transaction.create({
-    data: {
-      userId,
-      orderId: order.id,
-      type: 'PURCHASE',
-      amount: -total,
-      currency: 'EUR',
-      status: 'COMPLETED',
-      description: `Order ${order.id}`,
-    },
-  });
-
-  // Update order status to PROCESSING when G2A API calls start
-  await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      status: 'PROCESSING',
-    },
-  });
+  // Invalidate cache after order creation
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:orders`);
+    await invalidateCache(`user:${userId}:cart`);
+    console.log(`[Order] Cache invalidated for user ${userId} after order creation`);
+  } catch (cacheError) {
+    // Non-blocking - log but don't fail order creation
+    console.warn(`[Order] Failed to invalidate cache after order creation:`, cacheError);
+  }
 
   // Purchase keys from G2A and send emails
   const gameKeys: Array<{

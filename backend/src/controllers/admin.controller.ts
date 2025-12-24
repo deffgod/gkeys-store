@@ -17,8 +17,56 @@ import {
   deleteBlogPost,
   getAllOrders,
   updateOrderStatus,
+  getPaymentMethods,
+  getPaymentTransactions,
+  processRefund,
+  searchUserCarts,
+  searchUserWishlists,
+  getWishlistStatistics,
+  getAllFAQsForAdmin,
+  getAllG2AOffersForAdmin,
+  getG2AOfferByIdForAdmin,
+  getAllG2AReservationsForAdmin,
+  cancelG2AReservationForAdmin,
+  getCacheStatisticsForAdmin,
+  invalidateCacheForAdmin,
+  clearAllCacheForAdmin,
+  updateUserBalanceForAdmin,
+  updateUserRoleForAdmin,
+  getUserActivityForAdmin,
 } from '../services/admin.service.js';
-import { UserSearchFilters, TransactionFilters } from '../types/admin.js';
+import { 
+  UserSearchFilters, 
+  TransactionFilters, 
+  PaymentTransactionFilters,
+  CartSearchFilters,
+  WishlistSearchFilters,
+  FAQAdminFilters,
+  FAQCreateInput,
+  FAQUpdateInput,
+  G2AOfferFilters,
+  G2AReservationFilters,
+  CacheInvalidationRequest,
+  BalanceUpdateRequest,
+  RoleUpdateRequest,
+  ActivityFilters,
+} from '../types/admin.js';
+import { 
+  getUserCartForAdmin, 
+  updateUserCartForAdmin, 
+  clearUserCartForAdmin,
+  CartResponse,
+} from '../services/cart.service.js';
+import { 
+  getUserWishlistForAdmin,
+  WishlistResponse,
+} from '../services/wishlist.service.js';
+import {
+  createFAQ,
+  updateFAQ,
+  deleteFAQ,
+  getFAQCategories,
+} from '../services/faq.service.js';
 
 export const getDashboardController = async (
   req: AuthRequest,
@@ -525,6 +573,544 @@ export const getG2AMetricsController = async (
         ...metrics,
         latency: latencyStats,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Payment Management Controllers
+
+export const getPaymentMethodsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const methods = await getPaymentMethods();
+
+    res.status(200).json({
+      success: true,
+      data: { methods },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPaymentTransactionsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: PaymentTransactionFilters = {
+      method: req.query.method as string | undefined,
+      status: req.query.status as string | undefined,
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+    };
+
+    const result = await getPaymentTransactions(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refundTransactionController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    const result = await processRefund(id, amount, reason);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Cart Management Controllers
+
+export const getUserCartsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: CartSearchFilters = {
+      userId: req.query.userId as string | undefined,
+      email: req.query.email as string | undefined,
+      hasItems: req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+    };
+
+    const result = await searchUserCarts(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserCartController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    const cart = await getUserCartForAdmin(userId);
+
+    res.status(200).json({
+      success: true,
+      data: cart,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserCartController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    const { items } = req.body;
+
+    if (!Array.isArray(items)) {
+      throw new Error('Items must be an array');
+    }
+
+    await updateUserCartForAdmin(userId, items);
+
+    res.status(200).json({
+      success: true,
+      message: 'Cart updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearUserCartController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    await clearUserCartForAdmin(userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Cart cleared successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Wishlist Management Controllers
+
+export const getUserWishlistsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: WishlistSearchFilters = {
+      userId: req.query.userId as string | undefined,
+      email: req.query.email as string | undefined,
+      hasItems: req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+    };
+
+    const result = await searchUserWishlists(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserWishlistController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    const wishlist = await getUserWishlistForAdmin(userId);
+
+    res.status(200).json({
+      success: true,
+      data: wishlist,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWishlistStatisticsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const statistics = await getWishlistStatistics();
+
+    res.status(200).json({
+      success: true,
+      data: statistics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// FAQ Management Controllers
+
+export const getAllFAQsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: FAQAdminFilters = {
+      category: req.query.category as string | undefined,
+      search: req.query.search as string | undefined,
+      active: req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+    };
+
+    const result = await getAllFAQsForAdmin(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createFAQController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data: FAQCreateInput = req.body;
+    const faq = await createFAQ(data);
+
+    res.status(201).json({
+      success: true,
+      data: faq,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateFAQController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const data: FAQUpdateInput = req.body;
+    const faq = await updateFAQ(id, data);
+
+    res.status(200).json({
+      success: true,
+      data: faq,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteFAQController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deleteFAQ(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'FAQ deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getFAQCategoriesController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const categories = await getFAQCategories();
+
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// G2A Management Controllers
+
+export const getG2AOffersController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: G2AOfferFilters = {
+      productId: req.query.productId as string | undefined,
+      status: req.query.status as string | undefined,
+      offerType: req.query.offerType as string | undefined,
+      active: req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      perPage: req.query.perPage ? parseInt(req.query.perPage as string) : undefined,
+    };
+
+    const result = await getAllG2AOffersForAdmin(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getG2AOfferByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { offerId } = req.params;
+    const offer = await getG2AOfferByIdForAdmin(offerId);
+
+    res.status(200).json({
+      success: true,
+      data: offer,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getG2AReservationsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filters: G2AReservationFilters = {
+      orderId: req.query.orderId as string | undefined,
+      status: req.query.status as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+    };
+
+    const result = await getAllG2AReservationsForAdmin(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelG2AReservationController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await cancelG2AReservationForAdmin(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Reservation cancellation attempted (note: G2A API may not support direct cancellation)',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Cache Management Controllers
+
+export const getCacheStatisticsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const statistics = await getCacheStatisticsForAdmin();
+
+    res.status(200).json({
+      success: true,
+      data: statistics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const invalidateCacheController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { pattern } = req.body as CacheInvalidationRequest;
+    
+    if (!pattern) {
+      throw new Error('Pattern is required');
+    }
+
+    const result = await invalidateCacheForAdmin(pattern);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearAllCacheController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await clearAllCacheForAdmin();
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Enhanced User Management Controllers
+
+export const updateUserBalanceController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body as BalanceUpdateRequest;
+
+    if (typeof amount !== 'number') {
+      throw new Error('Amount must be a number');
+    }
+
+    if (!reason || typeof reason !== 'string') {
+      throw new Error('Reason is required');
+    }
+
+    const result = await updateUserBalanceForAdmin(id, amount, reason);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserRoleController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body as RoleUpdateRequest;
+
+    if (!role || (role !== 'USER' && role !== 'ADMIN')) {
+      throw new Error('Role must be USER or ADMIN');
+    }
+
+    await updateUserRoleForAdmin(id, role);
+
+    res.status(200).json({
+      success: true,
+      message: `User role updated to ${role}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserActivityController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const filters: ActivityFilters = {
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      activityType: req.query.activityType as 'login' | 'order' | 'transaction' | 'all' | undefined,
+    };
+
+    const activity = await getUserActivityForAdmin(id, filters);
+
+    res.status(200).json({
+      success: true,
+      data: activity,
     });
   } catch (error) {
     next(error);

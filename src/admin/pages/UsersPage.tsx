@@ -9,7 +9,15 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiEye,
-  FiCalendar
+  FiCalendar,
+  FiEdit,
+  FiSave,
+  FiActivity,
+  FiShield,
+  FiLogIn,
+  FiCreditCard,
+  FiCheckCircle,
+  FiXCircle
 } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
 import type { UserSearchResult, UserDetails } from '../services/adminApi';
@@ -94,6 +102,36 @@ const UsersPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [userActivity, setUserActivity] = useState<{
+    userId: string;
+    loginHistory: Array<{
+      id: string;
+      ipAddress?: string;
+      userAgent?: string;
+      success: boolean;
+      createdAt: string;
+    }>;
+    orders: Array<{
+      id: string;
+      status: string;
+      total: number;
+      createdAt: string;
+    }>;
+    transactions: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      status: string;
+      createdAt: string;
+    }>;
+  } | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [balanceAmount, setBalanceAmount] = useState('');
+  const [balanceReason, setBalanceReason] = useState('');
+  const [updatingBalance, setUpdatingBalance] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'USER' | 'ADMIN' | null>(null);
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'activity'>('details');
 
   const fetchUsers = async () => {
     try {
@@ -124,14 +162,73 @@ const UsersPage: React.FC = () => {
   };
 
   const handleViewUser = async (userId: string) => {
+    setLoadingDetails(true);
+    setSelectedUser(null);
+    setUserActivity(null);
+    setActiveTab('details');
+    setBalanceAmount('');
+    setBalanceReason('');
+    setSelectedRole(null);
     try {
-      setLoadingDetails(true);
-      const details = await adminApi.getUserDetails(userId);
+      const [details, activity] = await Promise.all([
+        adminApi.getUserDetails(userId),
+        adminApi.getUserActivity(userId),
+      ]);
       setSelectedUser(details);
+      setUserActivity(activity);
+      setSelectedRole(details.role as 'USER' | 'ADMIN');
     } catch (err) {
       console.error('Failed to fetch user details:', err);
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  const handleUpdateBalance = async (userId: string) => {
+    const amount = parseFloat(balanceAmount);
+    if (isNaN(amount) || amount === 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    if (!balanceReason.trim()) {
+      alert('Please enter a reason for the balance update');
+      return;
+    }
+
+    if (!confirm(`Update balance by ${amount > 0 ? '+' : ''}${formatCurrency(amount)}?`)) {
+      return;
+    }
+
+    try {
+      setUpdatingBalance(true);
+      const result = await adminApi.updateUserBalance(userId, amount, balanceReason);
+      alert(`Balance updated successfully. New balance: ${formatCurrency(result.newBalance)}`);
+      setBalanceAmount('');
+      setBalanceReason('');
+      await handleViewUser(userId); // Refresh user details
+    } catch (err) {
+      console.error('Failed to update balance:', err);
+      alert('Failed to update balance');
+    } finally {
+      setUpdatingBalance(false);
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: 'USER' | 'ADMIN') => {
+    if (!confirm(`Change user role to ${newRole}?`)) {
+      return;
+    }
+
+    try {
+      setUpdatingRole(true);
+      await adminApi.updateUserRole(userId, newRole);
+      alert(`User role updated to ${newRole}`);
+      await handleViewUser(userId); // Refresh user details
+    } catch (err) {
+      console.error('Failed to update role:', err);
+      alert('Failed to update role');
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -611,112 +708,457 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div style={{ padding: '24px' }}>
-                    {/* User Info Cards */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                      gap: '16px',
-                      marginBottom: '32px',
-                    }}>
-                      <div style={{
-                        backgroundColor: theme.colors.surfaceLight,
-                        borderRadius: '12px',
-                        padding: '16px',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <FiDollarSign color={theme.colors.success} />
-                          <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Balance</span>
-                        </div>
-                        <p style={{ color: theme.colors.success, fontSize: '24px', fontWeight: '600' }}>
-                          {formatCurrency(selectedUser.balance)}
-                        </p>
-                      </div>
-                      <div style={{
-                        backgroundColor: theme.colors.surfaceLight,
-                        borderRadius: '12px',
-                        padding: '16px',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <FiShoppingBag color={theme.colors.info} />
-                          <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Orders</span>
-                        </div>
-                        <p style={{ color: theme.colors.text, fontSize: '24px', fontWeight: '600' }}>
-                          {selectedUser.orders.length}
-                        </p>
-                      </div>
-                      <div style={{
-                        backgroundColor: theme.colors.surfaceLight,
-                        borderRadius: '12px',
-                        padding: '16px',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <FiCalendar color={theme.colors.warning} />
-                          <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Registered</span>
-                        </div>
-                        <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '500' }}>
-                          {formatDate(selectedUser.createdAt)}
-                        </p>
-                      </div>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: `1px solid ${theme.colors.border}` }}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('details')}
+                        style={{
+                          padding: '12px 24px',
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: activeTab === 'details' ? theme.colors.primary : theme.colors.textSecondary,
+                          borderBottom: activeTab === 'details' ? `2px solid ${theme.colors.primary}` : '2px solid transparent',
+                          cursor: 'pointer',
+                          fontWeight: activeTab === 'details' ? '600' : '400',
+                          fontSize: '14px',
+                        }}
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('activity')}
+                        style={{
+                          padding: '12px 24px',
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          color: activeTab === 'activity' ? theme.colors.primary : theme.colors.textSecondary,
+                          borderBottom: activeTab === 'activity' ? `2px solid ${theme.colors.primary}` : '2px solid transparent',
+                          cursor: 'pointer',
+                          fontWeight: activeTab === 'activity' ? '600' : '400',
+                          fontSize: '14px',
+                        }}
+                      >
+                        Activity
+                      </button>
                     </div>
 
-                    {/* Orders */}
-                    <div style={{ marginBottom: '32px' }}>
-                      <h3 style={{ 
-                        color: theme.colors.text, 
-                        fontSize: '16px', 
-                        fontWeight: '600',
-                        marginBottom: '16px',
-                      }}>
-                        Recent Orders
-                      </h3>
-                      {selectedUser.orders.length > 0 ? (
-                        <div style={{ 
+                    {activeTab === 'details' && (
+                      <>
+                        {/* User Info Cards */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '16px',
+                          marginBottom: '32px',
+                        }}>
+                          <div style={{
+                            backgroundColor: theme.colors.surfaceLight,
+                            borderRadius: '12px',
+                            padding: '16px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <FiDollarSign color={theme.colors.success} />
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Balance</span>
+                            </div>
+                            <p style={{ color: theme.colors.success, fontSize: '24px', fontWeight: '600' }}>
+                              {formatCurrency(selectedUser.balance)}
+                            </p>
+                          </div>
+                          <div style={{
+                            backgroundColor: theme.colors.surfaceLight,
+                            borderRadius: '12px',
+                            padding: '16px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <FiShoppingBag color={theme.colors.info} />
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Orders</span>
+                            </div>
+                            <p style={{ color: theme.colors.text, fontSize: '24px', fontWeight: '600' }}>
+                              {selectedUser.orders.length}
+                            </p>
+                          </div>
+                          <div style={{
+                            backgroundColor: theme.colors.surfaceLight,
+                            borderRadius: '12px',
+                            padding: '16px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <FiShield color={theme.colors.warning} />
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Role</span>
+                            </div>
+                            <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '500', textTransform: 'uppercase' }}>
+                              {selectedUser.role}
+                            </p>
+                          </div>
+                          <div style={{
+                            backgroundColor: theme.colors.surfaceLight,
+                            borderRadius: '12px',
+                            padding: '16px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <FiCalendar color={theme.colors.warning} />
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Registered</span>
+                            </div>
+                            <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '500' }}>
+                              {formatDate(selectedUser.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Balance Update Form */}
+                        <div style={{
                           backgroundColor: theme.colors.surfaceLight,
                           borderRadius: '12px',
-                          overflow: 'hidden',
+                          padding: '20px',
+                          marginBottom: '24px',
                         }}>
-                          {selectedUser.orders.slice(0, 5).map((order, index) => (
-                            <div 
-                              key={order.id}
+                          <h3 style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+                            Update Balance
+                          </h3>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '12px', alignItems: 'end' }}>
+                            <div>
+                              <label htmlFor="balance-amount" style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px', fontWeight: '500' }}>
+                                Amount (EUR)
+                              </label>
+                              <input
+                                id="balance-amount"
+                                type="number"
+                                step="0.01"
+                                value={balanceAmount}
+                                onChange={(e) => setBalanceAmount(e.target.value)}
+                                placeholder="e.g., 50.00 or -25.00"
+                                style={{
+                                  ...inputStyle,
+                                  width: '100%',
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="balance-reason" style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px', fontWeight: '500' }}>
+                                Reason
+                              </label>
+                              <input
+                                id="balance-reason"
+                                type="text"
+                                value={balanceReason}
+                                onChange={(e) => setBalanceReason(e.target.value)}
+                                placeholder="Reason for balance update"
+                                style={{
+                                  ...inputStyle,
+                                  width: '100%',
+                                }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateBalance(selectedUser.id)}
+                              disabled={updatingBalance || !balanceAmount || !balanceReason}
                               style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '12px 16px',
-                                borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                                ...buttonStyle,
+                                backgroundColor: updatingBalance || !balanceAmount || !balanceReason ? theme.colors.surface : theme.colors.primary,
+                                color: updatingBalance || !balanceAmount || !balanceReason ? theme.colors.textSecondary : theme.colors.background,
+                                cursor: updatingBalance || !balanceAmount || !balanceReason ? 'not-allowed' : 'pointer',
+                                opacity: updatingBalance || !balanceAmount || !balanceReason ? 0.6 : 1,
                               }}
                             >
-                              <div>
-                                <p style={{ color: theme.colors.text, fontSize: '14px' }}>
-                                  Order #{order.id.slice(0, 8)}
-                                </p>
-                                <p style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
-                                  {formatDate(order.createdAt)}
-                                </p>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <p style={{ color: theme.colors.text, fontWeight: '600' }}>
-                                  {formatCurrency(order.total)}
-                                </p>
-                                <span style={{
-                                  fontSize: '11px',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  backgroundColor: `${getStatusColor(order.status)}20`,
-                                  color: getStatusColor(order.status),
-                                }}>
-                                  {order.status}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                              <FiSave />
+                              {updatingBalance ? 'Updating...' : 'Update'}
+                            </button>
+                          </div>
                         </div>
-                      ) : (
-                        <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '20px' }}>
-                          No orders yet
-                        </p>
-                      )}
-                    </div>
+
+                        {/* Role Update */}
+                        <div style={{
+                          backgroundColor: theme.colors.surfaceLight,
+                          borderRadius: '12px',
+                          padding: '20px',
+                          marginBottom: '24px',
+                        }}>
+                          <h3 style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+                            Update Role
+                          </h3>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <select
+                              value={selectedRole || selectedUser.role}
+                              onChange={(e) => setSelectedRole(e.target.value as 'USER' | 'ADMIN')}
+                              style={{
+                                ...inputStyle,
+                                width: '200px',
+                              }}
+                            >
+                              <option value="USER">USER</option>
+                              <option value="ADMIN">ADMIN</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => selectedRole && handleUpdateRole(selectedUser.id, selectedRole)}
+                              disabled={updatingRole || !selectedRole || selectedRole === selectedUser.role}
+                              style={{
+                                ...buttonStyle,
+                                backgroundColor: updatingRole || !selectedRole || selectedRole === selectedUser.role ? theme.colors.surface : theme.colors.warning,
+                                color: updatingRole || !selectedRole || selectedRole === selectedUser.role ? theme.colors.textSecondary : '#ffffff',
+                                cursor: updatingRole || !selectedRole || selectedRole === selectedUser.role ? 'not-allowed' : 'pointer',
+                                opacity: updatingRole || !selectedRole || selectedRole === selectedUser.role ? 0.6 : 1,
+                              }}
+                            >
+                              <FiSave />
+                              {updatingRole ? 'Updating...' : 'Update Role'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Orders */}
+                        <div style={{ marginBottom: '32px' }}>
+                          <h3 style={{ 
+                            color: theme.colors.text, 
+                            fontSize: '16px', 
+                            fontWeight: '600',
+                            marginBottom: '16px',
+                          }}>
+                            Recent Orders
+                          </h3>
+                          {selectedUser.orders.length > 0 ? (
+                            <div style={{ 
+                              backgroundColor: theme.colors.surfaceLight,
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                            }}>
+                              {selectedUser.orders.slice(0, 5).map((order, index) => (
+                                <div 
+                                  key={order.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                                  }}
+                                >
+                                  <div>
+                                    <p style={{ color: theme.colors.text, fontSize: '14px' }}>
+                                      Order #{order.id.slice(0, 8)}
+                                    </p>
+                                    <p style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
+                                      {formatDate(order.createdAt)}
+                                    </p>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <p style={{ color: theme.colors.text, fontWeight: '600' }}>
+                                      {formatCurrency(order.total)}
+                                    </p>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      backgroundColor: `${getStatusColor(order.status)}20`,
+                                      color: getStatusColor(order.status),
+                                    }}>
+                                      {order.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '20px' }}>
+                              No orders yet
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {activeTab === 'activity' && userActivity && (
+                      <div>
+                        {/* Login History */}
+                        <div style={{ marginBottom: '32px' }}>
+                          <h3 style={{ 
+                            color: theme.colors.text, 
+                            fontSize: '16px', 
+                            fontWeight: '600',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <FiLogIn />
+                            Login History
+                          </h3>
+                          {userActivity.loginHistory.length > 0 ? (
+                            <div style={{ 
+                              backgroundColor: theme.colors.surfaceLight,
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                            }}>
+                              {userActivity.loginHistory.slice(0, 10).map((login, index) => (
+                                <div 
+                                  key={login.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                                  }}
+                                >
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                      {login.success ? (
+                                        <FiCheckCircle color={theme.colors.success} size={16} />
+                                      ) : (
+                                        <FiXCircle color={theme.colors.error} size={16} />
+                                      )}
+                                      <p style={{ color: theme.colors.text, fontSize: '14px' }}>
+                                        {login.success ? 'Successful login' : 'Failed login'}
+                                      </p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: theme.colors.textSecondary }}>
+                                      {login.ipAddress && <span>IP: {login.ipAddress}</span>}
+                                      <span>{new Date(login.createdAt).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '20px' }}>
+                              No login history
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Orders Activity */}
+                        <div style={{ marginBottom: '32px' }}>
+                          <h3 style={{ 
+                            color: theme.colors.text, 
+                            fontSize: '16px', 
+                            fontWeight: '600',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <FiShoppingBag />
+                            Orders Activity
+                          </h3>
+                          {userActivity.orders.length > 0 ? (
+                            <div style={{ 
+                              backgroundColor: theme.colors.surfaceLight,
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                            }}>
+                              {userActivity.orders.slice(0, 10).map((order, index) => (
+                                <div 
+                                  key={order.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                                  }}
+                                >
+                                  <div>
+                                    <p style={{ color: theme.colors.text, fontSize: '14px' }}>
+                                      Order #{order.id.slice(0, 8)}
+                                    </p>
+                                    <p style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
+                                      {new Date(order.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <p style={{ color: theme.colors.text, fontWeight: '600' }}>
+                                      {formatCurrency(order.total)}
+                                    </p>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      backgroundColor: `${getStatusColor(order.status)}20`,
+                                      color: getStatusColor(order.status),
+                                    }}>
+                                      {order.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '20px' }}>
+                              No orders
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Transactions Activity */}
+                        <div>
+                          <h3 style={{ 
+                            color: theme.colors.text, 
+                            fontSize: '16px', 
+                            fontWeight: '600',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <FiCreditCard />
+                            Transactions Activity
+                          </h3>
+                          {userActivity.transactions.length > 0 ? (
+                            <div style={{ 
+                              backgroundColor: theme.colors.surfaceLight,
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                            }}>
+                              {userActivity.transactions.slice(0, 10).map((transaction, index) => (
+                                <div 
+                                  key={transaction.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                                  }}
+                                >
+                                  <div>
+                                    <p style={{ color: theme.colors.text, fontSize: '14px' }}>
+                                      {transaction.type}
+                                    </p>
+                                    <p style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
+                                      {new Date(transaction.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <p style={{ 
+                                      color: transaction.amount > 0 ? theme.colors.success : theme.colors.error, 
+                                      fontWeight: '600' 
+                                    }}>
+                                      {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                                    </p>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      backgroundColor: `${getStatusColor(transaction.status)}20`,
+                                      color: getStatusColor(transaction.status),
+                                    }}>
+                                      {transaction.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '20px' }}>
+                              No transactions
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Transactions */}
                     <div>

@@ -95,20 +95,48 @@ const getCachedOrFetch = async <T>(
 };
 
 /**
- * Invalidate cache key
+ * Invalidate cache keys matching pattern
+ * 
+ * This function handles Redis unavailability gracefully - if Redis is unavailable,
+ * the operation is logged but does not throw errors (graceful degradation).
+ * Cache invalidation is non-blocking (fire-and-forget) to prevent cache failures
+ * from blocking critical operations.
+ * 
+ * @param pattern - Cache key pattern (supports wildcards: *, ?)
+ *                  Examples:
+ *                  - `game:{id}` - Single game cache
+ *                  - `game:*` - All game caches
+ *                  - `home:*` - All home page caches
+ *                  - `catalog:*` - All catalog caches
+ *                  - `user:{id}:cart` - User cart cache
+ *                  - `user:{id}:wishlist` - User wishlist cache
+ *                  - `user:{id}:orders` - User orders cache
+ * 
+ * @remarks
+ * - Cache invalidation is non-blocking (errors are logged but not thrown)
+ * - Graceful degradation: operations continue if Redis is unavailable
+ * - Consistent cache key patterns ensure reliable invalidation
  */
 export const invalidateCache = async (pattern: string): Promise<void> => {
-  const available = await isRedisAvailable();
-  if (!available) return;
-  
   try {
+    const available = await isRedisAvailable();
+    if (!available) {
+      console.warn(`[Cache] Redis not available, skipping invalidation for pattern: ${pattern}`);
+      return; // Graceful degradation - don't throw
+    }
+    
     const keys = await redisClient.keys(pattern);
     if (keys.length > 0) {
       await redisClient.del(keys);
-      console.log(`[Cache] Invalidated ${keys.length} keys matching: ${pattern}`);
+      console.log(`[Cache] Invalidated ${keys.length} keys matching pattern: ${pattern}`);
+    } else {
+      console.log(`[Cache] No keys found matching pattern: ${pattern}`);
     }
   } catch (err) {
-    console.error('[Cache] Error invalidating cache:', err);
+    // Non-blocking error handling - log but don't throw
+    // This ensures cache failures don't block critical operations
+    console.error(`[Cache] Error invalidating cache for pattern ${pattern}:`, err);
+    // Don't throw - graceful degradation
   }
 };
 
@@ -570,5 +598,116 @@ export const startCacheRefreshScheduler = (): void => {
   }, 24 * 60 * 60 * 1000);
   
   console.log('[Cache] Refresh scheduler started');
+};
+
+/**
+ * Get cache statistics
+ */
+export const getCacheStatistics = async (): Promise<{
+  totalKeys: number;
+  memoryUsage: number;
+  redisStatus: 'connected' | 'disconnected' | 'error';
+  keysByPattern: Record<string, number>;
+}> => {
+  try {
+    const available = await isRedisAvailable();
+    
+    if (!available) {
+      return {
+        totalKeys: 0,
+        memoryUsage: 0,
+        redisStatus: 'disconnected',
+        keysByPattern: {},
+      };
+    }
+
+    // Get all keys
+    const allKeys = await redisClient.keys('*');
+    
+    // Group keys by pattern
+    const keysByPattern: Record<string, number> = {};
+    const patterns = [
+      'home:*',
+      'game:*',
+      'catalog:*',
+      'user:*',
+      'g2a:*',
+      'session:*',
+    ];
+    
+    for (const pattern of patterns) {
+      const patternKeys = await redisClient.keys(pattern);
+      keysByPattern[pattern] = patternKeys.length;
+    }
+    
+    // Get memory usage (if available)
+    let memoryUsage = 0;
+    try {
+      const info = await redisClient.info('memory');
+      const usedMemoryMatch = info.match(/used_memory:(\d+)/);
+      if (usedMemoryMatch) {
+        memoryUsage = parseInt(usedMemoryMatch[1], 10);
+      }
+    } catch (err) {
+      console.warn('[Cache] Could not get memory info:', err);
+    }
+    
+    return {
+      totalKeys: allKeys.length,
+      memoryUsage,
+      redisStatus: 'connected',
+      keysByPattern,
+    };
+  } catch (err) {
+    console.error('[Cache] Error getting cache statistics:', err);
+    return {
+      totalKeys: 0,
+      memoryUsage: 0,
+      redisStatus: 'error',
+      keysByPattern: {},
+    };
+  }
+};
+
+/**
+ * Get cache keys matching pattern
+ */
+export const getCacheKeys = async (pattern: string): Promise<string[]> => {
+  try {
+    const available = await isRedisAvailable();
+    if (!available) {
+      return [];
+    }
+    
+    const keys = await redisClient.keys(pattern);
+    return keys;
+  } catch (err) {
+    console.error(`[Cache] Error getting cache keys for pattern ${pattern}:`, err);
+    return [];
+  }
+};
+
+/**
+ * Clear all cache
+ */
+export const clearAllCache = async (): Promise<number> => {
+  try {
+    const available = await isRedisAvailable();
+    if (!available) {
+      console.warn('[Cache] Redis not available, cannot clear cache');
+      return 0;
+    }
+    
+    const keys = await redisClient.keys('*');
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+      console.log(`[Cache] Cleared ${keys.length} cache keys`);
+    }
+    
+    return keys.length;
+  } catch (err) {
+    console.error('[Cache] Error clearing all cache:', err);
+    throw err;
+  }
 };
 

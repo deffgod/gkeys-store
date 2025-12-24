@@ -238,4 +238,36 @@ export const migrateSessionWishlistToUser = async (
       });
     }
   });
+
+  // Invalidate cache after migration (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`session:${sessionId}:wishlist`);
+    await invalidateCache(`user:${userId}:wishlist`);
+    console.log(`[Wishlist Migration] Cache invalidated for session ${sessionId} and user ${userId}`);
+  } catch (cacheError) {
+    // Non-blocking - log but don't fail migration
+    console.warn(`[Wishlist Migration] Failed to invalidate cache:`, cacheError);
+  }
+};
+
+/**
+ * Admin: Get user wishlist (for admin panel)
+ */
+export const getUserWishlistForAdmin = async (userId: string): Promise<WishlistResponse> => {
+  if (!userId) {
+    throw new AppError('User ID required', 400);
+  }
+
+  // Verify user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  return getWishlist(userId);
 };

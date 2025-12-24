@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FiRefreshCw,
@@ -7,7 +7,9 @@ import {
   FiClock,
   FiDatabase,
   FiSettings,
-  FiActivity
+  FiActivity,
+  FiTrendingUp,
+  FiTrendingDown
 } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
 
@@ -54,6 +56,25 @@ const G2ASyncPage: React.FC = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
+  const [metrics, setMetrics] = useState<{
+    requests_total: number;
+    requests_success: number;
+    requests_error: number;
+    requests_retry: number;
+    webhook_total: number;
+    webhook_valid: number;
+    webhook_invalid: number;
+    latency_ms: number[];
+    latency_stats?: {
+      avg: number;
+      min: number;
+      max: number;
+      p50: number;
+      p95: number;
+      p99: number;
+    };
+  } | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
   
 
   const addLog = (type: SyncLog['type'], message: string) => {
@@ -107,6 +128,25 @@ const G2ASyncPage: React.FC = () => {
       second: '2-digit',
     });
   };
+
+  const fetchMetrics = async () => {
+    try {
+      setLoadingMetrics(true);
+      const data = await adminApi.getG2AMetrics();
+      setMetrics(data);
+    } catch (err) {
+      console.error('Failed to fetch G2A metrics:', err);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getLogIcon = (type: SyncLog['type']) => {
     switch (type) {
@@ -378,11 +418,147 @@ const G2ASyncPage: React.FC = () => {
         </div>
       </motion.div>
 
+      {/* Metrics Section */}
+      {metrics && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: '16px',
+            padding: '24px',
+            border: `1px solid ${theme.colors.border}`,
+            marginTop: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '600' }}>
+              G2A Metrics
+            </h3>
+            <button
+              type="button"
+              onClick={fetchMetrics}
+              disabled={loadingMetrics}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: `1px solid ${theme.colors.border}`,
+                backgroundColor: theme.colors.surfaceLight,
+                color: theme.colors.text,
+                cursor: loadingMetrics ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: loadingMetrics ? 0.6 : 1,
+              }}
+            >
+              <FiRefreshCw style={{ animation: loadingMetrics ? 'spin 1s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{
+              backgroundColor: theme.colors.surfaceLight,
+              borderRadius: '12px',
+              padding: '20px',
+              border: `1px solid ${theme.colors.border}`,
+            }}>
+              <div style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>Total Requests</div>
+              <div style={{ color: theme.colors.text, fontSize: '24px', fontWeight: '700' }}>{metrics.requests_total}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontSize: '12px', color: theme.colors.success }}>
+                <FiTrendingUp size={14} />
+                {metrics.requests_success} success
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: theme.colors.surfaceLight,
+              borderRadius: '12px',
+              padding: '20px',
+              border: `1px solid ${theme.colors.border}`,
+            }}>
+              <div style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>Success Rate</div>
+              <div style={{ color: theme.colors.success, fontSize: '24px', fontWeight: '700' }}>
+                {metrics.requests_total > 0 
+                  ? ((metrics.requests_success / metrics.requests_total) * 100).toFixed(1)
+                  : 0}%
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: theme.colors.surfaceLight,
+              borderRadius: '12px',
+              padding: '20px',
+              border: `1px solid ${theme.colors.border}`,
+            }}>
+              <div style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>Errors</div>
+              <div style={{ color: theme.colors.error, fontSize: '24px', fontWeight: '700' }}>{metrics.requests_error}</div>
+            </div>
+            <div style={{
+              backgroundColor: theme.colors.surfaceLight,
+              borderRadius: '12px',
+              padding: '20px',
+              border: `1px solid ${theme.colors.border}`,
+            }}>
+              <div style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>Webhooks</div>
+              <div style={{ color: theme.colors.text, fontSize: '24px', fontWeight: '700' }}>{metrics.webhook_total}</div>
+              <div style={{ fontSize: '12px', color: theme.colors.success, marginTop: '4px' }}>
+                {metrics.webhook_valid} valid
+              </div>
+            </div>
+          </div>
+
+          {metrics.latency_stats && (
+            <div>
+              <h4 style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+                Latency Statistics
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                <div style={{
+                  backgroundColor: theme.colors.surfaceLight,
+                  borderRadius: '8px',
+                  padding: '16px',
+                  border: `1px solid ${theme.colors.border}`,
+                }}>
+                  <div style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>Average</div>
+                  <div style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '600' }}>
+                    {metrics.latency_stats.avg.toFixed(0)}ms
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: theme.colors.surfaceLight,
+                  borderRadius: '8px',
+                  padding: '16px',
+                  border: `1px solid ${theme.colors.border}`,
+                }}>
+                  <div style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>P95</div>
+                  <div style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '600' }}>
+                    {metrics.latency_stats.p95.toFixed(0)}ms
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: theme.colors.surfaceLight,
+                  borderRadius: '8px',
+                  padding: '16px',
+                  border: `1px solid ${theme.colors.border}`,
+                }}>
+                  <div style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>P99</div>
+                  <div style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '600' }}>
+                    {metrics.latency_stats.p99.toFixed(0)}ms
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Info Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.5 }}
         style={{
           backgroundColor: theme.colors.surface,
           borderRadius: '16px',

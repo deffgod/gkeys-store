@@ -56,6 +56,7 @@ model User {
   transactions  Transaction[]
   wishlist      Wishlist[]
   cart          CartItem[]
+  loginHistory  LoginHistory[]
 
   @@index([email])
   @@map("users")
@@ -395,5 +396,19 @@ model FAQ {
 
   @@index([category, order])
   @@map("faqs")
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("login_history")
 }
 

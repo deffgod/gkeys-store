@@ -256,6 +256,17 @@ const handleOrderStatusWebhook = async (
       });
       
       console.log(`Order ${order.id} status updated to ${mappedStatus} via webhook`);
+      
+      // Invalidate cache after order status update
+      try {
+        const { invalidateCache } = await import('./cache.service.js');
+        await invalidateCache(`order:${order.id}`);
+        await invalidateCache(`user:${order.userId}:orders`);
+        console.log(`[Webhook] Cache invalidated for order ${order.id}`);
+      } catch (cacheError) {
+        // Non-blocking - log but don't fail webhook processing
+        console.warn(`[Webhook] Failed to invalidate cache for order ${order.id}:`, cacheError);
+      }
     }
   }
 };

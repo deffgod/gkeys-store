@@ -287,6 +287,20 @@ export const getOffers = async (filters?: OfferFilters): Promise<G2AOffersRespon
 };
 
 /**
+ * Admin: Get all offers with filters (wrapper for getOffers)
+ */
+export const getAllOffersForAdmin = async (filters?: OfferFilters): Promise<G2AOffersResponse> => {
+  return getOffers(filters);
+};
+
+/**
+ * Admin: Get offer by ID (wrapper for getOffer)
+ */
+export const getOfferByIdForAdmin = async (offerId: string): Promise<G2AOffer> => {
+  return getOffer(offerId);
+};
+
+/**
  * Update offer partially via G2A Import API
  * Only certain offer types can be edited: dropshipping, promo, steamgift, game
  * @param {string} offerId - Offer ID to update

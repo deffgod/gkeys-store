@@ -7,7 +7,8 @@ import {
   GameCreateInput,
   GameUpdateInput,
   BlogPostCreateInput,
-  BlogPostUpdateInput
+  BlogPostUpdateInput,
+  RefundResult
 } from '../types/admin.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { Prisma } from '@prisma/client';
@@ -854,4 +855,866 @@ export const exportUserReport = async (userId: string): Promise<Buffer> => {
   const userData = await getUserDetails(userId);
   const { generateUserSummaryPDF } = await import('./pdf.service.js');
   return await generateUserSummaryPDF(userData);
+};
+
+// Payment Management Functions
+
+/**
+ * Get all payment methods with status and configuration
+ */
+export const getPaymentMethods = async (): Promise<Array<{
+  id: string;
+  name: string;
+  type: 'stripe' | 'paypal' | 'mollie' | 'terminal';
+  icon?: string;
+  available: boolean;
+  order: number;
+  config?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}>> => {
+  const methods = await prisma.paymentMethod.findMany({
+    orderBy: { order: 'asc' },
+  });
+
+  return methods.map((method) => ({
+    id: method.id,
+    name: method.name,
+    type: method.type as 'stripe' | 'paypal' | 'mollie' | 'terminal',
+    icon: method.icon || undefined,
+    available: method.available,
+    order: method.order,
+    config: method.config as Record<string, unknown> | undefined,
+    createdAt: method.createdAt.toISOString(),
+    updatedAt: method.updatedAt.toISOString(),
+  }));
+};
+
+/**
+ * Get payment transactions with filters
+ */
+export const getPaymentTransactions = async (
+  filters: TransactionFilters
+): Promise<{
+  transactions: Array<{
+    id: string;
+    userId: string;
+    user: {
+      id: string;
+      email: string;
+      nickname: string;
+    };
+    orderId?: string;
+    order?: {
+      id: string;
+      status: string;
+    };
+    type: 'TOP_UP' | 'PURCHASE' | 'REFUND';
+    amount: number;
+    currency: string;
+    method?: string;
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    description?: string;
+    transactionHash?: string;
+    createdAt: string;
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> => {
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 20;
+  const skip = (page - 1) * pageSize;
+
+  const where: Prisma.TransactionWhereInput = {};
+
+  if (filters.method) {
+    where.method = { contains: filters.method, mode: 'insensitive' };
+  }
+
+  if (filters.status) {
+    where.status = filters.status as any;
+  }
+
+  if (filters.startDate || filters.endDate) {
+    where.createdAt = {};
+    if (filters.startDate) {
+      where.createdAt.gte = new Date(filters.startDate);
+    }
+    if (filters.endDate) {
+      where.createdAt.lte = new Date(filters.endDate);
+    }
+  }
+
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            nickname: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+
+  return {
+    transactions: transactions.map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      user: {
+        id: t.user.id,
+        email: t.user.email,
+        nickname: t.user.nickname || 'Newbie Guy',
+      },
+      orderId: t.orderId || undefined,
+      order: t.order ? {
+        id: t.order.id,
+        status: t.order.status,
+      } : undefined,
+      type: t.type,
+      amount: Number(t.amount),
+      currency: t.currency,
+      method: t.method || undefined,
+      status: t.status,
+      description: t.description || undefined,
+      transactionHash: t.transactionHash || undefined,
+      createdAt: t.createdAt.toISOString(),
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+
+/**
+ * Process refund for a transaction
+ */
+export const processRefund = async (
+  transactionId: string,
+  amount?: number,
+  reason?: string
+): Promise<RefundResult> => {
+  const { refundTransaction } = await import('./payment.service.js');
+  return await refundTransaction(transactionId, amount, reason);
+};
+
+// Cart and Wishlist Management Functions
+
+export interface CartSearchFilters {
+  userId?: string;
+  email?: string;
+  hasItems?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CartSearchResult {
+  carts: Array<{
+    userId: string;
+    user: {
+      id: string;
+      email: string;
+      nickname: string;
+    };
+    itemCount: number;
+    total: number;
+    lastUpdated: string;
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface WishlistSearchFilters {
+  userId?: string;
+  email?: string;
+  hasItems?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface WishlistSearchResult {
+  wishlists: Array<{
+    userId: string;
+    user: {
+      id: string;
+      email: string;
+      nickname: string;
+    };
+    itemCount: number;
+    lastUpdated: string;
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface WishlistStatistics {
+  totalWishlists: number;
+  totalItems: number;
+  averageItemsPerWishlist: number;
+  mostWishedGames: Array<{
+    gameId: string;
+    game: {
+      id: string;
+      title: string;
+      slug: string;
+    };
+    wishlistCount: number;
+  }>;
+  wishlistGrowth: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+/**
+ * Search user carts with filters
+ */
+export const searchUserCarts = async (
+  filters: CartSearchFilters
+): Promise<CartSearchResult> => {
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 20;
+  const skip = (page - 1) * pageSize;
+
+  const where: Prisma.UserWhereInput = {};
+
+  if (filters.email) {
+    where.email = { contains: filters.email, mode: 'insensitive' };
+  }
+
+  if (filters.userId) {
+    where.id = filters.userId;
+  }
+
+  // Get users with cart items
+  const users = await prisma.user.findMany({
+    where,
+    skip,
+    take: pageSize,
+    include: {
+      cart: {
+        include: {
+          game: {
+            select: {
+              id: true,
+              price: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Filter by hasItems if specified
+  let filteredUsers = users;
+  if (filters.hasItems !== undefined) {
+    filteredUsers = users.filter((user) => {
+      const hasItems = user.cart.length > 0;
+      return filters.hasItems ? hasItems : !hasItems;
+    });
+  }
+
+  // Calculate totals and last updated
+  const carts = filteredUsers.map((user) => {
+    const total = user.cart.reduce(
+      (sum, item) => sum + Number(item.game.price) * item.quantity,
+      0
+    );
+    const lastUpdated = user.cart.length > 0
+      ? user.cart.reduce((latest, item) => 
+          item.addedAt > latest ? item.addedAt : latest,
+          user.cart[0].addedAt
+        )
+      : user.updatedAt;
+
+    return {
+      userId: user.id,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname || 'Newbie Guy',
+      },
+      itemCount: user.cart.length,
+      total: Number(total.toFixed(2)),
+      lastUpdated: lastUpdated.toISOString(),
+    };
+  });
+
+  // Get total count
+  const totalUsers = await prisma.user.count({ where });
+  const total = filters.hasItems !== undefined
+    ? filteredUsers.length
+    : totalUsers;
+
+  return {
+    carts,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+
+/**
+ * Search user wishlists with filters
+ */
+export const searchUserWishlists = async (
+  filters: WishlistSearchFilters
+): Promise<WishlistSearchResult> => {
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 20;
+  const skip = (page - 1) * pageSize;
+
+  const where: Prisma.UserWhereInput = {};
+
+  if (filters.email) {
+    where.email = { contains: filters.email, mode: 'insensitive' };
+  }
+
+  if (filters.userId) {
+    where.id = filters.userId;
+  }
+
+  // Get users with wishlist items
+  const users = await prisma.user.findMany({
+    where,
+    skip,
+    take: pageSize,
+    include: {
+      wishlist: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Filter by hasItems if specified
+  let filteredUsers = users;
+  if (filters.hasItems !== undefined) {
+    filteredUsers = users.filter((user) => {
+      const hasItems = user.wishlist.length > 0;
+      return filters.hasItems ? hasItems : !hasItems;
+    });
+  }
+
+  // Calculate last updated
+  const wishlists = filteredUsers.map((user) => {
+    const lastUpdated = user.wishlist.length > 0
+      ? user.wishlist.reduce((latest, item) => 
+          item.addedAt > latest ? item.addedAt : latest,
+          user.wishlist[0].addedAt
+        )
+      : user.updatedAt;
+
+    return {
+      userId: user.id,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname || 'Newbie Guy',
+      },
+      itemCount: user.wishlist.length,
+      lastUpdated: lastUpdated.toISOString(),
+    };
+  });
+
+  // Get total count
+  const totalUsers = await prisma.user.count({ where });
+  const total = filters.hasItems !== undefined
+    ? filteredUsers.length
+    : totalUsers;
+
+  return {
+    wishlists,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+
+/**
+ * Get wishlist statistics
+ */
+export const getWishlistStatistics = async (): Promise<WishlistStatistics> => {
+  // Get all wishlist items
+  const allWishlists = await prisma.wishlist.findMany({
+    include: {
+      user: {
+        select: { id: true },
+      },
+      game: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+        },
+      },
+    },
+  });
+
+  // Calculate statistics
+  const uniqueUsers = new Set(allWishlists.map((w) => w.userId));
+  const totalWishlists = uniqueUsers.size;
+  const totalItems = allWishlists.length;
+  const averageItemsPerWishlist = totalWishlists > 0
+    ? Number((totalItems / totalWishlists).toFixed(2))
+    : 0;
+
+  // Most wished games
+  const gameCounts = new Map<string, { game: typeof allWishlists[0]['game']; count: number }>();
+  for (const wishlist of allWishlists) {
+    const gameId = wishlist.gameId;
+    const existing = gameCounts.get(gameId);
+    if (existing) {
+      existing.count++;
+    } else {
+      gameCounts.set(gameId, {
+        game: wishlist.game,
+        count: 1,
+      });
+    }
+  }
+
+  const mostWishedGames = Array.from(gameCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map((item) => ({
+      gameId: item.game.id,
+      game: {
+        id: item.game.id,
+        title: item.game.title,
+        slug: item.game.slug,
+      },
+      wishlistCount: item.count,
+    }));
+
+  // Wishlist growth (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const recentWishlists = await prisma.wishlist.findMany({
+    where: {
+      addedAt: { gte: thirtyDaysAgo },
+    },
+    select: {
+      addedAt: true,
+    },
+    orderBy: {
+      addedAt: 'asc',
+    },
+  });
+
+  // Group by date
+  const growthMap = new Map<string, number>();
+  for (const wishlist of recentWishlists) {
+    const date = wishlist.addedAt.toISOString().split('T')[0];
+    growthMap.set(date, (growthMap.get(date) || 0) + 1);
+  }
+
+  const wishlistGrowth = Array.from(growthMap.entries())
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    totalWishlists,
+    totalItems,
+    averageItemsPerWishlist,
+    mostWishedGames,
+    wishlistGrowth,
+  };
+};
+
+// FAQ Management Functions
+
+export interface FAQAdminFilters {
+  category?: string;
+  search?: string;
+  active?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface FAQAdminResult {
+  faqs: Array<{
+    id: string;
+    category: string;
+    question: string;
+    answer: string;
+    order: number;
+    active: boolean;
+    createdAt: string;
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Get all FAQs for admin with pagination and filters
+ */
+export const getAllFAQsForAdmin = async (
+  filters: FAQAdminFilters
+): Promise<FAQAdminResult> => {
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 20;
+  const skip = (page - 1) * pageSize;
+
+  const where: Prisma.FAQWhereInput = {};
+
+  if (filters.category) {
+    where.category = { contains: filters.category, mode: 'insensitive' };
+  }
+
+  if (filters.active !== undefined) {
+    where.active = filters.active;
+  }
+
+  if (filters.search) {
+    where.OR = [
+      { question: { contains: filters.search, mode: 'insensitive' } },
+      { answer: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
+  const [faqs, total] = await Promise.all([
+    prisma.fAQ.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: [
+        { category: 'asc' },
+        { order: 'asc' },
+      ],
+    }),
+    prisma.fAQ.count({ where }),
+  ]);
+
+  return {
+    faqs: faqs.map((faq) => ({
+      id: faq.id,
+      category: faq.category,
+      question: faq.question,
+      answer: faq.answer,
+      order: faq.order,
+      active: faq.active,
+      createdAt: faq.createdAt.toISOString(),
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+
+// G2A Management Functions (wrappers for existing services)
+
+export const getAllG2AOffersForAdmin = async (
+  filters: {
+    productId?: string;
+    status?: string;
+    offerType?: string;
+    active?: boolean;
+    page?: number;
+    perPage?: number;
+  }
+): Promise<{
+  data: Array<{
+    id: string;
+    type: string;
+    productId: string;
+    productName?: string;
+    price: number;
+    visibility: string;
+    status: string;
+    active: boolean;
+    inventory?: {
+      size: number;
+      sold: number;
+      type: string;
+    };
+    createdAt?: string;
+    updatedAt?: string;
+    promoStatus?: string;
+  }>;
+  meta?: {
+    currentPage: number;
+    lastPage: number;
+    perPage: number;
+    total: number;
+  };
+}> => {
+  const { getAllOffersForAdmin } = await import('./g2a-offer.service.js');
+  return getAllOffersForAdmin(filters);
+};
+
+export const getG2AOfferByIdForAdmin = async (offerId: string): Promise<{
+  id: string;
+  type: string;
+  productId: string;
+  productName?: string;
+  price: number;
+  visibility: string;
+  status: string;
+  active: boolean;
+  inventory?: {
+    size: number;
+    sold: number;
+    type: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  promoStatus?: string;
+}> => {
+  const { getOfferByIdForAdmin } = await import('./g2a-offer.service.js');
+  return getOfferByIdForAdmin(offerId);
+};
+
+export const getAllG2AReservationsForAdmin = async (
+  filters: {
+    orderId?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<{
+  reservations: Array<{
+    reservationId: string;
+    orderId: string;
+    productId: string;
+    quantity: number;
+    status: string;
+    expiresAt: string;
+    createdAt: string;
+    order?: {
+      id: string;
+      status: string;
+      total: number;
+      user: {
+        id: string;
+        email: string;
+        nickname: string;
+      };
+    };
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> => {
+  const { getAllReservationsForAdmin } = await import('./g2a-reservation.service.js');
+  return getAllReservationsForAdmin(filters);
+};
+
+export const cancelG2AReservationForAdmin = async (reservationId: string): Promise<void> => {
+  const { cancelReservationForAdmin } = await import('./g2a-reservation.service.js');
+  return cancelReservationForAdmin(reservationId);
+};
+
+// Cache Management Functions
+
+export const getCacheStatisticsForAdmin = async (): Promise<{
+  totalKeys: number;
+  memoryUsage: number;
+  redisStatus: 'connected' | 'disconnected' | 'error';
+  keysByPattern: Record<string, number>;
+}> => {
+  const { getCacheStatistics } = await import('./cache.service.js');
+  return getCacheStatistics();
+};
+
+export const invalidateCacheForAdmin = async (pattern: string): Promise<{
+  keysInvalidated: number;
+  pattern: string;
+  message: string;
+}> => {
+  const { invalidateCache, getCacheKeys } = await import('./cache.service.js');
+  
+  // Get keys before invalidation to count them
+  const keysBefore = await getCacheKeys(pattern);
+  const countBefore = keysBefore.length;
+  
+  // Invalidate cache
+  await invalidateCache(pattern);
+  
+  // Get keys after invalidation to verify
+  const keysAfter = await getCacheKeys(pattern);
+  const countAfter = keysAfter.length;
+  const keysInvalidated = countBefore - countAfter;
+  
+  return {
+    keysInvalidated,
+    pattern,
+    message: `Invalidated ${keysInvalidated} cache keys matching pattern: ${pattern}`,
+  };
+};
+
+export const clearAllCacheForAdmin = async (): Promise<{
+  keysInvalidated: number;
+  pattern: string;
+  message: string;
+}> => {
+  const { clearAllCache } = await import('./cache.service.js');
+  const keysInvalidated = await clearAllCache();
+  
+  return {
+    keysInvalidated,
+    pattern: '*',
+    message: `Cleared all cache: ${keysInvalidated} keys invalidated`,
+  };
+};
+
+// Enhanced User Management Functions
+
+export const updateUserBalanceForAdmin = async (
+  userId: string,
+  amount: number,
+  reason: string
+): Promise<{
+  userId: string;
+  previousBalance: number;
+  newBalance: number;
+  amount: number;
+  reason: string;
+}> => {
+  const { updateUserBalance } = await import('./user.service.js');
+  return updateUserBalance(userId, amount, reason);
+};
+
+export const updateUserRoleForAdmin = async (
+  userId: string,
+  role: 'USER' | 'ADMIN'
+): Promise<void> => {
+  const { updateUserRole } = await import('./user.service.js');
+  return updateUserRole(userId, role);
+};
+
+export const getUserActivityForAdmin = async (
+  userId: string,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    activityType?: 'login' | 'order' | 'transaction' | 'all';
+  }
+): Promise<{
+  userId: string;
+  loginHistory: Array<{
+    id: string;
+    ipAddress?: string;
+    userAgent?: string;
+    success: boolean;
+    createdAt: string;
+  }>;
+  orders: Array<{
+    id: string;
+    status: string;
+    total: number;
+    createdAt: string;
+  }>;
+  transactions: Array<{
+    id: string;
+    type: string;
+    amount: number;
+    status: string;
+    createdAt: string;
+  }>;
+}> => {
+  const where: Prisma.LoginHistoryWhereInput = { userId };
+  const orderWhere: Prisma.OrderWhereInput = { userId };
+  const transactionWhere: Prisma.TransactionWhereInput = { userId };
+
+  if (filters?.startDate) {
+    const startDate = new Date(filters.startDate);
+    where.createdAt = { ...where.createdAt, gte: startDate };
+    orderWhere.createdAt = { ...orderWhere.createdAt, gte: startDate };
+    transactionWhere.createdAt = { ...transactionWhere.createdAt, gte: startDate };
+  }
+
+  if (filters?.endDate) {
+    const endDate = new Date(filters.endDate);
+    where.createdAt = { ...where.createdAt, lte: endDate };
+    orderWhere.createdAt = { ...orderWhere.createdAt, lte: endDate };
+    transactionWhere.createdAt = { ...transactionWhere.createdAt, lte: endDate };
+  }
+
+  const [loginHistory, orders, transactions] = await Promise.all([
+    filters?.activityType === 'order' || filters?.activityType === 'transaction'
+      ? []
+      : prisma.loginHistory.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: 100,
+        }),
+    filters?.activityType === 'login' || filters?.activityType === 'transaction'
+      ? []
+      : prisma.order.findMany({
+          where: orderWhere,
+          orderBy: { createdAt: 'desc' },
+          take: 100,
+          select: {
+            id: true,
+            status: true,
+            total: true,
+            createdAt: true,
+          },
+        }),
+    filters?.activityType === 'login' || filters?.activityType === 'order'
+      ? []
+      : prisma.transaction.findMany({
+          where: transactionWhere,
+          orderBy: { createdAt: 'desc' },
+          take: 100,
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
+  ]);
+
+  return {
+    userId,
+    loginHistory: loginHistory.map((lh) => ({
+      id: lh.id,
+      ipAddress: lh.ipAddress || undefined,
+      userAgent: lh.userAgent || undefined,
+      success: lh.success,
+      createdAt: lh.createdAt.toISOString(),
+    })),
+    orders: orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      total: Number(order.total),
+      createdAt: order.createdAt.toISOString(),
+    })),
+    transactions: transactions.map((t) => ({
+      id: t.id,
+      type: t.type,
+      amount: Number(t.amount),
+      status: t.status,
+      createdAt: t.createdAt.toISOString(),
+    })),
+  };
 };

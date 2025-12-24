@@ -319,4 +319,133 @@ export const migrateSessionCartToUser = async (
       });
     }
   });
+
+  // Invalidate cache after migration (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`session:${sessionId}:cart`);
+    await invalidateCache(`user:${userId}:cart`);
+    console.log(`[Cart Migration] Cache invalidated for session ${sessionId} and user ${userId}`);
+  } catch (cacheError) {
+    // Non-blocking - log but don't fail migration
+    console.warn(`[Cart Migration] Failed to invalidate cache:`, cacheError);
+  }
+};
+
+/**
+ * Admin: Get user cart (for admin panel)
+ */
+export const getUserCartForAdmin = async (userId: string): Promise<CartResponse> => {
+  if (!userId) {
+    throw new AppError('User ID required', 400);
+  }
+
+  // Verify user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  return getCart(userId);
+};
+
+/**
+ * Admin: Update user cart (for admin panel)
+ */
+export const updateUserCartForAdmin = async (
+  userId: string,
+  items: Array<{ gameId: string; quantity: number }>
+): Promise<void> => {
+  if (!userId) {
+    throw new AppError('User ID required', 400);
+  }
+
+  // Verify user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Use transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // Clear existing cart
+    await tx.cartItem.deleteMany({
+      where: { userId },
+    });
+
+    // Add new items
+    for (const item of items) {
+      if (item.quantity <= 0) continue;
+
+      // Verify game exists and is in stock
+      const game = await tx.game.findUnique({
+        where: { id: item.gameId },
+        select: { id: true, inStock: true, g2aStock: true },
+      });
+
+      if (!game) {
+        console.warn(`[Admin Cart Update] Game ${item.gameId} not found, skipping`);
+        continue;
+      }
+
+      const isAvailable = game.inStock && (game.g2aStock !== false);
+      if (!isAvailable) {
+        console.warn(`[Admin Cart Update] Game ${item.gameId} out of stock, skipping`);
+        continue;
+      }
+
+      await tx.cartItem.create({
+        data: {
+          userId,
+          gameId: item.gameId,
+          quantity: item.quantity,
+        },
+      });
+    }
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:cart`);
+  } catch (cacheError) {
+    console.warn(`[Admin Cart Update] Failed to invalidate cache:`, cacheError);
+  }
+};
+
+/**
+ * Admin: Clear user cart (for admin panel)
+ */
+export const clearUserCartForAdmin = async (userId: string): Promise<void> => {
+  if (!userId) {
+    throw new AppError('User ID required', 400);
+  }
+
+  // Verify user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  await clearCart(userId);
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:cart`);
+  } catch (cacheError) {
+    console.warn(`[Admin Cart Clear] Failed to invalidate cache:`, cacheError);
+  }
 };

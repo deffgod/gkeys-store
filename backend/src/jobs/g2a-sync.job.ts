@@ -205,6 +205,21 @@ export const startStockCheckJob = () => {
         });
       }
 
+      // Invalidate cache after all stock and price updates
+      if (updated > 0 || priceUpdated > 0) {
+        try {
+          const { invalidateCache } = await import('../services/cache.service.js');
+          // Invalidate affected product caches and related caches
+          await invalidateCache('game:*');
+          await invalidateCache('home:*');
+          await invalidateCache('catalog:*');
+          console.log(`[G2A Job] Cache invalidated after stock/price updates`);
+        } catch (cacheError) {
+          // Non-blocking - log but don't fail job
+          console.warn(`[G2A Job] Failed to invalidate cache after stock check:`, cacheError);
+        }
+      }
+
       console.log(`✅ [G2A Job] Stock check completed: ${checked} checked, ${updated} stock updated, ${priceUpdated} prices updated`);
       if (errors.length > 0) {
         console.warn(`⚠️ [G2A Job] Completed with ${errors.length} errors`);

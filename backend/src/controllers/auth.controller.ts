@@ -39,7 +39,12 @@ export const loginController = async (
     }
 
     const data: LoginRequest = req.body;
-    const result = await login(data);
+    // Get sessionId from cookies or headers for cart/wishlist migration
+    const sessionId = (req.cookies?.sessionId as string) || (req.headers['x-session-id'] as string);
+    // Get IP address and user agent for login history
+    const ipAddress = req.ip || req.socket.remoteAddress || undefined;
+    const userAgent = req.get('user-agent') || undefined;
+    const result = await login(data, sessionId, ipAddress, userAgent);
 
     res.status(200).json({
       success: true,

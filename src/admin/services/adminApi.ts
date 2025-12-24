@@ -1,4 +1,33 @@
 import apiClient from '../../services/api';
+// Re-export types from backend for frontend use
+export type {
+  PaymentMethod,
+  PaymentTransactionFilters,
+  RefundResult,
+  TransactionResult,
+  CartSearchFilters,
+  CartSearchResult,
+  WishlistSearchFilters,
+  WishlistSearchResult,
+  WishlistStatistics,
+  FAQCreateInput,
+  FAQUpdateInput,
+  FAQAdminFilters,
+  FAQAdminResult,
+  FAQCategory,
+  G2AOfferFilters,
+  G2AOfferResult,
+  G2AReservationFilters,
+  G2AReservationResult,
+  CacheStatistics,
+  CacheInvalidationRequest,
+  CacheInvalidationResult,
+  BalanceUpdateRequest,
+  BalanceUpdateResult,
+  RoleUpdateRequest,
+  ActivityFilters,
+  UserActivity,
+} from '../../../backend/src/types/admin';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -363,6 +392,752 @@ export const adminApi = {
       '/api/admin/g2a/sync'
     );
     return { message: response.message || 'Sync started' };
+  },
+
+  // Payment Management
+  getPaymentMethods: async (): Promise<Array<{
+    id: string;
+    name: string;
+    type: 'stripe' | 'paypal' | 'mollie' | 'terminal';
+    icon?: string;
+    available: boolean;
+    order: number;
+    config?: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: { methods: Array<{
+      id: string;
+      name: string;
+      type: 'stripe' | 'paypal' | 'mollie' | 'terminal';
+      icon?: string;
+      available: boolean;
+      order: number;
+      config?: Record<string, unknown>;
+      createdAt: string;
+      updatedAt: string;
+    }> } }>('/api/admin/payments/methods');
+    return response.data.methods;
+  },
+
+  getPaymentTransactions: async (filters?: {
+    method?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<TransactionResult> => {
+    const params = new URLSearchParams();
+    if (filters?.method) params.append('method', filters.method);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: TransactionResult }>(
+      `/api/admin/payments/transactions?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  refundTransaction: async (
+    transactionId: string,
+    amount?: number,
+    reason?: string
+  ): Promise<{
+    refundId: string;
+    status: string;
+    amount?: number;
+    currency?: string;
+    message?: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      refundId: string;
+      status: string;
+      amount?: number;
+      currency?: string;
+      message?: string;
+    } }>(`/api/admin/payments/transactions/${transactionId}/refund`, {
+      amount,
+      reason,
+    });
+    return response.data;
+  },
+
+  // Cart Management
+  getUserCarts: async (filters?: {
+    userId?: string;
+    email?: string;
+    hasItems?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    carts: Array<{
+      userId: string;
+      user: {
+        id: string;
+        email: string;
+        nickname: string;
+      };
+      itemCount: number;
+      total: number;
+      lastUpdated: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.email) params.append('email', filters.email);
+    if (filters?.hasItems !== undefined) params.append('hasItems', filters.hasItems.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      carts: Array<{
+        userId: string;
+        user: {
+          id: string;
+          email: string;
+          nickname: string;
+        };
+        itemCount: number;
+        total: number;
+        lastUpdated: string;
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    } }>(`/api/admin/carts?${params.toString()}`);
+    return response.data;
+  },
+
+  getUserCart: async (userId: string): Promise<{
+    items: Array<{
+      gameId: string;
+      quantity: number;
+      game: {
+        id: string;
+        title: string;
+        slug: string;
+        image: string;
+        price: number;
+        inStock: boolean;
+      };
+    }>;
+    total: number;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      items: Array<{
+        gameId: string;
+        quantity: number;
+        game: {
+          id: string;
+          title: string;
+          slug: string;
+          image: string;
+          price: number;
+          inStock: boolean;
+        };
+      }>;
+      total: number;
+    } }>(`/api/admin/carts/user/${userId}`);
+    return response.data;
+  },
+
+  updateUserCart: async (
+    userId: string,
+    items: Array<{ gameId: string; quantity: number }>
+  ): Promise<void> => {
+    await apiClient.put(`/api/admin/carts/user/${userId}`, { items });
+  },
+
+  clearUserCart: async (userId: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/carts/user/${userId}`);
+  },
+
+  // Wishlist Management
+  getUserWishlists: async (filters?: {
+    userId?: string;
+    email?: string;
+    hasItems?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    wishlists: Array<{
+      userId: string;
+      user: {
+        id: string;
+        email: string;
+        nickname: string;
+      };
+      itemCount: number;
+      lastUpdated: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.email) params.append('email', filters.email);
+    if (filters?.hasItems !== undefined) params.append('hasItems', filters.hasItems.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      wishlists: Array<{
+        userId: string;
+        user: {
+          id: string;
+          email: string;
+          nickname: string;
+        };
+        itemCount: number;
+        lastUpdated: string;
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    } }>(`/api/admin/wishlists?${params.toString()}`);
+    return response.data;
+  },
+
+  getUserWishlist: async (userId: string): Promise<{
+    items: Array<{
+      gameId: string;
+      game: {
+        id: string;
+        title: string;
+        slug: string;
+        image: string;
+        price: number;
+        inStock: boolean;
+      };
+      addedAt: string;
+    }>;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      items: Array<{
+        gameId: string;
+        game: {
+          id: string;
+          title: string;
+          slug: string;
+          image: string;
+          price: number;
+          inStock: boolean;
+        };
+        addedAt: string;
+      }>;
+    } }>(`/api/admin/wishlists/user/${userId}`);
+    return response.data;
+  },
+
+  getWishlistStatistics: async (): Promise<{
+    totalWishlists: number;
+    totalItems: number;
+    averageItemsPerWishlist: number;
+    mostWishedGames: Array<{
+      gameId: string;
+      game: {
+        id: string;
+        title: string;
+        slug: string;
+      };
+      wishlistCount: number;
+    }>;
+    wishlistGrowth: Array<{
+      date: string;
+      count: number;
+    }>;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      totalWishlists: number;
+      totalItems: number;
+      averageItemsPerWishlist: number;
+      mostWishedGames: Array<{
+        gameId: string;
+        game: {
+          id: string;
+          title: string;
+          slug: string;
+        };
+        wishlistCount: number;
+      }>;
+      wishlistGrowth: Array<{
+        date: string;
+        count: number;
+      }>;
+    } }>('/api/admin/wishlists/statistics');
+    return response.data;
+  },
+
+  // FAQ Management
+  getFAQs: async (filters?: {
+    category?: string;
+    search?: string;
+    active?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    faqs: Array<{
+      id: string;
+      category: string;
+      question: string;
+      answer: string;
+      order: number;
+      active: boolean;
+      createdAt: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.active !== undefined) params.append('active', filters.active.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      faqs: Array<{
+        id: string;
+        category: string;
+        question: string;
+        answer: string;
+        order: number;
+        active: boolean;
+        createdAt: string;
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    } }>(`/api/admin/faqs?${params.toString()}`);
+    return response.data;
+  },
+
+  createFAQ: async (data: {
+    category: string;
+    question: string;
+    answer: string;
+    order?: number;
+    active?: boolean;
+  }): Promise<{
+    id: string;
+    category: string;
+    question: string;
+    answer: string;
+    order: number;
+    active: boolean;
+    createdAt: Date;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      category: string;
+      question: string;
+      answer: string;
+      order: number;
+      active: boolean;
+      createdAt: Date;
+    } }>('/api/admin/faqs', data);
+    return response.data;
+  },
+
+  updateFAQ: async (
+    id: string,
+    data: {
+      category?: string;
+      question?: string;
+      answer?: string;
+      order?: number;
+      active?: boolean;
+    }
+  ): Promise<{
+    id: string;
+    category: string;
+    question: string;
+    answer: string;
+    order: number;
+    active: boolean;
+    createdAt: Date;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      category: string;
+      question: string;
+      answer: string;
+      order: number;
+      active: boolean;
+      createdAt: Date;
+    } }>(`/api/admin/faqs/${id}`, data);
+    return response.data;
+  },
+
+  deleteFAQ: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/faqs/${id}`);
+  },
+
+  getFAQCategories: async (): Promise<Array<{
+    name: string;
+    slug: string;
+    count: number;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      name: string;
+      slug: string;
+      count: number;
+    }> }>('/api/admin/faqs/categories');
+    return response.data;
+  },
+
+  // G2A Advanced Management
+  getG2AOffers: async (filters?: {
+    productId?: string;
+    status?: string;
+    offerType?: string;
+    active?: boolean;
+    page?: number;
+    perPage?: number;
+  }): Promise<{
+    data: Array<{
+      id: string;
+      type: string;
+      productId: string;
+      productName?: string;
+      price: number;
+      visibility: string;
+      status: string;
+      active: boolean;
+      inventory?: {
+        size: number;
+        sold: number;
+        type: string;
+      };
+      createdAt?: string;
+      updatedAt?: string;
+      promoStatus?: string;
+    }>;
+    meta?: {
+      currentPage: number;
+      lastPage: number;
+      perPage: number;
+      total: number;
+    };
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.productId) params.append('productId', filters.productId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.offerType) params.append('offerType', filters.offerType);
+    if (filters?.active !== undefined) params.append('active', filters.active.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.perPage) params.append('perPage', filters.perPage.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      data: Array<{
+        id: string;
+        type: string;
+        productId: string;
+        productName?: string;
+        price: number;
+        visibility: string;
+        status: string;
+        active: boolean;
+        inventory?: {
+          size: number;
+          sold: number;
+          type: string;
+        };
+        createdAt?: string;
+        updatedAt?: string;
+        promoStatus?: string;
+      }>;
+      meta?: {
+        currentPage: number;
+        lastPage: number;
+        perPage: number;
+        total: number;
+      };
+    } }>(`/api/admin/g2a/offers?${params.toString()}`);
+    return response.data;
+  },
+
+  getG2AOfferById: async (offerId: string): Promise<{
+    id: string;
+    type: string;
+    productId: string;
+    productName?: string;
+    price: number;
+    visibility: string;
+    status: string;
+    active: boolean;
+    inventory?: {
+      size: number;
+      sold: number;
+      type: string;
+    };
+    createdAt?: string;
+    updatedAt?: string;
+    promoStatus?: string;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      type: string;
+      productId: string;
+      productName?: string;
+      price: number;
+      visibility: string;
+      status: string;
+      active: boolean;
+      inventory?: {
+        size: number;
+        sold: number;
+        type: string;
+      };
+      createdAt?: string;
+      updatedAt?: string;
+      promoStatus?: string;
+    } }>(`/api/admin/g2a/offers/${offerId}`);
+    return response.data;
+  },
+
+  getG2AReservations: async (filters?: {
+    orderId?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    reservations: Array<{
+      reservationId: string;
+      orderId: string;
+      productId: string;
+      quantity: number;
+      status: string;
+      expiresAt: string;
+      createdAt: string;
+      order?: {
+        id: string;
+        status: string;
+        total: number;
+        user: {
+          id: string;
+          email: string;
+          nickname: string;
+        };
+      };
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.orderId) params.append('orderId', filters.orderId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      reservations: Array<{
+        reservationId: string;
+        orderId: string;
+        productId: string;
+        quantity: number;
+        status: string;
+        expiresAt: string;
+        createdAt: string;
+        order?: {
+          id: string;
+          status: string;
+          total: number;
+          user: {
+            id: string;
+            email: string;
+            nickname: string;
+          };
+        };
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    } }>(`/api/admin/g2a/reservations?${params.toString()}`);
+    return response.data;
+  },
+
+  cancelG2AReservation: async (reservationId: string): Promise<void> => {
+    await apiClient.post(`/api/admin/g2a/reservations/${reservationId}/cancel`);
+  },
+
+  getG2AMetrics: async (): Promise<{
+    requests_total: number;
+    requests_success: number;
+    requests_error: number;
+    requests_retry: number;
+    webhook_total: number;
+    webhook_valid: number;
+    webhook_invalid: number;
+    latency_ms: number[];
+    latency_stats?: {
+      avg: number;
+      min: number;
+      max: number;
+      p50: number;
+      p95: number;
+      p99: number;
+    };
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      requests_total: number;
+      requests_success: number;
+      requests_error: number;
+      requests_retry: number;
+      webhook_total: number;
+      webhook_valid: number;
+      webhook_invalid: number;
+      latency_ms: number[];
+      latency_stats?: {
+        avg: number;
+        min: number;
+        max: number;
+        p50: number;
+        p95: number;
+        p99: number;
+      };
+    } }>('/api/admin/g2a/metrics');
+    return response.data;
+  },
+
+  // Cache Management
+  getCacheStatistics: async (): Promise<{
+    totalKeys: number;
+    memoryUsage: number;
+    redisStatus: 'connected' | 'disconnected' | 'error';
+    keysByPattern: Record<string, number>;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      totalKeys: number;
+      memoryUsage: number;
+      redisStatus: 'connected' | 'disconnected' | 'error';
+      keysByPattern: Record<string, number>;
+    } }>('/api/admin/cache/statistics');
+    return response.data;
+  },
+
+  invalidateCache: async (pattern: string): Promise<{
+    keysInvalidated: number;
+    pattern: string;
+    message: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      keysInvalidated: number;
+      pattern: string;
+      message: string;
+    } }>('/api/admin/cache/invalidate', { pattern });
+    return response.data;
+  },
+
+  clearAllCache: async (): Promise<{
+    keysInvalidated: number;
+    pattern: string;
+    message: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      keysInvalidated: number;
+      pattern: string;
+      message: string;
+    } }>('/api/admin/cache/clear');
+    return response.data;
+  },
+
+  // Enhanced User Management
+  updateUserBalance: async (userId: string, amount: number, reason: string): Promise<{
+    userId: string;
+    previousBalance: number;
+    newBalance: number;
+    amount: number;
+    reason: string;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      userId: string;
+      previousBalance: number;
+      newBalance: number;
+      amount: number;
+      reason: string;
+    } }>(`/api/admin/users/${userId}/balance`, { amount, reason });
+    return response.data;
+  },
+
+  updateUserRole: async (userId: string, role: 'USER' | 'ADMIN'): Promise<void> => {
+    await apiClient.put(`/api/admin/users/${userId}/role`, { role });
+  },
+
+  getUserActivity: async (userId: string, filters?: {
+    startDate?: string;
+    endDate?: string;
+    activityType?: 'login' | 'order' | 'transaction' | 'all';
+  }): Promise<{
+    userId: string;
+    loginHistory: Array<{
+      id: string;
+      ipAddress?: string;
+      userAgent?: string;
+      success: boolean;
+      createdAt: string;
+    }>;
+    orders: Array<{
+      id: string;
+      status: string;
+      total: number;
+      createdAt: string;
+    }>;
+    transactions: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      status: string;
+      createdAt: string;
+    }>;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.activityType) params.append('activityType', filters.activityType);
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      userId: string;
+      loginHistory: Array<{
+        id: string;
+        ipAddress?: string;
+        userAgent?: string;
+        success: boolean;
+        createdAt: string;
+      }>;
+      orders: Array<{
+        id: string;
+        status: string;
+        total: number;
+        createdAt: string;
+      }>;
+      transactions: Array<{
+        id: string;
+        type: string;
+        amount: number;
+        status: string;
+        createdAt: string;
+      }>;
+    } }>(`/api/admin/users/${userId}/activity?${params.toString()}`);
+    return response.data;
   },
 };
 
