@@ -2,6 +2,12 @@
 
 A modern, full-featured platform for selling game keys with an optimized interface, advanced visual effects, and high performance.
 
+## 🚀 Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/deffgod/gkeys-store)
+
+One-click deploy to Vercel. After deployment, configure environment variables in Vercel dashboard (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)).
+
 ## 📖 Documentation
 
 **👉 [Полная документация (DOCUMENTATION.md)](DOCUMENTATION.md)** - Полное руководство по установке, настройке, разработке и деплою проекта.
@@ -491,18 +497,19 @@ npm run prisma:seed
 
 ### Quick Start
 
-Для быстрого деплоя на Vercel (монолитный деплой frontend + backend):
+**One-click deploy**: Use the "Deploy with Vercel" button above, or follow the steps below:
 
-```bash
-git add . && git commit -m "Deploy" && git push
-vercel --prod
-```
+1. Click the "Deploy with Vercel" button above
+2. Import the GitHub repository
+3. Configure environment variables (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md))
+4. Deploy automatically
+
+For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 
 ### Detailed Guides
 
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное пошаговое руководство по деплою на Vercel
 - **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник всех переменных окружения
-- **[DEPLOY_NOW.md](DEPLOY_NOW.md)** - Краткая инструкция по деплою
 
 ### Vercel (Recommended - Monolith Deployment)
 
@@ -544,7 +551,6 @@ vercel --prod
 - **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Детальный справочник переменных окружения
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою на Vercel
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Руководство по тестированию
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Чеклист готовности к деплою
 
 ### Дополнительные материалы
 - `CONTRIBUTING.md` - Contributing guidelines
