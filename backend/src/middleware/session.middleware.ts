@@ -25,18 +25,30 @@ export const sessionMiddleware = async (
     // For guest users, get or create session ID
     let sessionId: string | undefined;
 
+    // Check if Prisma is available
+    if (!prisma) {
+      console.warn('⚠️  Prisma not initialized, skipping session creation');
+      return next();
+    }
+
     // Try to get session ID from cookie
     const cookieSessionId = req.cookies?.sessionId;
     if (cookieSessionId) {
       sessionId = cookieSessionId;
       
-      // Verify session exists and is not expired
-      const session = await prisma.session.findUnique({
-        where: { sessionId },
-      });
+      try {
+        // Verify session exists and is not expired
+        const session = await prisma.session.findUnique({
+          where: { sessionId },
+        });
 
-      if (session?.expiresAt && session.expiresAt > new Date()) {
-        req.sessionId = sessionId;
+        if (session?.expiresAt && session.expiresAt > new Date()) {
+          req.sessionId = sessionId;
+          return next();
+        }
+      } catch (dbError) {
+        // Database error - continue without session
+        console.warn('⚠️  Database error in session middleware, continuing without session:', dbError);
         return next();
       }
     }
@@ -45,17 +57,23 @@ export const sessionMiddleware = async (
     if (!sessionId) {
       sessionId = randomUUID();
       
-      // Create session in database (expires in 24 hours)
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
+      try {
+        // Create session in database (expires in 24 hours)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
 
-      await prisma.session.create({
-        data: {
-          sessionId,
-          data: {},
-          expiresAt,
-        },
-      });
+        await prisma.session.create({
+          data: {
+            sessionId,
+            data: {},
+            expiresAt,
+          },
+        });
+      } catch (dbError) {
+        // Database error - continue without session
+        console.warn('⚠️  Failed to create session in database, continuing without session:', dbError);
+        return next();
+      }
 
       // Set session cookie
       res.cookie('sessionId', sessionId, {

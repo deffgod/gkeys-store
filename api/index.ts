@@ -71,10 +71,21 @@ export default async function handler(
     
     // Vercel strips /api prefix, but Express routes expect /api prefix
     // Add /api back to the URL path
-    if (expressReq.url && !expressReq.url.startsWith('/api')) {
-      expressReq.url = '/api' + expressReq.url;
-      expressReq.originalUrl = '/api' + (expressReq.originalUrl || expressReq.url);
+    const originalUrl = expressReq.url || expressReq.path || '/';
+    const pathWithoutApi = originalUrl.startsWith('/') ? originalUrl : `/${originalUrl}`;
+    
+    if (!pathWithoutApi.startsWith('/api')) {
+      expressReq.url = '/api' + pathWithoutApi;
+      expressReq.originalUrl = '/api' + pathWithoutApi;
+      expressReq.path = '/api' + pathWithoutApi;
+    } else {
+      expressReq.url = pathWithoutApi;
+      expressReq.originalUrl = pathWithoutApi;
+      expressReq.path = pathWithoutApi;
     }
+    
+    // Ensure method is set
+    expressReq.method = req.method || 'GET';
     
     // Handle the request with Express app
     expressApp(expressReq, expressRes);

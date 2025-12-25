@@ -113,14 +113,42 @@ class ApiClient {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: 'An error occurred',
-      }));
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        // Try to parse JSON error response
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.message || error.error?.message || errorMessage;
+        } else {
+          // If not JSON, try to get text
+          const text = await response.text();
+          if (text) {
+            // Try to parse as JSON if it looks like JSON
+            try {
+              const parsed = JSON.parse(text);
+              errorMessage = parsed.message || parsed.error?.message || errorMessage;
+            } catch {
+              // Not JSON, use status text
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use default error message
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
 
-      throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    // Parse successful response
+    try {
+      return await response.json();
+    } catch (parseError) {
+      throw new Error('Invalid JSON response from server');
+    }
   }
 
   async get<T>(endpoint: string, config?: RequestConfig): Promise<T> {
