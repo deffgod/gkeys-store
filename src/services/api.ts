@@ -13,17 +13,30 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(baseURL: string) {
-    if (!baseURL) {
-      const errorMsg = 'VITE_API_BASE_URL is not set! Please configure it in Vercel Environment Variables.\n' +
-        'For production, set VITE_API_BASE_URL=https://your-project.vercel.app/api';
-      console.error('❌', errorMsg);
-      // В production выбрасываем ошибку, в dev используем fallback
-      if (!import.meta.env.DEV) {
+    // In production, try to auto-detect base URL if not set
+    let finalBaseURL = baseURL;
+    if (!finalBaseURL && !import.meta.env.DEV) {
+      // Auto-detect from current origin
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (origin) {
+        finalBaseURL = `${origin}/api`;
+        console.warn(`⚠️ VITE_API_BASE_URL not set, auto-detected: ${finalBaseURL}`);
+        console.warn('⚠️ Please set VITE_API_BASE_URL in Vercel Environment Variables for better performance');
+      } else {
+        const errorMsg = 'VITE_API_BASE_URL is not set! Please configure it in Vercel Environment Variables.\n' +
+          'For production, set VITE_API_BASE_URL=https://your-project.vercel.app/api';
+        console.error('❌', errorMsg);
         throw new Error('API base URL is required. Set VITE_API_BASE_URL environment variable.');
       }
+    }
+    
+    if (!finalBaseURL) {
+      finalBaseURL = 'http://localhost:3001/api';
       console.warn('⚠️ Using development fallback: http://localhost:3001/api');
     }
-    this.baseURL = this.normalizeBaseURL(baseURL || 'http://localhost:3001/api');
+    
+    this.baseURL = this.normalizeBaseURL(finalBaseURL);
+    console.log(`✅ API Client initialized with baseURL: ${this.baseURL}`);
     this.loadToken();
   }
 
