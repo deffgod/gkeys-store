@@ -113,7 +113,11 @@ class ApiClient {
   }
 
   private buildURL(endpoint: string, params?: Record<string, string>): string {
-    const url = new URL(endpoint, this.baseURL);
+    // Ensure endpoint starts with /
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    // Build full URL
+    const url = new URL(normalizedEndpoint, this.baseURL);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -121,7 +125,12 @@ class ApiClient {
       });
     }
 
-    return url.toString();
+    const finalURL = url.toString();
+    // Log in development only to avoid console spam in production
+    if (import.meta.env.DEV) {
+      console.log(`🔗 API Request: ${finalURL}`);
+    }
+    return finalURL;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
