@@ -13,17 +13,30 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(baseURL: string) {
-    if (!baseURL) {
-      const errorMsg = 'VITE_API_BASE_URL is not set! Please configure it in Vercel Environment Variables.\n' +
-        'For production, set VITE_API_BASE_URL=https://your-project.vercel.app/api';
-      console.error('❌', errorMsg);
-      // В production выбрасываем ошибку, в dev используем fallback
-      if (!import.meta.env.DEV) {
+    // In production, try to auto-detect base URL if not set
+    let finalBaseURL = baseURL;
+    if (!finalBaseURL && !import.meta.env.DEV) {
+      // Auto-detect from current origin
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (origin) {
+        finalBaseURL = `${origin}/api`;
+        console.warn(`⚠️ VITE_API_BASE_URL not set, auto-detected: ${finalBaseURL}`);
+        console.warn('⚠️ Please set VITE_API_BASE_URL in Vercel Environment Variables for better performance');
+      } else {
+        const errorMsg = 'VITE_API_BASE_URL is not set! Please configure it in Vercel Environment Variables.\n' +
+          'For production, set VITE_API_BASE_URL=https://your-project.vercel.app/api';
+        console.error('❌', errorMsg);
         throw new Error('API base URL is required. Set VITE_API_BASE_URL environment variable.');
       }
+    }
+    
+    if (!finalBaseURL) {
+      finalBaseURL = 'http://localhost:3001/api';
       console.warn('⚠️ Using development fallback: http://localhost:3001/api');
     }
-    this.baseURL = this.normalizeBaseURL(baseURL || 'http://localhost:3001/api');
+    
+    this.baseURL = this.normalizeBaseURL(finalBaseURL);
+    console.log(`✅ API Client initialized with baseURL: ${this.baseURL}`);
     this.loadToken();
   }
 
@@ -100,7 +113,11 @@ class ApiClient {
   }
 
   private buildURL(endpoint: string, params?: Record<string, string>): string {
-    const url = new URL(endpoint, this.baseURL);
+    // Ensure endpoint starts with /
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    // Build full URL
+    const url = new URL(normalizedEndpoint, this.baseURL);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -108,19 +125,52 @@ class ApiClient {
       });
     }
 
-    return url.toString();
+    const finalURL = url.toString();
+    // Log in development only to avoid console spam in production
+    if (import.meta.env.DEV) {
+      console.log(`🔗 API Request: ${finalURL}`);
+    }
+    return finalURL;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: 'An error occurred',
-      }));
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        // Try to parse JSON error response
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.message || error.error?.message || errorMessage;
+        } else {
+          // If not JSON, try to get text
+          const text = await response.text();
+          if (text) {
+            // Try to parse as JSON if it looks like JSON
+            try {
+              const parsed = JSON.parse(text);
+              errorMessage = parsed.message || parsed.error?.message || errorMessage;
+            } catch {
+              // Not JSON, use status text
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use default error message
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
 
-      throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    // Parse successful response
+    try {
+      return await response.json();
+    } catch (parseError) {
+      throw new Error('Invalid JSON response from server');
+    }
   }
 
   async get<T>(endpoint: string, config?: RequestConfig): Promise<T> {

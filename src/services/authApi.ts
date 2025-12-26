@@ -40,12 +40,17 @@ export interface ResetPasswordRequest {
 export const authApi = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials);
+      
+      // Check if response has success wrapper
+      const authData = response.success ? response.data : response as unknown as AuthResponse;
       
       // Set token in API client
-      apiClient.setToken(response.token);
+      if (authData.token) {
+        apiClient.setToken(authData.token);
+      }
       
-      return response;
+      return authData;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -54,12 +59,17 @@ export const authApi = {
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/register', data);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/register', data);
+      
+      // Check if response has success wrapper
+      const authData = response.success ? response.data : response as unknown as AuthResponse;
       
       // Set token in API client
-      apiClient.setToken(response.token);
+      if (authData.token) {
+        apiClient.setToken(authData.token);
+      }
       
-      return response;
+      return authData;
     } catch (error) {
       console.error('Register error:', error);
       throw error;

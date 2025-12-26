@@ -109,7 +109,10 @@ ls -la backend/dist/
 - **Output Directory**: `dist`
 - **Install Command**: `npm install && cd backend && npm install`
 
-**Важно**: Используйте именно `npm run vercel-build`, который собирает и frontend, и backend.
+**Важно**: 
+- Используйте именно `npm run vercel-build`, который собирает и frontend, и backend
+- Команда автоматически применяет Prisma миграции к базе данных во время сборки
+- Убедитесь, что `DATABASE_URL` и `DIRECT_URL` настроены в Environment Variables перед первым деплоем
 
 #### Шаг 3: Environment Variables
 
@@ -268,19 +271,19 @@ vercel --prod
 
 ## ✅ После деплоя
 
-### 1. Запуск миграций базы данных
+### 1. Миграции базы данных
 
-После успешного деплоя запустите миграции на production базе:
+**Миграции применяются автоматически** во время процесса сборки на Vercel. Команда `vercel-build` включает `prisma migrate deploy`, которая применяет все непримененные миграции к production базе данных.
+
+**Важно**: 
+- Убедитесь, что `DATABASE_URL` и `DIRECT_URL` правильно настроены в Vercel Environment Variables
+- Миграции применяются только для новых миграций (безопасно для production)
+- Если нужно применить миграции вручную (например, при проблемах), используйте:
 
 ```bash
-# Подключиться к production базе
 cd backend
-
-# Запустить миграции
 DATABASE_URL="your-production-database-url" npm run prisma:migrate:deploy
 ```
-
-**Важно**: Используйте production `DATABASE_URL`, не локальный!
 
 ### 2. Проверка деплоя
 
@@ -500,8 +503,13 @@ flowchart TD
 ### Build Process
 
 1. **Frontend Build**: `npm run build` → `dist/`
-2. **Backend Build**: `cd backend && npm run build` → `backend/dist/`
+2. **Backend Build**: 
+   - `prisma generate` → Генерация Prisma Client
+   - `prisma migrate deploy` → **Автоматическое применение миграций к production БД**
+   - `tsc` → Компиляция TypeScript → `backend/dist/`
 3. **Serverless Wrapper**: TypeScript компилируется Vercel автоматически
+
+**Важно**: Миграции применяются автоматически во время сборки. Убедитесь, что `DATABASE_URL` настроен правильно.
 
 ---
 
@@ -524,7 +532,7 @@ flowchart TD
 - [ ] Логин работает: `POST /api/auth/login`
 - [ ] Игры загружаются: `GET /api/games`
 - [ ] Нет CORS ошибок в консоли браузера
-- [ ] Миграции базы данных применены
+- [ ] Миграции базы данных применены автоматически (проверьте логи сборки в Vercel)
 - [ ] Environment variables установлены правильно
 - [ ] G2A интеграция работает (проверьте `/api/health` - должно быть `g2a: ok`)
 
