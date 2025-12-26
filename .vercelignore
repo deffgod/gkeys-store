@@ -1,9 +1,13 @@
+# Vercel ignore file
 node_modules
-.git
-.env
-.env.local
 backend/node_modules
-backend/.env
-backend/prisma/dev.db
+backend/dist
+dist
+.env*
 *.log
-
+*.bak
+.cache
+coverage
+.nyc_output
+specs
+.cursor

@@ -1,0 +1,698 @@
+# Common Schemas
+
+Error:
+  type: object
+  required:
+    - success
+    - error
+  properties:
+    success:
+      type: boolean
+      example: false
+    error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+Success:
+  type: object
+  required:
+    - success
+    - data
+  properties:
+    success:
+      type: boolean
+      example: true
+    data:
+      type: object
+
+PaginatedResponse:
+  type: object
+  required:
+    - data
+    - total
+    - page
+    - pageSize
+    - totalPages
+  properties:
+    data:
+      type: array
+      items: {}
+    total:
+      type: integer
+      example: 100
+    page:
+      type: integer
+      example: 1
+    pageSize:
+      type: integer
+      example: 20
+    totalPages:
+      type: integer
+      example: 5
+
+# Auth Schemas
+
+RegisterRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      example: user@example.com
+    password:
+      type: string
+      format: password
+      minLength: 8
+      example: Password123
+      description: Минимум 8 символов, должна содержать заглавную букву, строчную букву и цифру
+    nickname:
+      type: string
+      minLength: 2
+      maxLength: 50
+      example: UserNickname
+    firstName:
+      type: string
+      maxLength: 100
+      example: John
+    lastName:
+      type: string
+      maxLength: 100
+      example: Doe
+
+LoginRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      example: user@example.com
+    password:
+      type: string
+      format: password
+      example: Password123
+
+RefreshTokenRequest:
+  type: object
+  required:
+    - refreshToken
+  properties:
+    refreshToken:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+User:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+    email:
+      type: string
+      format: email
+      example: user@example.com
+    nickname:
+      type: string
+      example: UserNickname
+    firstName:
+      type: string
+      nullable: true
+      example: John
+    lastName:
+      type: string
+      nullable: true
+      example: Doe
+    avatar:
+      type: string
+      format: uri
+      nullable: true
+      example: https://example.com/avatar.jpg
+    role:
+      type: string
+      enum: [USER, ADMIN]
+      example: USER
+    balance:
+      type: number
+      format: float
+      example: 100.50
+    emailVerified:
+      type: boolean
+      example: false
+    createdAt:
+      type: string
+      format: date-time
+      example: 2024-01-01T00:00:00Z
+
+AuthResponse:
+  type: object
+  required:
+    - user
+    - token
+    - refreshToken
+    - expiresIn
+  properties:
+    user:
+      $ref: '#/User'
+    token:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    refreshToken:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    expiresIn:
+      type: integer
+      example: 604800
+      description: Время жизни токена в секундах
+
+RefreshTokenResponse:
+  type: object
+  required:
+    - token
+    - refreshToken
+    - expiresIn
+  properties:
+    token:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    refreshToken:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    expiresIn:
+      type: integer
+      example: 604800
+
+# Game Schemas
+
+Game:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+    title:
+      type: string
+      example: Cyberpunk 2077
+    slug:
+      type: string
+      example: cyberpunk-2077
+    description:
+      type: string
+      example: An open-world action-adventure story set in Night City
+    shortDescription:
+      type: string
+      nullable: true
+      example: Open-world RPG
+    price:
+      type: number
+      format: float
+      example: 59.99
+    originalPrice:
+      type: number
+      format: float
+      nullable: true
+      example: 79.99
+    discount:
+      type: number
+      format: float
+      nullable: true
+      example: 25.0
+    currency:
+      type: string
+      example: EUR
+    image:
+      type: string
+      format: uri
+      example: https://example.com/game.jpg
+    images:
+      type: array
+      items:
+        type: string
+        format: uri
+      example:
+        - https://example.com/game1.jpg
+        - https://example.com/game2.jpg
+    inStock:
+      type: boolean
+      example: true
+    releaseDate:
+      type: string
+      format: date
+      example: 2020-12-10
+    metacriticScore:
+      type: integer
+      nullable: true
+      minimum: 0
+      maximum: 100
+      example: 86
+    userRating:
+      type: number
+      format: float
+      nullable: true
+      minimum: 0
+      maximum: 5
+      example: 4.5
+    ageRating:
+      type: string
+      nullable: true
+      example: M
+    multiplayer:
+      type: boolean
+      example: false
+    activationService:
+      type: string
+      nullable: true
+      example: Steam
+    region:
+      type: string
+      nullable: true
+      example: Global
+    publisher:
+      type: string
+      nullable: true
+      example: CD Projekt
+    isBestSeller:
+      type: boolean
+      example: true
+    isNew:
+      type: boolean
+      example: false
+    isPreorder:
+      type: boolean
+      example: false
+    platforms:
+      type: array
+      items:
+        type: string
+      example:
+        - PC
+        - PlayStation 5
+        - Xbox Series X
+    genres:
+      type: array
+      items:
+        type: string
+      example:
+        - Action
+        - RPG
+    tags:
+      type: array
+      items:
+        type: string
+      example:
+        - Open World
+        - Cyberpunk
+    categories:
+      type: array
+      items:
+        type: string
+      example:
+        - New Releases
+        - Best Sellers
+
+GameFilters:
+  type: object
+  properties:
+    search:
+      type: string
+      example: cyberpunk
+    priceRange:
+      type: object
+      properties:
+        min:
+          type: number
+          format: float
+          example: 10.0
+        max:
+          type: number
+          format: float
+          example: 100.0
+    pricePreset:
+      type: string
+      enum: [under-10, '10-25', '25-50', '50-100', over-100]
+      example: '25-50'
+    inStockOnly:
+      type: boolean
+      example: true
+    platforms:
+      type: array
+      items:
+        type: string
+      example:
+        - PC
+        - PlayStation 5
+    genres:
+      type: array
+      items:
+        type: string
+      example:
+        - Action
+        - RPG
+    sort:
+      type: string
+      enum: [popular, newest, price-asc, price-desc]
+      example: popular
+    page:
+      type: integer
+      minimum: 1
+      default: 1
+      example: 1
+    pageSize:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 20
+      example: 20
+
+SearchSuggestion:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      example: Cyberpunk 2077
+    image:
+      type: string
+      format: uri
+    slug:
+      type: string
+      example: cyberpunk-2077
+    relevanceScore:
+      type: number
+      format: float
+      example: 0.95
+
+# Order Schemas
+
+CreateOrderRequest:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required:
+          - gameId
+          - quantity
+        properties:
+          gameId:
+            type: string
+            format: uuid
+            example: 123e4567-e89b-12d3-a456-426614174000
+          quantity:
+            type: integer
+            minimum: 1
+            example: 1
+    promoCode:
+      type: string
+      nullable: true
+      example: SAVE10
+
+Order:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+    userId:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [pending, processing, completed, cancelled, refunded]
+      example: completed
+    subtotal:
+      type: number
+      format: float
+      example: 59.99
+    discount:
+      type: number
+      format: float
+      example: 0.0
+    total:
+      type: number
+      format: float
+      example: 59.99
+    paymentMethod:
+      type: string
+      nullable: true
+      example: credit_card
+    paymentStatus:
+      type: string
+      nullable: true
+      enum: [pending, paid, failed, refunded]
+      example: paid
+    promoCode:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+      example: 2024-01-01T00:00:00Z
+    completedAt:
+      type: string
+      format: date-time
+      nullable: true
+      example: 2024-01-01T00:05:00Z
+    items:
+      type: array
+      items:
+        $ref: '#/OrderItem'
+
+OrderItem:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    gameId:
+      type: string
+      format: uuid
+    game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        image:
+          type: string
+          format: uri
+        slug:
+          type: string
+    quantity:
+      type: integer
+      example: 1
+    price:
+      type: number
+      format: float
+      example: 59.99
+
+# Cart Schemas
+
+CartItem:
+  type: object
+  properties:
+    gameId:
+      type: string
+      format: uuid
+    game:
+      $ref: '#/Game'
+    quantity:
+      type: integer
+      minimum: 1
+      example: 1
+    addedAt:
+      type: string
+      format: date-time
+
+Cart:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CartItem'
+    total:
+      type: number
+      format: float
+      example: 59.99
+    itemCount:
+      type: integer
+      example: 1
+
+AddToCartRequest:
+  type: object
+  required:
+    - gameId
+    - quantity
+  properties:
+    gameId:
+      type: string
+      format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+    quantity:
+      type: integer
+      minimum: 1
+      default: 1
+      example: 1
+
+UpdateCartItemRequest:
+  type: object
+  required:
+    - quantity
+  properties:
+    quantity:
+      type: integer
+      minimum: 1
+      example: 2
+
+# Wishlist Schemas
+
+WishlistItem:
+  type: object
+  properties:
+    gameId:
+      type: string
+      format: uuid
+    game:
+      $ref: '#/Game'
+    addedAt:
+      type: string
+      format: date-time
+
+Wishlist:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/WishlistItem'
+    total:
+      type: integer
+      example: 5
+
+AddToWishlistRequest:
+  type: object
+  required:
+    - gameId
+  properties:
+    gameId:
+      type: string
+      format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+
+# User Profile Schemas
+
+UpdateProfileRequest:
+  type: object
+  properties:
+    nickname:
+      type: string
+      minLength: 2
+      maxLength: 50
+    firstName:
+      type: string
+      maxLength: 100
+    lastName:
+      type: string
+      maxLength: 100
+    avatar:
+      type: string
+      format: uri
+
+UserProfile:
+  type: object
+  allOf:
+    - $ref: '#/User'
+    - type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            gamesPurchased:
+              type: integer
+              example: 5
+            totalSaved:
+              type: number
+              format: float
+              example: 25.50
+            daysSinceRegistration:
+              type: integer
+              example: 30
+            emptyFieldsCount:
+              type: integer
+              example: 2
+
+ChangePasswordRequest:
+  type: object
+  required:
+    - currentPassword
+    - newPassword
+  properties:
+    currentPassword:
+      type: string
+      format: password
+    newPassword:
+      type: string
+      format: password
+      minLength: 8
+      description: Минимум 8 символов, должна содержать заглавную букву, строчную букву и цифру
+
+Transaction:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    type:
+      type: string
+      enum: [deposit, withdrawal, purchase, refund]
+      example: purchase
+    amount:
+      type: number
+      format: float
+      example: 59.99
+    currency:
+      type: string
+      example: EUR
+    status:
+      type: string
+      enum: [pending, completed, failed, cancelled]
+      example: completed
+    description:
+      type: string
+      nullable: true
+      example: Game purchase
+    transactionHash:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    orderId:
+      type: string
+      format: uuid
+      nullable: true
+

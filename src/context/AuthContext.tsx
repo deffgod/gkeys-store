@@ -6,6 +6,7 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -114,8 +115,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const user: User = {
         id: response.user.id,
         email: response.user.email,
-        name: response.user.name,
+        name: response.user.name || response.user.nickname || response.user.email,
         avatar: response.user.avatar,
+        role: response.user.role,
       };
 
       const expiryTime = new Date();
@@ -149,8 +151,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const user: User = {
         id: response.user.id,
         email: response.user.email,
-        name: response.user.name,
+        name: response.user.name || response.user.nickname || response.user.email,
         avatar: response.user.avatar,
+        role: response.user.role,
       };
 
       const expiryTime = new Date();

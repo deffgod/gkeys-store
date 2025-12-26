@@ -81,6 +81,21 @@ export interface UserDetailsResponse {
   }[];
 }
 
+export interface UserUpdateInput {
+  nickname?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'USER' | 'ADMIN';
+  balance?: number;
+}
+
+export interface OrderUpdateInput {
+  status?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  paymentStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  paymentMethod?: string;
+  promoCode?: string;
+}
+
 export interface GameCreateInput {
   title: string;
   slug: string;
@@ -91,6 +106,7 @@ export interface GameCreateInput {
   platform: string;
   genre: string;
   tags: string[];
+  categories?: string[];
   publisher?: string;
   developer?: string;
   releaseDate?: string;

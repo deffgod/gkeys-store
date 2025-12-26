@@ -63,8 +63,11 @@ interface GameFormData {
   originalPrice: string;
   imageUrl: string;
   platform: string;
+  platforms: string[];
   genre: string;
-  tags: string;
+  genres: string[];
+  tags: string[];
+  categories: string[];
   publisher: string;
   developer: string;
   releaseDate: string;
@@ -80,8 +83,11 @@ const emptyForm: GameFormData = {
   originalPrice: '',
   imageUrl: '',
   platform: 'PC',
+  platforms: [],
   genre: '',
-  tags: '',
+  genres: [],
+  tags: [],
+  categories: [],
   publisher: '',
   developer: '',
   releaseDate: '',
@@ -126,24 +132,53 @@ const GamesPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleEdit = (game: GameItem) => {
+  const handleEdit = async (game: GameItem) => {
     setEditingGame(game);
-    setFormData({
-      title: game.title,
-      slug: game.slug,
-      description: '',
-      price: game.price.toString(),
-      originalPrice: game.originalPrice?.toString() || '',
-      imageUrl: game.imageUrl,
-      platform: game.platform,
-      genre: game.genre,
-      tags: '',
-      publisher: '',
-      developer: '',
-      releaseDate: '',
-      isPreorder: game.isPreorder,
-      inStock: game.inStock,
-    });
+    try {
+      // Load full game data including description, relationships, etc.
+      const fullGame = await adminApi.getGameById(game.id);
+      setFormData({
+        title: fullGame.title,
+        slug: fullGame.slug,
+        description: fullGame.description || '',
+        price: fullGame.price.toString(),
+        originalPrice: fullGame.originalPrice?.toString() || '',
+        imageUrl: fullGame.imageUrl,
+        platform: fullGame.platform || fullGame.platforms[0] || 'PC',
+        platforms: fullGame.platforms || [],
+        genre: fullGame.genre || fullGame.genres[0] || '',
+        genres: fullGame.genres || [],
+        tags: fullGame.tags || [],
+        categories: fullGame.categories || [],
+        publisher: fullGame.publisher || '',
+        developer: fullGame.developer || '',
+        releaseDate: fullGame.releaseDate || '',
+        isPreorder: fullGame.isPreorder,
+        inStock: fullGame.inStock,
+      });
+    } catch (err) {
+      console.error('Failed to load game details:', err);
+      // Fallback to basic data
+      setFormData({
+        title: game.title,
+        slug: game.slug,
+        description: '',
+        price: game.price.toString(),
+        originalPrice: game.originalPrice?.toString() || '',
+        imageUrl: game.imageUrl,
+        platform: game.platform,
+        platforms: [],
+        genre: game.genre,
+        genres: [],
+        tags: [],
+        categories: [],
+        publisher: '',
+        developer: '',
+        releaseDate: '',
+        isPreorder: game.isPreorder,
+        inStock: game.inStock,
+      });
+    }
     setShowModal(true);
   };
 
@@ -169,9 +204,10 @@ const GamesPage: React.FC = () => {
         price: parseFloat(formData.price) || 0,
         originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
         imageUrl: formData.imageUrl,
-        platform: formData.platform,
-        genre: formData.genre,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+        platform: formData.platform || formData.platforms[0] || 'PC',
+        genre: formData.genre || formData.genres[0] || '',
+        tags: Array.isArray(formData.tags) ? formData.tags : formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+        categories: formData.categories || [],
         publisher: formData.publisher || undefined,
         developer: formData.developer || undefined,
         releaseDate: formData.releaseDate || undefined,
@@ -788,12 +824,36 @@ const GamesPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.tags}
-                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                        value={Array.isArray(formData.tags) ? formData.tags.join(', ') : formData.tags}
+                        onChange={(e) => {
+                          const tagsArray = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                          setFormData({ ...formData, tags: tagsArray });
+                        }}
                         placeholder="action, adventure, rpg"
                         style={inputStyle}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      color: theme.colors.textSecondary, 
+                      fontSize: '13px',
+                      marginBottom: '8px',
+                    }}>
+                      Categories (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={Array.isArray(formData.categories) ? formData.categories.join(', ') : ''}
+                      onChange={(e) => {
+                        const categoriesArray = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
+                        setFormData({ ...formData, categories: categoriesArray });
+                      }}
+                      placeholder="new releases, best sellers, featured"
+                      style={inputStyle}
+                    />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

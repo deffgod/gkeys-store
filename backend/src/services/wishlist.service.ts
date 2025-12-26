@@ -1,5 +1,9 @@
 import prisma from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
+import redisClient from '../config/redis.js';
+
+// Cache TTL for wishlist (30 minutes)
+const WISHLIST_CACHE_TTL = 30 * 60;
 
 export interface WishlistItem {
   gameId: string;
@@ -19,6 +23,29 @@ export interface WishlistResponse {
 }
 
 /**
+ * Get cache key for wishlist
+ */
+const getWishlistCacheKey = (userId?: string, sessionId?: string): string => {
+  const identifier = userId || sessionId!;
+  return `wishlist:${identifier}`;
+};
+
+/**
+ * Invalidate wishlist cache
+ */
+const invalidateWishlistCache = async (userId?: string, sessionId?: string): Promise<void> => {
+  try {
+    if (redisClient.isOpen) {
+      const cacheKey = getWishlistCacheKey(userId, sessionId);
+      await redisClient.del(cacheKey);
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability
+    console.warn('[Wishlist Cache] Failed to invalidate cache:', err);
+  }
+};
+
+/**
  * Get wishlist items for user (authenticated) or session (guest)
  */
 export const getWishlist = async (
@@ -29,6 +56,22 @@ export const getWishlist = async (
     throw new AppError('User ID or session ID required', 400);
   }
 
+  const cacheKey = getWishlistCacheKey(userId, sessionId);
+
+  // Try to get from cache
+  try {
+    if (redisClient.isOpen) {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability - continue to database
+    console.warn('[Wishlist Cache] Failed to read from cache:', err);
+  }
+
+  // Fetch from database
   const wishlistItems = await prisma.wishlist.findMany({
     where: userId ? { userId } : { userId: sessionId },
     include: {
@@ -48,7 +91,7 @@ export const getWishlist = async (
     },
   });
 
-  return {
+  const result: WishlistResponse = {
     items: wishlistItems.map((item) => ({
       gameId: item.gameId,
       game: {
@@ -62,6 +105,18 @@ export const getWishlist = async (
       addedAt: item.addedAt.toISOString(),
     })),
   };
+
+  // Cache the result
+  try {
+    if (redisClient.isOpen) {
+      await redisClient.setEx(cacheKey, WISHLIST_CACHE_TTL, JSON.stringify(result));
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability
+    console.warn('[Wishlist Cache] Failed to write to cache:', err);
+  }
+
+  return result;
 };
 
 /**
@@ -109,6 +164,9 @@ export const addToWishlist = async (
       gameId,
     },
   });
+
+  // Invalidate cache after modification
+  await invalidateWishlistCache(userId, sessionId);
 };
 
 /**
@@ -133,6 +191,9 @@ export const removeFromWishlist = async (
       },
     },
   });
+
+  // Invalidate cache after modification
+  await invalidateWishlistCache(userId, sessionId);
 };
 
 /**
@@ -239,16 +300,9 @@ export const migrateSessionWishlistToUser = async (
     }
   });
 
-  // Invalidate cache after migration (non-blocking)
-  try {
-    const { invalidateCache } = await import('./cache.service.js');
-    await invalidateCache(`session:${sessionId}:wishlist`);
-    await invalidateCache(`user:${userId}:wishlist`);
-    console.log(`[Wishlist Migration] Cache invalidated for session ${sessionId} and user ${userId}`);
-  } catch (cacheError) {
-    // Non-blocking - log but don't fail migration
-    console.warn(`[Wishlist Migration] Failed to invalidate cache:`, cacheError);
-  }
+  // Invalidate both session and user wishlist caches
+  await invalidateWishlistCache(undefined, sessionId);
+  await invalidateWishlistCache(userId, undefined);
 };
 
 /**

@@ -4,18 +4,25 @@ import {
   getDashboardStats,
   searchUsers,
   getUserDetails,
+  updateUser,
+  deleteUser,
   getTransactions,
   generateFakeDataForUser,
   exportUserReport,
   getAllGames,
+  getGameById,
   createGame,
   updateGame,
   deleteGame,
   getAllBlogPosts,
+  getBlogPostById,
   createBlogPost,
   updateBlogPost,
   deleteBlogPost,
   getAllOrders,
+  getOrderDetails,
+  updateOrder,
+  cancelOrder,
   updateOrderStatus,
   getPaymentMethods,
   getPaymentTransactions,
@@ -34,6 +41,22 @@ import {
   updateUserBalanceForAdmin,
   updateUserRoleForAdmin,
   getUserActivityForAdmin,
+  getAllCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getAllGenres,
+  createGenre,
+  updateGenre,
+  deleteGenre,
+  getAllPlatforms,
+  createPlatform,
+  updatePlatform,
+  deletePlatform,
+  getAllTags,
+  createTag,
+  updateTag,
+  deleteTag,
 } from '../services/admin.service.js';
 import { 
   UserSearchFilters, 
@@ -122,6 +145,42 @@ export const getUserDetailsController = async (
     res.status(200).json({
       success: true,
       data: userDetails,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const result = await updateUser(id, req.body);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUserController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deleteUser(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully',
     });
   } catch (error) {
     next(error);
@@ -389,13 +448,31 @@ export const getGamesController = async (
   }
 };
 
+export const getGameByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const game = await getGameById(id);
+
+    res.status(200).json({
+      success: true,
+      data: game,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createGameController = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const result = await createGame(req.body);
+    const result = await createGame(req.body, req.user?.id);
 
     res.status(201).json({
       success: true,
@@ -413,7 +490,7 @@ export const updateGameController = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await updateGame(id, req.body);
+    const result = await updateGame(id, req.body, req.user?.id);
 
     res.status(200).json({
       success: true,
@@ -431,7 +508,7 @@ export const deleteGameController = async (
 ) => {
   try {
     const { id } = req.params;
-    await deleteGame(id);
+    await deleteGame(id, req.user?.id);
 
     res.status(200).json({
       success: true,
@@ -457,6 +534,24 @@ export const getBlogPostsController = async (
     res.status(200).json({
       success: true,
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBlogPostByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const post = await getBlogPostById(id);
+
+    res.status(200).json({
+      success: true,
+      data: post,
     });
   } catch (error) {
     next(error);
@@ -532,6 +627,61 @@ export const getOrdersController = async (
     res.status(200).json({
       success: true,
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderDetailsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const orderDetails = await getOrderDetails(id);
+
+    res.status(200).json({
+      success: true,
+      data: orderDetails,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOrderController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const result = await updateOrder(id, req.body);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelOrderController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    await cancelOrder(id, reason);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order cancelled successfully',
     });
   } catch (error) {
     next(error);
@@ -1111,6 +1261,274 @@ export const getUserActivityController = async (
     res.status(200).json({
       success: true,
       data: activity,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Category Management Controllers
+export const getAllCategoriesController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const categories = await getAllCategories();
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createCategoryController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const category = await createCategory(req.body);
+    res.status(201).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCategoryController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const category = await updateCategory(id, req.body);
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteCategoryController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deleteCategory(id);
+    res.status(200).json({
+      success: true,
+      message: 'Category deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Genre Management Controllers
+export const getAllGenresController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const genres = await getAllGenres();
+    res.status(200).json({
+      success: true,
+      data: genres,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createGenreController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const genre = await createGenre(req.body);
+    res.status(201).json({
+      success: true,
+      data: genre,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGenreController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const genre = await updateGenre(id, req.body);
+    res.status(200).json({
+      success: true,
+      data: genre,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteGenreController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deleteGenre(id);
+    res.status(200).json({
+      success: true,
+      message: 'Genre deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Platform Management Controllers
+export const getAllPlatformsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const platforms = await getAllPlatforms();
+    res.status(200).json({
+      success: true,
+      data: platforms,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createPlatformController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const platform = await createPlatform(req.body);
+    res.status(201).json({
+      success: true,
+      data: platform,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePlatformController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const platform = await updatePlatform(id, req.body);
+    res.status(200).json({
+      success: true,
+      data: platform,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePlatformController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deletePlatform(id);
+    res.status(200).json({
+      success: true,
+      message: 'Platform deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Tag Management Controllers
+export const getAllTagsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const tags = await getAllTags();
+    res.status(200).json({
+      success: true,
+      data: tags,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createTagController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const tag = await createTag(req.body);
+    res.status(201).json({
+      success: true,
+      data: tag,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateTagController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const tag = await updateTag(id, req.body);
+    res.status(200).json({
+      success: true,
+      data: tag,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTagController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    await deleteTag(id);
+    res.status(200).json({
+      success: true,
+      message: 'Tag deleted',
     });
   } catch (error) {
     next(error);

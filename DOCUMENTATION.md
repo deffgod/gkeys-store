@@ -14,7 +14,8 @@
 6. [Деплой](#деплой)
 7. [G2A Интеграция](#g2a-интеграция)
 8. [Архитектура](#архитектура)
-9. [Troubleshooting](#troubleshooting)
+9. [API Документация](#api-документация)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -1906,6 +1907,150 @@ const profile = await apiClient.get('/user/profile'); // Auto-adds token
 - Game → CartItems (один ко многим)
 - Game → Wishlist (один ко многим)
 - Game → Categories, Genres, Platforms, Tags (многие ко многим)
+
+---
+
+## API Документация
+
+### OpenAPI Спецификация
+
+Проект включает полную OpenAPI 3.0 спецификацию для всех API endpoints.
+
+**Расположение**: `docs/api/openapi.yaml`
+
+#### Просмотр документации
+
+**Вариант 1: Swagger UI (рекомендуется)**
+
+```bash
+# Установите Swagger UI
+npm install -g swagger-ui-serve
+
+# Запустите локальный сервер
+swagger-ui-serve docs/api/openapi.yaml
+```
+
+Откройте в браузере: `http://localhost:3000`
+
+**Вариант 2: Online редактор**
+
+1. Откройте [Swagger Editor](https://editor.swagger.io/)
+2. Скопируйте содержимое `docs/api/openapi.yaml`
+3. Вставьте в редактор
+
+**Вариант 3: Redoc**
+
+```bash
+# Установите Redoc CLI
+npm install -g redoc-cli
+
+# Сгенерируйте HTML
+redoc-cli bundle docs/api/openapi.yaml -o docs/api/index.html
+```
+
+Откройте `docs/api/index.html` в браузере
+
+#### Структура документации
+
+```
+docs/api/
+├── openapi.yaml              # Основная OpenAPI спецификация
+├── components/               # Переиспользуемые компоненты
+│   ├── schemas.yaml         # Модели данных
+│   ├── parameters.yaml      # Параметры запросов
+│   ├── responses.yaml       # Определения ответов
+│   └── requestBodies.yaml   # Тела запросов
+├── errors.md                # Коды ошибок
+├── changelog.md             # История изменений API
+└── README.md                # Руководство по использованию
+```
+
+#### Основные разделы API
+
+- **Аутентификация** (`/auth`) - Регистрация, вход, обновление токена
+- **Игры** (`/games`) - Каталог, поиск, фильтрация
+- **Заказы** (`/orders`) - Создание и управление заказами
+- **Корзина** (`/cart`) - Управление корзиной покупок
+- **Избранное** (`/wishlist`) - Управление избранным
+- **Профиль** (`/user`) - Профиль пользователя и настройки
+- **Админ-панель** (`/admin`) - Административные функции
+- **G2A** (`/g2a`) - Интеграция с G2A API
+
+#### Коды ошибок
+
+Полный список кодов ошибок доступен в [docs/api/errors.md](docs/api/errors.md).
+
+Основные категории:
+- **AUTH** - Ошибки аутентификации (401, 403)
+- **VAL** - Ошибки валидации (400)
+- **NOTFOUND** - Ресурс не найден (404)
+- **CONFLICT** - Конфликт (409)
+- **BIZ** - Бизнес-логика (400)
+- **RATE** - Rate limiting (429)
+- **SERVER** - Ошибки сервера (500)
+
+#### Примеры использования
+
+**Регистрация пользователя:**
+```bash
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "Password123",
+    "nickname": "UserNickname"
+  }'
+```
+
+**Получение списка игр:**
+```bash
+curl "http://localhost:3001/api/games?page=1&pageSize=20&sort=popular"
+```
+
+**Создание заказа (требует авторизации):**
+```bash
+curl -X POST http://localhost:3001/api/orders \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "gameId": "123e4567-e89b-12d3-a456-426614174000",
+        "quantity": 1
+      }
+    ]
+  }'
+```
+
+#### Генерация клиентов
+
+Можно использовать OpenAPI спецификацию для генерации клиентов на различных языках:
+
+**TypeScript:**
+```bash
+openapi-generator-cli generate \
+  -i docs/api/openapi.yaml \
+  -g typescript-axios \
+  -o src/api-client
+```
+
+**JavaScript:**
+```bash
+openapi-generator-cli generate \
+  -i docs/api/openapi.yaml \
+  -g javascript \
+  -o src/api-client
+```
+
+**Python:**
+```bash
+openapi-generator-cli generate \
+  -i docs/api/openapi.yaml \
+  -g python \
+  -o src/api-client
+```
+
+Подробнее см. [docs/api/README.md](docs/api/README.md)
 
 ---
 

@@ -1,6 +1,10 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV ? 'http://localhost:3001/api' : '');
+// Vite loads .env.local with higher priority than .env
+// Ensure we handle empty strings correctly
+const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = (envApiUrl && envApiUrl.trim() !== '') 
+  ? envApiUrl.trim()
+  : (import.meta.env.DEV ? 'http://localhost:3001/api' : '');
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -15,6 +19,14 @@ class ApiClient {
   constructor(baseURL: string) {
     // In production, try to auto-detect base URL if not set
     let finalBaseURL = baseURL;
+    // Debug: log the baseURL value
+    if (import.meta.env.DEV) {
+      console.log('🔍 API Client Debug:', {
+        'import.meta.env.VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
+        'baseURL parameter': baseURL,
+        'finalBaseURL': finalBaseURL,
+      });
+    }
     if (!finalBaseURL && !import.meta.env.DEV) {
       // Auto-detect from current origin
       const origin = typeof window !== 'undefined' ? window.location.origin : '';

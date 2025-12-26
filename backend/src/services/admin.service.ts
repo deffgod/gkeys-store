@@ -13,6 +13,53 @@ import {
 import { AppError } from '../middleware/errorHandler.js';
 import { Prisma } from '@prisma/client';
 
+/**
+ * Structured logger for Admin operations with error and audit logging
+ */
+const adminLogger = {
+  info: (message: string, data?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[Admin] [${timestamp}] [INFO] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  error: (message: string, error?: unknown, context?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    const errorData = {
+      message,
+      timestamp,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      } : error,
+      context,
+    };
+    console.error(`[Admin] [${timestamp}] [ERROR] ${JSON.stringify(errorData, null, 2)}`);
+  },
+  warn: (message: string, data?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    console.warn(`[Admin] [${timestamp}] [WARN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  /**
+   * Audit log for admin actions
+   */
+  audit: (operation: string, userId: string, action: string, details?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    const auditData = {
+      timestamp,
+      operation,
+      userId,
+      action,
+      details: {
+        ...details,
+        // Remove sensitive data from audit logs
+        password: details?.password ? '[REDACTED]' : undefined,
+        apiKey: details?.apiKey ? '[REDACTED]' : undefined,
+      },
+    };
+    console.log(`[Admin] [AUDIT] ${JSON.stringify(auditData, null, 2)}`);
+  },
+};
+
 export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -446,19 +493,82 @@ export const getAllGames = async (page = 1, pageSize = 20) => {
   };
 };
 
-export const createGame = async (data: GameCreateInput) => {
-  // Find or create platform
-  let platform = await prisma.platform.findUnique({
-    where: { slug: data.platform.toLowerCase().replace(/\s+/g, '-') },
-  });
-  if (!platform) {
-    platform = await prisma.platform.create({
-      data: {
-        name: data.platform,
-        slug: data.platform.toLowerCase().replace(/\s+/g, '-'),
+export const getGameById = async (id: string) => {
+  const game = await prisma.game.findUnique({
+    where: { id },
+    include: {
+      platforms: {
+        include: {
+          platform: true,
+        },
       },
-    });
+      genres: {
+        include: {
+          genre: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+      categories: {
+        include: {
+          category: true,
+        },
+      },
+    },
+  });
+
+  if (!game) {
+    throw new AppError('Game not found', 404);
   }
+
+  return {
+    id: game.id,
+    title: game.title,
+    slug: game.slug,
+    description: game.description || '',
+    price: Number(game.price),
+    originalPrice: game.originalPrice ? Number(game.originalPrice) : null,
+    imageUrl: game.image,
+    platform: game.platforms.length > 0 ? game.platforms[0].platform.name : '',
+    platforms: game.platforms.map((p) => p.platform.name),
+    genre: game.genres.length > 0 ? game.genres[0].genre.name : '',
+    genres: game.genres.map((g) => g.genre.name),
+    tags: game.tags.map((t) => t.tag.name),
+    categories: game.categories.map((c) => c.category.name),
+    publisher: game.publisher || '',
+    developer: game.developer || '',
+    releaseDate: game.releaseDate ? game.releaseDate.toISOString().split('T')[0] : '',
+    isPreorder: game.isPreorder,
+    inStock: game.inStock,
+    g2aProductId: game.g2aProductId || undefined,
+    g2aStock: game.g2aStock,
+  };
+};
+
+export const createGame = async (data: GameCreateInput, adminUserId?: string) => {
+  try {
+    adminLogger.audit('GAME_CREATE', adminUserId || 'system', 'create_game', {
+      title: data.title,
+      slug: data.slug,
+      platform: data.platform,
+      genre: data.genre,
+    });
+
+    // Find or create platform
+    let platform = await prisma.platform.findUnique({
+      where: { slug: data.platform.toLowerCase().replace(/\s+/g, '-') },
+    });
+    if (!platform) {
+      platform = await prisma.platform.create({
+        data: {
+          name: data.platform,
+          slug: data.platform.toLowerCase().replace(/\s+/g, '-'),
+        },
+      });
+    }
 
   // Find or create genre
   let genre = await prisma.genre.findUnique({
@@ -527,22 +637,37 @@ export const createGame = async (data: GameCreateInput) => {
     await invalidateCache('home:*');
     await invalidateCache('game:*');
     await invalidateCache('catalog:*');
-  } catch (cacheError) {
-    console.warn('Failed to invalidate cache after game creation', cacheError);
-    // Don't fail creation if cache invalidation fails
-  }
+    } catch (cacheError) {
+      adminLogger.warn('Failed to invalidate cache after game creation', { gameId: game.id, error: cacheError });
+      // Don't fail creation if cache invalidation fails
+    }
 
-  return {
-    id: game.id,
-    title: game.title,
-    slug: game.slug,
-    price: Number(game.price),
-    createdAt: game.createdAt.toISOString(),
-  };
+    adminLogger.info('Game created successfully', { gameId: game.id, title: game.title });
+    return {
+      id: game.id,
+      title: game.title,
+      slug: game.slug,
+      price: Number(game.price),
+      createdAt: game.createdAt.toISOString(),
+    };
+  } catch (error) {
+    adminLogger.error('Failed to create game', error, { 
+      title: data.title, 
+      slug: data.slug,
+      adminUserId: adminUserId || 'unknown',
+    });
+    throw error;
+  }
 };
 
-export const updateGame = async (id: string, data: GameUpdateInput) => {
-  const updateData: Prisma.GameUpdateInput = {};
+export const updateGame = async (id: string, data: GameUpdateInput, adminUserId?: string) => {
+  try {
+    adminLogger.audit('GAME_UPDATE', adminUserId || 'system', 'update_game', {
+      gameId: id,
+      fields: Object.keys(data),
+    });
+
+    const updateData: Prisma.GameUpdateInput = {};
 
   if (data.title !== undefined) updateData.title = data.title;
   if (data.slug !== undefined) updateData.slug = data.slug;
@@ -607,6 +732,34 @@ export const updateGame = async (id: string, data: GameUpdateInput) => {
     });
   }
 
+  // Handle categories update - do this before the main update
+  if (data.categories !== undefined) {
+    const categoryConnections = await Promise.all(
+      data.categories.map(async (categoryName) => {
+        let category = await prisma.category.findUnique({
+          where: { slug: categoryName.toLowerCase().replace(/\s+/g, '-') },
+        });
+        if (!category) {
+          category = await prisma.category.create({
+            data: {
+              name: categoryName,
+              slug: categoryName.toLowerCase().replace(/\s+/g, '-'),
+            },
+          });
+        }
+        return { gameId: id, categoryId: category.id };
+      })
+    );
+    // Delete old category connections
+    await prisma.gameCategory.deleteMany({ where: { gameId: id } });
+    // Create new connections
+    if (categoryConnections.length > 0) {
+      await prisma.gameCategory.createMany({
+        data: categoryConnections,
+      });
+    }
+  }
+
   // Handle tags update - do this before the main update
   if (data.tags !== undefined) {
     const tagConnections = await Promise.all(
@@ -641,43 +794,96 @@ export const updateGame = async (id: string, data: GameUpdateInput) => {
     data: updateData,
   });
 
-  // Invalidate cache after game update
-  try {
-    const { invalidateCache } = await import('./cache.service.js');
-    await invalidateCache('home:*');
-    await invalidateCache('game:*');
-    await invalidateCache('catalog:*');
-  } catch (cacheError) {
-    console.warn('Failed to invalidate cache after game update', cacheError);
-    // Don't fail update if cache invalidation fails
-  }
+    // Invalidate cache after game update
+    try {
+      const { invalidateCache } = await import('./cache.service.js');
+      await invalidateCache('home:*');
+      await invalidateCache('game:*');
+      await invalidateCache('catalog:*');
+    } catch (cacheError) {
+      adminLogger.warn('Failed to invalidate cache after game update', { gameId: id, error: cacheError });
+      // Don't fail update if cache invalidation fails
+    }
 
-  return {
-    id: game.id,
-    title: game.title,
-    slug: game.slug,
-    price: Number(game.price),
-    updatedAt: game.updatedAt.toISOString(),
-  };
+    adminLogger.info('Game updated successfully', { gameId: game.id, title: game.title });
+    return {
+      id: game.id,
+      title: game.title,
+      slug: game.slug,
+      price: Number(game.price),
+      updatedAt: game.updatedAt.toISOString(),
+    };
+  } catch (error) {
+    adminLogger.error('Failed to update game', error, { 
+      gameId: id,
+      adminUserId: adminUserId || 'unknown',
+    });
+    throw error;
+  }
 };
 
-export const deleteGame = async (id: string) => {
-  await prisma.game.delete({
-    where: { id },
-  });
-
-  // Invalidate cache after game deletion
+export const deleteGame = async (id: string, adminUserId?: string) => {
   try {
-    const { invalidateCache } = await import('./cache.service.js');
-    await invalidateCache('home:*');
-    await invalidateCache('game:*');
-    await invalidateCache('catalog:*');
-  } catch (cacheError) {
-    console.warn('Failed to invalidate cache after game deletion', cacheError);
-    // Don't fail deletion if cache invalidation fails
-  }
+    // Get game info before deletion for audit log
+    const game = await prisma.game.findUnique({
+      where: { id },
+      select: { id: true, title: true, slug: true },
+    });
 
-  return { success: true };
+    if (!game) {
+      throw new AppError('Game not found', 404);
+    }
+
+    adminLogger.audit('GAME_DELETE', adminUserId || 'system', 'delete_game', {
+      gameId: id,
+      title: game.title,
+      slug: game.slug,
+    });
+
+    await prisma.game.delete({
+      where: { id },
+    });
+
+    // Invalidate cache after game deletion
+    try {
+      const { invalidateCache } = await import('./cache.service.js');
+      await invalidateCache('home:*');
+      await invalidateCache('game:*');
+      await invalidateCache('catalog:*');
+    } catch (cacheError) {
+      adminLogger.warn('Failed to invalidate cache after game deletion', { gameId: id, error: cacheError });
+      // Don't fail deletion if cache invalidation fails
+    }
+
+    adminLogger.info('Game deleted successfully', { gameId: id, title: game.title });
+    return { success: true };
+  } catch (error) {
+    adminLogger.error('Failed to delete game', error, { 
+      gameId: id,
+      adminUserId: adminUserId || 'unknown',
+    });
+    throw error;
+  }
+};
+
+// Helper function to calculate read time from content
+const calculateReadTime = (content: string): number => {
+  // Remove HTML tags and count words
+  const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+  // Average reading speed: 200 words per minute
+  return Math.ceil(wordCount / 200);
+};
+
+// Helper function to generate slug from title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 };
 
 // Blog Posts CRUD (using Article model)
@@ -709,11 +915,57 @@ export const getAllBlogPosts = async (page = 1, pageSize = 20) => {
   };
 };
 
+export const getBlogPostById = async (id: string) => {
+  const post = await prisma.article.findUnique({
+    where: { id },
+  });
+
+  if (!post) {
+    throw new AppError('Blog post not found', 404);
+  }
+
+  return {
+    id: post.id,
+    title: post.title,
+    slug: post.slug,
+    content: post.content,
+    excerpt: post.excerpt,
+    coverImage: post.coverImage || undefined,
+    category: post.category,
+    tags: post.tags || [],
+    published: post.published,
+    author: post.author || undefined,
+    publishedAt: post.publishedAt?.toISOString(),
+    readTime: post.readTime || undefined,
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
+  };
+};
+
 export const createBlogPost = async (data: BlogPostCreateInput, authorEmail: string) => {
+  // Generate slug from title if not provided
+  let slug = data.slug || generateSlug(data.title);
+  
+  // Check slug uniqueness
+  const existingPost = await prisma.article.findUnique({
+    where: { slug },
+  });
+  
+  if (existingPost) {
+    // Append timestamp to make it unique
+    slug = `${slug}-${Date.now()}`;
+  }
+
+  // Calculate read time
+  const readTime = calculateReadTime(data.content);
+
+  // Set publishedAt based on published status
+  const publishedAt = data.published ? new Date() : null;
+
   const post = await prisma.article.create({
     data: {
       title: data.title,
-      slug: data.slug,
+      slug,
       content: data.content,
       excerpt: data.excerpt,
       coverImage: data.imageUrl || '',
@@ -721,9 +973,20 @@ export const createBlogPost = async (data: BlogPostCreateInput, authorEmail: str
       tags: data.tags,
       published: data.published || false,
       author: authorEmail,
-      publishedAt: data.published ? new Date() : null,
+      publishedAt,
+      readTime,
     },
   });
+
+  // Invalidate cache after blog post creation
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`blog:${post.slug}`);
+    await invalidateCache(`blog:category:${post.category}`);
+    await invalidateCache('blog:recent');
+  } catch (cacheError) {
+    console.warn('[Blog Post Create] Failed to invalidate cache:', cacheError);
+  }
 
   return {
     id: post.id,
@@ -734,19 +997,69 @@ export const createBlogPost = async (data: BlogPostCreateInput, authorEmail: str
 };
 
 export const updateBlogPost = async (id: string, data: BlogPostUpdateInput) => {
-  const updateData: Prisma.ArticleUpdateInput = {};
+  // Get existing post to check slug and calculate read time
+  const existingPost = await prisma.article.findUnique({
+    where: { id },
+  });
 
-  if (data.title !== undefined) updateData.title = data.title;
-  if (data.slug !== undefined) updateData.slug = data.slug;
-  if (data.content !== undefined) updateData.content = data.content;
+  if (!existingPost) {
+    throw new AppError('Blog post not found', 404);
+  }
+
+  const updateData: Prisma.ArticleUpdateInput = {};
+  let oldSlug = existingPost.slug;
+  let oldCategory = existingPost.category;
+
+  if (data.title !== undefined) {
+    updateData.title = data.title;
+    // Auto-generate slug if title changed and slug not provided
+    if (data.slug === undefined) {
+      updateData.slug = generateSlug(data.title);
+      // Check uniqueness of new slug
+      const slugCheck = await prisma.article.findUnique({
+        where: { slug: updateData.slug as string },
+      });
+      if (slugCheck && slugCheck.id !== id) {
+        updateData.slug = `${updateData.slug}-${Date.now()}`;
+      }
+    }
+  }
+
+  if (data.slug !== undefined) {
+    // Check slug uniqueness if it's different
+    if (data.slug !== existingPost.slug) {
+      const slugCheck = await prisma.article.findUnique({
+        where: { slug: data.slug },
+      });
+      if (slugCheck) {
+        throw new AppError('Blog post with this slug already exists', 409);
+      }
+    }
+    updateData.slug = data.slug;
+  }
+
+  if (data.content !== undefined) {
+    updateData.content = data.content;
+    // Recalculate read time when content changes
+    updateData.readTime = calculateReadTime(data.content);
+  }
+
   if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
   if (data.imageUrl !== undefined) updateData.coverImage = data.imageUrl;
-  if (data.category !== undefined) updateData.category = data.category;
+  if (data.category !== undefined) {
+    updateData.category = data.category;
+    oldCategory = data.category;
+  }
   if (data.tags !== undefined) updateData.tags = data.tags;
+
   if (data.published !== undefined) {
     updateData.published = data.published;
-    if (data.published && !updateData.publishedAt) {
+    if (data.published) {
+      // Set publishedAt when publishing
       updateData.publishedAt = new Date();
+    } else {
+      // Clear publishedAt when unpublishing
+      updateData.publishedAt = null;
     }
   }
 
@@ -754,6 +1067,21 @@ export const updateBlogPost = async (id: string, data: BlogPostUpdateInput) => {
     where: { id },
     data: updateData,
   });
+
+  // Invalidate cache after blog post update
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    // Invalidate old and new slugs/categories
+    await invalidateCache(`blog:${oldSlug}`);
+    await invalidateCache(`blog:${post.slug}`);
+    await invalidateCache(`blog:category:${oldCategory}`);
+    if (post.category !== oldCategory) {
+      await invalidateCache(`blog:category:${post.category}`);
+    }
+    await invalidateCache('blog:recent');
+  } catch (cacheError) {
+    console.warn('[Blog Post Update] Failed to invalidate cache:', cacheError);
+  }
 
   return {
     id: post.id,
@@ -764,9 +1092,29 @@ export const updateBlogPost = async (id: string, data: BlogPostUpdateInput) => {
 };
 
 export const deleteBlogPost = async (id: string) => {
+  // Get post before deletion for cache invalidation
+  const post = await prisma.article.findUnique({
+    where: { id },
+  });
+
+  if (!post) {
+    throw new AppError('Blog post not found', 404);
+  }
+
   await prisma.article.delete({
     where: { id },
   });
+
+  // Invalidate cache after blog post deletion
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`blog:${post.slug}`);
+    await invalidateCache(`blog:category:${post.category}`);
+    await invalidateCache('blog:recent');
+  } catch (cacheError) {
+    console.warn('[Blog Post Delete] Failed to invalidate cache:', cacheError);
+  }
+
   return { success: true };
 };
 
@@ -834,17 +1182,325 @@ export const getAllOrders = async (page = 1, pageSize = 20, status?: string) => 
   };
 };
 
-export const updateOrderStatus = async (id: string, status: string) => {
+export const getOrderDetails = async (id: string) => {
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nickname: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      items: {
+        include: {
+          game: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              image: true,
+              price: true,
+            },
+          },
+        },
+      },
+      keys: {
+        select: {
+          id: true,
+          gameId: true,
+          key: true,
+          activated: true,
+          activationDate: true,
+        },
+      },
+      transaction: {
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          currency: true,
+          method: true,
+          status: true,
+          description: true,
+          transactionHash: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  // Map keys to items by gameId
+  const keysByGameId = new Map(
+    order.keys.map((k) => [k.gameId, k])
+  );
+
+  return {
+    id: order.id,
+    userId: order.userId,
+    user: {
+      id: order.user.id,
+      email: order.user.email,
+      nickname: order.user.nickname || 'Newbie Guy',
+      firstName: order.user.firstName || undefined,
+      lastName: order.user.lastName || undefined,
+    },
+    status: order.status,
+    subtotal: Number(order.subtotal),
+    discount: Number(order.discount),
+    total: Number(order.total),
+    paymentMethod: order.paymentMethod || undefined,
+    paymentStatus: order.paymentStatus || undefined,
+    promoCode: order.promoCode || undefined,
+    externalOrderId: order.externalOrderId || undefined,
+    createdAt: order.createdAt.toISOString(),
+    completedAt: order.completedAt?.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      gameId: item.gameId,
+      game: item.game,
+      quantity: item.quantity,
+      price: Number(item.price),
+      discount: Number(item.discount),
+      key: keysByGameId.get(item.gameId)?.key || undefined,
+      keyActivated: keysByGameId.get(item.gameId)?.activated || false,
+    })),
+    transaction: order.transaction ? {
+      id: order.transaction.id,
+      type: order.transaction.type,
+      amount: Number(order.transaction.amount),
+      currency: order.transaction.currency,
+      method: order.transaction.method || undefined,
+      status: order.transaction.status,
+      description: order.transaction.description || undefined,
+      transactionHash: order.transaction.transactionHash || undefined,
+      createdAt: order.transaction.createdAt.toISOString(),
+    } : undefined,
+  };
+};
+
+export interface OrderUpdateInput {
+  status?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  paymentStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  paymentMethod?: string;
+  promoCode?: string;
+}
+
+// Valid status transitions
+const validStatusTransitions: Record<string, string[]> = {
+  PENDING: ['PROCESSING', 'CANCELLED'],
+  PROCESSING: ['COMPLETED', 'FAILED', 'CANCELLED'],
+  COMPLETED: ['CANCELLED'], // Can only cancel completed orders (for refunds)
+  FAILED: ['PENDING', 'PROCESSING'], // Can retry failed orders
+  CANCELLED: [], // Cannot transition from cancelled
+};
+
+export const updateOrder = async (id: string, data: OrderUpdateInput) => {
+  // Get current order
+  const currentOrder = await prisma.order.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+
+  if (!currentOrder) {
+    throw new AppError('Order not found', 404);
+  }
+
+  // Validate status transition if status is being updated
+  if (data.status && data.status !== currentOrder.status) {
+    const allowedTransitions = validStatusTransitions[currentOrder.status] || [];
+    if (!allowedTransitions.includes(data.status)) {
+      throw new AppError(
+        `Invalid status transition from ${currentOrder.status} to ${data.status}. Allowed transitions: ${allowedTransitions.join(', ')}`,
+        400
+      );
+    }
+  }
+
+  // Prepare update data
+  const updateData: Prisma.OrderUpdateInput = {};
+  if (data.status !== undefined) {
+    updateData.status = data.status;
+    // Set completedAt if status is COMPLETED
+    if (data.status === 'COMPLETED') {
+      updateData.completedAt = new Date();
+    }
+  }
+  if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
+  if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod;
+  if (data.promoCode !== undefined) updateData.promoCode = data.promoCode;
+
+  // Update order
   const order = await prisma.order.update({
     where: { id },
-    data: { status: status as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED' },
+    data: updateData,
   });
+
+  // Invalidate cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`order:${id}`);
+    await invalidateCache(`user:${order.userId}:orders`);
+  } catch (cacheError) {
+    console.warn('[Order Update] Failed to invalidate cache:', cacheError);
+  }
 
   return {
     id: order.id,
     status: order.status,
-    updatedAt: order.createdAt.toISOString(), // Order model doesn't have updatedAt, using createdAt
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    updatedAt: order.createdAt.toISOString(),
   };
+};
+
+// Keep updateOrderStatus for backward compatibility
+export const updateOrderStatus = async (id: string, status: string) => {
+  return updateOrder(id, { status: status as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' });
+};
+
+export const cancelOrder = async (id: string, reason?: string): Promise<void> => {
+  // Get order with all related data
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: { id: true, balance: true },
+      },
+      items: {
+        include: {
+          game: {
+            select: { id: true, inStock: true },
+          },
+        },
+      },
+      keys: {
+        select: { id: true, gameId: true, key: true },
+      },
+      transaction: {
+        select: { id: true, type: true, amount: true, currency: true, method: true, status: true, transactionHash: true },
+      },
+    },
+  });
+
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  // Check if order can be cancelled
+  if (order.status === 'CANCELLED') {
+    throw new AppError('Order is already cancelled', 400);
+  }
+
+  if (order.status === 'COMPLETED' && order.keys.length > 0) {
+    // For completed orders with keys, we need to handle refund and key deactivation
+    // Note: Keys cannot be "restored" to inventory as they're already issued
+    // But we can refund the payment
+  }
+
+  // Use transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // 1. Update order status to CANCELLED
+    await tx.order.update({
+      where: { id },
+      data: { status: 'CANCELLED', paymentStatus: 'CANCELLED' },
+    });
+
+    // 2. Refund payment if order was paid
+    if (order.transaction && order.transaction.status === 'COMPLETED' && order.transaction.type === 'PURCHASE') {
+      // Check if already refunded
+      const existingRefund = await tx.transaction.findFirst({
+        where: {
+          orderId: id,
+          type: 'REFUND',
+          status: 'COMPLETED',
+        },
+      });
+
+      if (!existingRefund) {
+        // Refund through payment service
+        try {
+          const { refundTransaction } = await import('./payment.service.js');
+          await refundTransaction(order.transaction.id, undefined, reason || `Order ${id} cancelled by admin`);
+        } catch (refundError) {
+          // If refund fails, still cancel the order but log the error
+          console.error(`[Order Cancel] Failed to refund transaction ${order.transaction.id}:`, refundError);
+          // Create a manual refund transaction record
+          await tx.transaction.create({
+            data: {
+              userId: order.userId,
+              orderId: id,
+              type: 'REFUND',
+              amount: order.total,
+              currency: 'EUR',
+              method: order.transaction.method,
+              status: 'PENDING', // Mark as pending since automatic refund failed
+              description: reason || `Order ${id} cancelled by admin - refund pending`,
+            },
+          });
+          // Update user balance manually
+          await tx.user.update({
+            where: { id: order.userId },
+            data: {
+              balance: {
+                increment: order.total,
+              },
+            },
+          });
+        }
+      }
+    } else if (order.status === 'PENDING' || order.status === 'PROCESSING') {
+      // For pending/processing orders, just restore balance (no payment gateway refund needed)
+      await tx.user.update({
+        where: { id: order.userId },
+        data: {
+          balance: {
+            increment: order.total,
+          },
+        },
+      });
+
+      // Create refund transaction record
+      await tx.transaction.create({
+        data: {
+          userId: order.userId,
+          orderId: id,
+          type: 'REFUND',
+          amount: order.total,
+          currency: 'EUR',
+          method: order.paymentMethod || 'balance',
+          status: 'COMPLETED',
+          description: reason || `Order ${id} cancelled by admin`,
+        },
+      });
+    }
+
+    // 3. Delete game keys if order was not completed (keys not yet issued)
+    if (order.status !== 'COMPLETED' && order.keys.length > 0) {
+      await tx.gameKey.deleteMany({
+        where: { orderId: id },
+      });
+    }
+
+    // Note: For completed orders, keys are already issued and cannot be "restored"
+    // Inventory restoration is not applicable for digital keys
+  });
+
+  // Invalidate cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`order:${id}`);
+    await invalidateCache(`user:${order.userId}:orders`);
+  } catch (cacheError) {
+    console.warn('[Order Cancel] Failed to invalidate cache:', cacheError);
+  }
 };
 
 export const generateFakeDataForUser = async (userId: string, webhookData: Record<string, unknown>): Promise<void> => {
@@ -1623,6 +2279,725 @@ export const updateUserRoleForAdmin = async (
 ): Promise<void> => {
   const { updateUserRole } = await import('./user.service.js');
   return updateUserRole(userId, role);
+};
+
+export interface UserUpdateInput {
+  nickname?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'USER' | 'ADMIN';
+  balance?: number;
+}
+
+export const updateUser = async (
+  userId: string,
+  data: UserUpdateInput
+): Promise<UserDetailsResponse> => {
+  // Validate role if provided
+  if (data.role && !['USER', 'ADMIN'].includes(data.role)) {
+    throw new AppError('Invalid role. Must be USER or ADMIN', 400);
+  }
+
+  // Validate balance if provided
+  if (data.balance !== undefined && (isNaN(data.balance) || data.balance < 0)) {
+    throw new AppError('Balance must be a non-negative number', 400);
+  }
+
+  // Check if user exists
+  const existingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, balance: true },
+  });
+
+  if (!existingUser) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Prepare update data
+  const updateData: Prisma.UserUpdateInput = {};
+  if (data.nickname !== undefined) updateData.nickname = data.nickname;
+  if (data.firstName !== undefined) updateData.firstName = data.firstName;
+  if (data.lastName !== undefined) updateData.lastName = data.lastName;
+  if (data.role !== undefined) updateData.role = data.role;
+  if (data.balance !== undefined) {
+    // If balance is being updated, create a transaction record
+    const balanceChange = data.balance - Number(existingUser.balance);
+    if (balanceChange !== 0) {
+      updateData.balance = data.balance;
+      // Create transaction record for balance change
+      await prisma.transaction.create({
+        data: {
+          userId,
+          type: balanceChange > 0 ? 'TOP_UP' : 'REFUND',
+          amount: Math.abs(balanceChange),
+          currency: 'USD',
+          status: 'COMPLETED',
+          description: `Admin balance adjustment: ${balanceChange > 0 ? '+' : ''}${balanceChange.toFixed(2)}`,
+        },
+      });
+    }
+  }
+
+  // Update user
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+    include: {
+      orders: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          total: true,
+          createdAt: true,
+        },
+      },
+      transactions: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  // Invalidate cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:*`);
+  } catch (cacheError) {
+    console.warn('[User Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname || 'Newbie Guy',
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
+    balance: Number(user.balance),
+    role: user.role,
+    createdAt: user.createdAt.toISOString(),
+    orders: user.orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      total: Number(order.total),
+      createdAt: order.createdAt.toISOString(),
+    })),
+    transactions: user.transactions.map((t) => ({
+      id: t.id,
+      type: t.type,
+      amount: Number(t.amount),
+      status: t.status,
+      createdAt: t.createdAt.toISOString(),
+    })),
+  };
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  // Check if user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      _count: {
+        select: {
+          orders: true,
+          transactions: true,
+          cart: true,
+          wishlist: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Check for dependencies
+  if (user._count.orders > 0) {
+    throw new AppError(
+      `Cannot delete user with ${user._count.orders} active order(s). Please cancel or complete orders first.`,
+      409
+    );
+  }
+
+  // Use transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // Delete user's cart items
+    if (user._count.cart > 0) {
+      await tx.cartItem.deleteMany({
+        where: { userId },
+      });
+    }
+
+    // Delete user's wishlist items
+    if (user._count.wishlist > 0) {
+      await tx.wishlist.deleteMany({
+        where: { userId },
+      });
+    }
+
+    // Delete user's transactions (if any)
+    if (user._count.transactions > 0) {
+      await tx.transaction.deleteMany({
+        where: { userId },
+      });
+    }
+
+    // Delete user's login history
+    await tx.loginHistory.deleteMany({
+      where: { userId },
+    });
+
+    // Delete user's sessions
+    await tx.session.deleteMany({
+      where: { userId },
+    });
+
+    // Finally, delete the user
+    await tx.user.delete({
+      where: { id: userId },
+    });
+  });
+
+  // Invalidate cache (non-blocking)
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache(`user:${userId}:*`);
+  } catch (cacheError) {
+    console.warn('[User Delete] Failed to invalidate cache:', cacheError);
+  }
+};
+
+// Catalog Metadata Management Functions
+
+export const getAllCategories = async () => {
+  const categories = await prisma.category.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: {
+        select: { games: true },
+      },
+    },
+  });
+
+  return categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    slug: cat.slug,
+    description: cat.description || undefined,
+    gamesCount: cat._count.games,
+    createdAt: cat.createdAt.toISOString(),
+    updatedAt: cat.updatedAt.toISOString(),
+  }));
+};
+
+export const createCategory = async (data: { name: string; description?: string }) => {
+  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  // Check if category with same slug already exists
+  const existing = await prisma.category.findUnique({
+    where: { slug },
+  });
+
+  if (existing) {
+    throw new AppError('Category with this name already exists', 409);
+  }
+
+  const category = await prisma.category.create({
+    data: {
+      name: data.name,
+      slug,
+      description: data.description,
+    },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Category Create] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    description: category.description || undefined,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
+  };
+};
+
+export const updateCategory = async (id: string, data: { name?: string; description?: string }) => {
+  const updateData: Prisma.CategoryUpdateInput = {};
+  
+  if (data.name !== undefined) {
+    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Check if another category with same slug exists
+    const existing = await prisma.category.findUnique({
+      where: { slug },
+    });
+    if (existing && existing.id !== id) {
+      throw new AppError('Category with this name already exists', 409);
+    }
+    updateData.name = data.name;
+    updateData.slug = slug;
+  }
+  
+  if (data.description !== undefined) {
+    updateData.description = data.description;
+  }
+
+  const category = await prisma.category.update({
+    where: { id },
+    data: updateData,
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Category Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    description: category.description || undefined,
+    updatedAt: category.updatedAt.toISOString(),
+  };
+};
+
+export const deleteCategory = async (id: string) => {
+  // Check if category has associated games
+  const gamesCount = await prisma.gameCategory.count({
+    where: { categoryId: id },
+  });
+
+  if (gamesCount > 0) {
+    throw new AppError(
+      `Cannot delete category with ${gamesCount} associated game(s). Please remove games from this category first.`,
+      409
+    );
+  }
+
+  await prisma.category.delete({
+    where: { id },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Category Delete] Failed to invalidate cache:', cacheError);
+  }
+};
+
+export const getAllGenres = async () => {
+  const genres = await prisma.genre.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: {
+        select: { games: true },
+      },
+    },
+  });
+
+  return genres.map((genre) => ({
+    id: genre.id,
+    name: genre.name,
+    slug: genre.slug,
+    description: genre.description || undefined,
+    gamesCount: genre._count.games,
+    createdAt: genre.createdAt.toISOString(),
+    updatedAt: genre.updatedAt.toISOString(),
+  }));
+};
+
+export const createGenre = async (data: { name: string; description?: string }) => {
+  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  // Check if genre with same slug already exists
+  const existing = await prisma.genre.findUnique({
+    where: { slug },
+  });
+
+  if (existing) {
+    throw new AppError('Genre with this name already exists', 409);
+  }
+
+  const genre = await prisma.genre.create({
+    data: {
+      name: data.name,
+      slug,
+      description: data.description,
+    },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Genre Create] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: genre.id,
+    name: genre.name,
+    slug: genre.slug,
+    description: genre.description || undefined,
+    createdAt: genre.createdAt.toISOString(),
+    updatedAt: genre.updatedAt.toISOString(),
+  };
+};
+
+export const updateGenre = async (id: string, data: { name?: string; description?: string }) => {
+  const updateData: Prisma.GenreUpdateInput = {};
+  
+  if (data.name !== undefined) {
+    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Check if another genre with same slug exists
+    const existing = await prisma.genre.findUnique({
+      where: { slug },
+    });
+    if (existing && existing.id !== id) {
+      throw new AppError('Genre with this name already exists', 409);
+    }
+    updateData.name = data.name;
+    updateData.slug = slug;
+  }
+  
+  if (data.description !== undefined) {
+    updateData.description = data.description;
+  }
+
+  const genre = await prisma.genre.update({
+    where: { id },
+    data: updateData,
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Genre Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: genre.id,
+    name: genre.name,
+    slug: genre.slug,
+    description: genre.description || undefined,
+    updatedAt: genre.updatedAt.toISOString(),
+  };
+};
+
+export const deleteGenre = async (id: string) => {
+  // Check if genre has associated games
+  const gamesCount = await prisma.gameGenre.count({
+    where: { genreId: id },
+  });
+
+  if (gamesCount > 0) {
+    throw new AppError(
+      `Cannot delete genre with ${gamesCount} associated game(s). Please remove games from this genre first.`,
+      409
+    );
+  }
+
+  await prisma.genre.delete({
+    where: { id },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Genre Delete] Failed to invalidate cache:', cacheError);
+  }
+};
+
+export const getAllPlatforms = async () => {
+  const platforms = await prisma.platform.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: {
+        select: { games: true },
+      },
+    },
+  });
+
+  return platforms.map((platform) => ({
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+    description: platform.description || undefined,
+    gamesCount: platform._count.games,
+    createdAt: platform.createdAt.toISOString(),
+    updatedAt: platform.updatedAt.toISOString(),
+  }));
+};
+
+export const createPlatform = async (data: { name: string; description?: string }) => {
+  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  // Check if platform with same slug already exists
+  const existing = await prisma.platform.findUnique({
+    where: { slug },
+  });
+
+  if (existing) {
+    throw new AppError('Platform with this name already exists', 409);
+  }
+
+  const platform = await prisma.platform.create({
+    data: {
+      name: data.name,
+      slug,
+      description: data.description,
+    },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Platform Create] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+    description: platform.description || undefined,
+    createdAt: platform.createdAt.toISOString(),
+    updatedAt: platform.updatedAt.toISOString(),
+  };
+};
+
+export const updatePlatform = async (id: string, data: { name?: string; description?: string }) => {
+  const updateData: Prisma.PlatformUpdateInput = {};
+  
+  if (data.name !== undefined) {
+    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Check if another platform with same slug exists
+    const existing = await prisma.platform.findUnique({
+      where: { slug },
+    });
+    if (existing && existing.id !== id) {
+      throw new AppError('Platform with this name already exists', 409);
+    }
+    updateData.name = data.name;
+    updateData.slug = slug;
+  }
+  
+  if (data.description !== undefined) {
+    updateData.description = data.description;
+  }
+
+  const platform = await prisma.platform.update({
+    where: { id },
+    data: updateData,
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Platform Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+    description: platform.description || undefined,
+    updatedAt: platform.updatedAt.toISOString(),
+  };
+};
+
+export const deletePlatform = async (id: string) => {
+  // Check if platform has associated games
+  const gamesCount = await prisma.gamePlatform.count({
+    where: { platformId: id },
+  });
+
+  if (gamesCount > 0) {
+    throw new AppError(
+      `Cannot delete platform with ${gamesCount} associated game(s). Please remove games from this platform first.`,
+      409
+    );
+  }
+
+  await prisma.platform.delete({
+    where: { id },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Platform Delete] Failed to invalidate cache:', cacheError);
+  }
+};
+
+export const getAllTags = async () => {
+  const tags = await prisma.tag.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: {
+        select: { games: true },
+      },
+    },
+  });
+
+  return tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    gamesCount: tag._count.games,
+    createdAt: tag.createdAt.toISOString(),
+    updatedAt: tag.updatedAt.toISOString(),
+  }));
+};
+
+export const createTag = async (data: { name: string }) => {
+  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  // Check if tag with same slug already exists
+  const existing = await prisma.tag.findUnique({
+    where: { slug },
+  });
+
+  if (existing) {
+    throw new AppError('Tag with this name already exists', 409);
+  }
+
+  const tag = await prisma.tag.create({
+    data: {
+      name: data.name,
+      slug,
+    },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Tag Create] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    createdAt: tag.createdAt.toISOString(),
+    updatedAt: tag.updatedAt.toISOString(),
+  };
+};
+
+export const updateTag = async (id: string, data: { name?: string }) => {
+  const updateData: Prisma.TagUpdateInput = {};
+  
+  if (data.name !== undefined) {
+    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Check if another tag with same slug exists
+    const existing = await prisma.tag.findUnique({
+      where: { slug },
+    });
+    if (existing && existing.id !== id) {
+      throw new AppError('Tag with this name already exists', 409);
+    }
+    updateData.name = data.name;
+    updateData.slug = slug;
+  }
+
+  const tag = await prisma.tag.update({
+    where: { id },
+    data: updateData,
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Tag Update] Failed to invalidate cache:', cacheError);
+  }
+
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    updatedAt: tag.updatedAt.toISOString(),
+  };
+};
+
+export const deleteTag = async (id: string) => {
+  // Check if tag has associated games
+  const gamesCount = await prisma.gameTag.count({
+    where: { tagId: id },
+  });
+
+  if (gamesCount > 0) {
+    throw new AppError(
+      `Cannot delete tag with ${gamesCount} associated game(s). Please remove games from this tag first.`,
+      409
+    );
+  }
+
+  await prisma.tag.delete({
+    where: { id },
+  });
+
+  // Invalidate cache
+  try {
+    const { invalidateCache } = await import('./cache.service.js');
+    await invalidateCache('catalog:*');
+    await invalidateCache('home:*');
+    await invalidateCache('game:*');
+  } catch (cacheError) {
+    console.warn('[Tag Delete] Failed to invalidate cache:', cacheError);
+  }
 };
 
 export const getUserActivityForAdmin = async (

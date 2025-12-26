@@ -18,17 +18,17 @@ const theme = {
 };
 
 const AdminLayout: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
-  // Check if user is admin
+  // Check if user is authenticated
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  // For now, allow all authenticated users (in production, check user.role === 'ADMIN')
-  // if (user?.role !== 'ADMIN') {
-  //   return <Navigate to="/" replace />;
-  // }
+  // Check if user has ADMIN role
+  if (user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div style={{

@@ -120,19 +120,26 @@ const BlogPostsPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleEdit = (post: BlogPostItem) => {
-    setEditingPost(post);
-    setFormData({
-      title: post.title,
-      slug: post.slug,
-      content: '',
-      excerpt: post.excerpt,
-      imageUrl: '',
-      category: post.category,
-      tags: '',
-      published: post.published,
-    });
-    setShowModal(true);
+  const handleEdit = async (post: BlogPostItem) => {
+    try {
+      // Fetch full blog post data
+      const fullPost = await adminApi.getBlogPost(post.id);
+      setEditingPost(post);
+      setFormData({
+        title: fullPost.title,
+        slug: fullPost.slug,
+        content: fullPost.content,
+        excerpt: fullPost.excerpt,
+        imageUrl: fullPost.coverImage || '',
+        category: fullPost.category,
+        tags: Array.isArray(fullPost.tags) ? fullPost.tags.join(', ') : '',
+        published: fullPost.published,
+      });
+      setShowModal(true);
+    } catch (err) {
+      console.error('Failed to fetch blog post:', err);
+      alert('Failed to load blog post data');
+    }
   };
 
   const handleDelete = async (id: string) => {

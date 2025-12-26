@@ -206,6 +206,55 @@ export interface OrdersResult {
   totalPages: number;
 }
 
+export interface OrderDetails {
+  id: string;
+  userId: string;
+  user: {
+    id: string;
+    email: string;
+    nickname: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  subtotal: number;
+  discount: number;
+  total: number;
+  paymentMethod?: string;
+  paymentStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  promoCode?: string;
+  externalOrderId?: string;
+  createdAt: string;
+  completedAt?: string;
+  items: {
+    id: string;
+    gameId: string;
+    game: {
+      id: string;
+      title: string;
+      slug: string;
+      image: string;
+      price: number;
+    };
+    quantity: number;
+    price: number;
+    discount: number;
+    key?: string;
+    keyActivated: boolean;
+  }[];
+  transaction?: {
+    id: string;
+    type: string;
+    amount: number;
+    currency: string;
+    method?: string;
+    status: string;
+    description?: string;
+    transactionHash?: string;
+    createdAt: string;
+  };
+}
+
 export interface GameCreateInput {
   title: string;
   slug: string;
@@ -272,6 +321,263 @@ export const adminApi = {
     return response.data;
   },
 
+  updateUser: async (id: string, data: {
+    nickname?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: 'USER' | 'ADMIN';
+    balance?: number;
+  }): Promise<UserDetails> => {
+    const response = await apiClient.put<{ success: boolean; data: UserDetails }>(
+      `/api/admin/users/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/users/${id}`);
+  },
+
+  // Catalog Metadata Management
+  getCategories: async (): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    gamesCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      gamesCount: number;
+      createdAt: string;
+      updatedAt: string;
+    }> }>('/api/admin/categories');
+    return response.data;
+  },
+
+  createCategory: async (data: { name: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      createdAt: string;
+      updatedAt: string;
+    } }>('/api/admin/categories', data);
+    return response.data;
+  },
+
+  updateCategory: async (id: string, data: { name?: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      updatedAt: string;
+    } }>(`/api/admin/categories/${id}`, data);
+    return response.data;
+  },
+
+  deleteCategory: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/categories/${id}`);
+  },
+
+  getGenres: async (): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    gamesCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      gamesCount: number;
+      createdAt: string;
+      updatedAt: string;
+    }> }>('/api/admin/genres');
+    return response.data;
+  },
+
+  createGenre: async (data: { name: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      createdAt: string;
+      updatedAt: string;
+    } }>('/api/admin/genres', data);
+    return response.data;
+  },
+
+  updateGenre: async (id: string, data: { name?: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      updatedAt: string;
+    } }>(`/api/admin/genres/${id}`, data);
+    return response.data;
+  },
+
+  deleteGenre: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/genres/${id}`);
+  },
+
+  getPlatforms: async (): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    gamesCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      gamesCount: number;
+      createdAt: string;
+      updatedAt: string;
+    }> }>('/api/admin/platforms');
+    return response.data;
+  },
+
+  createPlatform: async (data: { name: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      createdAt: string;
+      updatedAt: string;
+    } }>('/api/admin/platforms', data);
+    return response.data;
+  },
+
+  updatePlatform: async (id: string, data: { name?: string; description?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      updatedAt: string;
+    } }>(`/api/admin/platforms/${id}`, data);
+    return response.data;
+  },
+
+  deletePlatform: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/platforms/${id}`);
+  },
+
+  getTags: async (): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    gamesCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      gamesCount: number;
+      createdAt: string;
+      updatedAt: string;
+    }> }>('/api/admin/tags');
+    return response.data;
+  },
+
+  createTag: async (data: { name: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    createdAt: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      createdAt: string;
+      updatedAt: string;
+    } }>('/api/admin/tags', data);
+    return response.data;
+  },
+
+  updateTag: async (id: string, data: { name?: string }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      name: string;
+      slug: string;
+      updatedAt: string;
+    } }>(`/api/admin/tags/${id}`, data);
+    return response.data;
+  },
+
+  deleteTag: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/tags/${id}`);
+  },
+
   exportUserReport: async (id: string): Promise<Blob> => {
     const response = await apiClient.get<Blob>(`/api/admin/users/${id}/export`, {
       responseType: 'blob',
@@ -314,6 +620,53 @@ export const adminApi = {
     return response.data;
   },
 
+  getGameById: async (id: string): Promise<{
+    id: string;
+    title: string;
+    slug: string;
+    description: string;
+    price: number;
+    originalPrice: number | null;
+    imageUrl: string;
+    platform: string;
+    platforms: string[];
+    genre: string;
+    genres: string[];
+    tags: string[];
+    categories: string[];
+    publisher: string;
+    developer: string;
+    releaseDate: string;
+    isPreorder: boolean;
+    inStock: boolean;
+    g2aProductId?: string;
+    g2aStock?: boolean;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      title: string;
+      slug: string;
+      description: string;
+      price: number;
+      originalPrice: number | null;
+      imageUrl: string;
+      platform: string;
+      platforms: string[];
+      genre: string;
+      genres: string[];
+      tags: string[];
+      categories: string[];
+      publisher: string;
+      developer: string;
+      releaseDate: string;
+      isPreorder: boolean;
+      inStock: boolean;
+      g2aProductId?: string;
+      g2aStock?: boolean;
+    } }>(`/api/admin/games/${id}`);
+    return response.data;
+  },
+
   createGame: async (data: GameCreateInput): Promise<{ id: string; title: string }> => {
     const response = await apiClient.post<{ success: boolean; data: { id: string; title: string } }>(
       '/api/admin/games',
@@ -340,6 +693,41 @@ export const adminApi = {
       '/api/admin/blog',
       { params: { page: page.toString(), pageSize: pageSize.toString() } }
     );
+    return response.data;
+  },
+
+  getBlogPost: async (id: string): Promise<{
+    id: string;
+    title: string;
+    slug: string;
+    content: string;
+    excerpt: string;
+    coverImage?: string;
+    category: string;
+    tags: string[];
+    published: boolean;
+    author?: string;
+    publishedAt?: string;
+    readTime?: number;
+    createdAt: string;
+    updatedAt: string;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      title: string;
+      slug: string;
+      content: string;
+      excerpt: string;
+      coverImage?: string;
+      category: string;
+      tags: string[];
+      published: boolean;
+      author?: string;
+      publishedAt?: string;
+      readTime?: number;
+      createdAt: string;
+      updatedAt: string;
+    } }>(`/api/admin/blog/${id}`);
     return response.data;
   },
 
@@ -378,6 +766,30 @@ export const adminApi = {
     return response.data;
   },
 
+  getOrderDetails: async (id: string): Promise<OrderDetails> => {
+    const response = await apiClient.get<{ success: boolean; data: OrderDetails }>(
+      `/api/admin/orders/${id}`
+    );
+    return response.data;
+  },
+
+  updateOrder: async (id: string, data: {
+    status?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    paymentStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    paymentMethod?: string;
+    promoCode?: string;
+  }): Promise<{ id: string; status: string; paymentStatus?: string; paymentMethod?: string }> => {
+    const response = await apiClient.put<{ success: boolean; data: { id: string; status: string; paymentStatus?: string; paymentMethod?: string } }>(
+      `/api/admin/orders/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  cancelOrder: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.post(`/api/admin/orders/${id}/cancel`, { reason });
+  },
+
   updateOrderStatus: async (id: string, status: string): Promise<{ id: string; status: string }> => {
     const response = await apiClient.put<{ success: boolean; data: { id: string; status: string } }>(
       `/api/admin/orders/${id}/status`,
@@ -392,6 +804,71 @@ export const adminApi = {
       '/api/admin/g2a/sync'
     );
     return { message: response.message || 'Sync started' };
+  },
+
+  getG2ASyncProgress: async (): Promise<{
+    inProgress: boolean;
+    currentPage: number;
+    totalPages: number;
+    productsProcessed: number;
+    productsTotal: number;
+    categoriesCreated: number;
+    genresCreated: number;
+    platformsCreated: number;
+    errors: number;
+    startedAt: string | null;
+    estimatedCompletion: string | null;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      inProgress: boolean;
+      currentPage: number;
+      totalPages: number;
+      productsProcessed: number;
+      productsTotal: number;
+      categoriesCreated: number;
+      genresCreated: number;
+      platformsCreated: number;
+      errors: number;
+      startedAt: string | null;
+      estimatedCompletion: string | null;
+    } }>('/api/admin/g2a/sync-progress');
+    return response.data;
+  },
+
+  getG2ASyncStatus: async (): Promise<{
+    lastSync: string | null;
+    totalProducts: number;
+    inStock: number;
+    outOfStock: number;
+    syncInProgress: boolean;
+  }> => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      lastSync: string | null;
+      totalProducts: number;
+      inStock: number;
+      outOfStock: number;
+      syncInProgress: boolean;
+    } }>('/api/admin/g2a/status');
+    return response.data;
+  },
+
+  getG2ASyncMetadata: async (): Promise<{
+    lastSync: string | null;
+    totalProducts: number;
+    inStock: number;
+    outOfStock: number;
+    syncInProgress: boolean;
+    productsSynced: number;
+    syncStatus: 'in_progress' | 'completed' | 'failed';
+  }> => {
+    // Use status endpoint which returns similar data
+    const status = await adminApi.getG2ASyncStatus();
+    const progress = await adminApi.getG2ASyncProgress();
+    return {
+      ...status,
+      productsSynced: progress.productsProcessed,
+      syncStatus: progress.inProgress ? 'in_progress' : (progress.errors > 0 ? 'failed' : 'completed') as 'in_progress' | 'completed' | 'failed',
+    };
   },
 
   // Payment Management

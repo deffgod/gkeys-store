@@ -15,6 +15,10 @@ import FAQManagementPage from './pages/FAQManagementPage';
 import G2AOffersPage from './pages/G2AOffersPage';
 import G2AReservationsPage from './pages/G2AReservationsPage';
 import CacheManagementPage from './pages/CacheManagementPage';
+import CategoriesPage from './pages/CategoriesPage';
+import GenresPage from './pages/GenresPage';
+import PlatformsPage from './pages/PlatformsPage';
+import TagsPage from './pages/TagsPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -34,6 +38,10 @@ const AdminApp: React.FC = () => {
         <Route path="g2a/offers" element={<G2AOffersPage />} />
         <Route path="g2a/reservations" element={<G2AReservationsPage />} />
         <Route path="cache" element={<CacheManagementPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
+        <Route path="genres" element={<GenresPage />} />
+        <Route path="platforms" element={<PlatformsPage />} />
+        <Route path="tags" element={<TagsPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
     </Routes>

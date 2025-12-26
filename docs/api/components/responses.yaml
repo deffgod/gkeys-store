@@ -1,0 +1,291 @@
+# Common Responses
+
+Success:
+  description: Успешный ответ
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Success'
+
+BadRequest:
+  description: Неверный запрос
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Validation failed
+          code: VAL001
+          details:
+            - field: email
+              message: Valid email is required
+
+Unauthorized:
+  description: Не авторизован
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Unauthorized
+          code: AUTH001
+
+Forbidden:
+  description: Доступ запрещен
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Forbidden
+          code: AUTH003
+
+NotFound:
+  description: Ресурс не найден
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Resource not found
+          code: NOTFOUND001
+
+Conflict:
+  description: Конфликт (ресурс уже существует)
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Resource already exists
+          code: CONFLICT001
+
+TooManyRequests:
+  description: Слишком много запросов
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Too many requests
+          code: RATE001
+
+InternalServerError:
+  description: Внутренняя ошибка сервера
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Internal server error
+          code: SERVER001
+
+BadGateway:
+  description: Ошибка шлюза
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/Error'
+      example:
+        success: false
+        error:
+          message: Bad gateway
+          code: GATEWAY001
+
+# Auth Responses
+
+AuthResponse:
+  description: Успешная аутентификация
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/AuthResponse'
+
+RefreshTokenResponse:
+  description: Успешное обновление токена
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/RefreshTokenResponse'
+
+# Game Responses
+
+GamesListResponse:
+  description: Список игр
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                allOf:
+                  - $ref: '../schemas.yaml#/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '../schemas.yaml#/Game'
+
+GameResponse:
+  description: Информация об игре
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/Game'
+
+SearchSuggestionsResponse:
+  description: Предложения для автодополнения
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '../schemas.yaml#/SearchSuggestion'
+
+# Order Responses
+
+OrderResponse:
+  description: Информация о заказе
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/Order'
+
+OrdersListResponse:
+  description: Список заказов
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                allOf:
+                  - $ref: '../schemas.yaml#/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '../schemas.yaml#/Order'
+
+# Cart Responses
+
+CartResponse:
+  description: Корзина покупок
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/Cart'
+
+# Wishlist Responses
+
+WishlistResponse:
+  description: Избранное
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/Wishlist'
+
+WishlistCheckResponse:
+  description: Проверка наличия игры в избранном
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  inWishlist:
+                    type: boolean
+                    example: true
+
+# User Responses
+
+UserProfileResponse:
+  description: Профиль пользователя
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                $ref: '../schemas.yaml#/UserProfile'
+
+TransactionsListResponse:
+  description: Список транзакций
+  content:
+    application/json:
+      schema:
+        allOf:
+          - $ref: '../schemas.yaml#/Success'
+          - type: object
+            properties:
+              data:
+                allOf:
+                  - $ref: '../schemas.yaml#/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '../schemas.yaml#/Transaction'
+

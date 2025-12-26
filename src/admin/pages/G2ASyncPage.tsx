@@ -56,6 +56,35 @@ const G2ASyncPage: React.FC = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
+  const [syncProgress, setSyncProgress] = useState<{
+    inProgress: boolean;
+    currentPage: number;
+    totalPages: number;
+    productsProcessed: number;
+    productsTotal: number;
+    categoriesCreated: number;
+    genresCreated: number;
+    platformsCreated: number;
+    errors: number;
+    startedAt: string | null;
+    estimatedCompletion: string | null;
+  } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{
+    lastSync: string | null;
+    totalProducts: number;
+    inStock: number;
+    outOfStock: number;
+    syncInProgress: boolean;
+  } | null>(null);
+  const [syncMetadata, setSyncMetadata] = useState<{
+    lastSync: string | null;
+    totalProducts: number;
+    inStock: number;
+    outOfStock: number;
+    syncInProgress: boolean;
+    productsSynced: number;
+    syncStatus: 'in_progress' | 'completed' | 'failed';
+  } | null>(null);
   const [metrics, setMetrics] = useState<{
     requests_total: number;
     requests_success: number;
@@ -132,10 +161,21 @@ const G2ASyncPage: React.FC = () => {
   const fetchMetrics = async () => {
     try {
       setLoadingMetrics(true);
-      const data = await adminApi.getG2AMetrics();
-      setMetrics(data);
+      const [metricsData, progressData, statusData, metadataData] = await Promise.all([
+        adminApi.getG2AMetrics(),
+        adminApi.getG2ASyncProgress(),
+        adminApi.getG2ASyncStatus(),
+        adminApi.getG2ASyncMetadata(),
+      ]);
+      setMetrics(metricsData);
+      setSyncProgress(progressData);
+      setSyncStatus(statusData);
+      setSyncMetadata(metadataData);
+      if (statusData.lastSync) {
+        setLastSync(statusData.lastSync);
+      }
     } catch (err) {
-      console.error('Failed to fetch G2A metrics:', err);
+      console.error('Failed to fetch G2A data:', err);
     } finally {
       setLoadingMetrics(false);
     }
@@ -143,7 +183,7 @@ const G2ASyncPage: React.FC = () => {
 
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchMetrics, 5000); // Refresh every 5 seconds for progress updates
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -211,14 +251,18 @@ const G2ASyncPage: React.FC = () => {
                 Sync Status
               </p>
               <p style={{ 
-                color: syncing ? theme.colors.warning : 
+                color: (syncMetadata?.syncStatus === 'in_progress' || syncing) ? theme.colors.warning : 
+                       syncMetadata?.syncStatus === 'completed' ? theme.colors.success :
+                       syncMetadata?.syncStatus === 'failed' ? theme.colors.error :
                        syncResult === 'success' ? theme.colors.success :
                        syncResult === 'error' ? theme.colors.error :
                        theme.colors.text,
                 fontSize: '16px',
                 fontWeight: '600',
               }}>
-                {syncing ? 'Syncing...' : 
+                {(syncMetadata?.syncStatus === 'in_progress' || syncing) ? 'Syncing...' : 
+                 syncMetadata?.syncStatus === 'completed' ? 'Last sync completed' :
+                 syncMetadata?.syncStatus === 'failed' ? 'Last sync failed' :
                  syncResult === 'success' ? 'Last sync successful' :
                  syncResult === 'error' ? 'Last sync failed' :
                  'Ready'}
@@ -255,7 +299,8 @@ const G2ASyncPage: React.FC = () => {
                 Last Sync
               </p>
               <p style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600' }}>
-                {lastSync ? new Date(lastSync).toLocaleString() : 'Never'}
+                {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString() : 
+                 lastSync ? new Date(lastSync).toLocaleString() : 'Never'}
               </p>
             </div>
           </div>
@@ -294,6 +339,114 @@ const G2ASyncPage: React.FC = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Sync Progress Card */}
+        {syncProgress && syncProgress.inProgress && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: '16px',
+              padding: '24px',
+              border: `1px solid ${theme.colors.border}`,
+              gridColumn: 'span 2',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: `${theme.colors.info}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <FiActivity color={theme.colors.info} size={20} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                  Sync Progress
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <p style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600' }}>
+                    Page {syncProgress.currentPage} of {syncProgress.totalPages}
+                  </p>
+                  <p style={{ color: theme.colors.textSecondary, fontSize: '14px' }}>
+                    {syncProgress.productsProcessed} / {syncProgress.productsTotal} products
+                  </p>
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '8px',
+                  backgroundColor: theme.colors.surfaceLight,
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${syncProgress.totalPages > 0 ? (syncProgress.currentPage / syncProgress.totalPages) * 100 : 0}%`,
+                    height: '100%',
+                    backgroundColor: theme.colors.primary,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                {syncProgress.errors > 0 && (
+                  <p style={{ color: theme.colors.error, fontSize: '12px', marginTop: '8px' }}>
+                    {syncProgress.errors} errors
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Sync Statistics Card */}
+        {syncMetadata && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: '16px',
+              padding: '24px',
+              border: `1px solid ${theme.colors.border}`,
+              gridColumn: 'span 2',
+            }}
+          >
+            <p style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
+              Sync Statistics
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div>
+                <p style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>Total Products</p>
+                <p style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '600' }}>
+                  {syncMetadata.totalProducts}
+                </p>
+              </div>
+              <div>
+                <p style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>In Stock</p>
+                <p style={{ color: theme.colors.success, fontSize: '18px', fontWeight: '600' }}>
+                  {syncMetadata.inStock}
+                </p>
+              </div>
+              <div>
+                <p style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>Out of Stock</p>
+                <p style={{ color: theme.colors.error, fontSize: '18px', fontWeight: '600' }}>
+                  {syncMetadata.outOfStock}
+                </p>
+              </div>
+              <div>
+                <p style={{ color: theme.colors.textSecondary, fontSize: '12px', marginBottom: '4px' }}>Products Synced</p>
+                <p style={{ color: theme.colors.info, fontSize: '18px', fontWeight: '600' }}>
+                  {syncMetadata.productsSynced}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Main Sync Panel */}

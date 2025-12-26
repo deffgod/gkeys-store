@@ -20,7 +20,25 @@ One-click deploy to Vercel. After deployment, configure environment variables in
 - ✅ Деплой на Vercel
 - ✅ G2A интеграция
 - ✅ Архитектура проекта
+- ✅ **OpenAPI спецификация API** ([docs/api/](docs/api/))
 - ✅ Troubleshooting и FAQ
+
+### 📚 API Documentation
+
+**👉 [OpenAPI Specification](docs/api/openapi.yaml)** - Полная спецификация REST API в формате OpenAPI 3.0.
+
+- 📋 [API README](docs/api/README.md) - Руководство по использованию API
+- ❌ [Error Codes](docs/api/errors.md) - Коды ошибок API
+- 📝 [Changelog](docs/api/changelog.md) - История изменений API
+
+Просмотр документации:
+```bash
+# Swagger UI
+swagger-ui-serve docs/api/openapi.yaml
+
+# Redoc
+redoc-cli bundle docs/api/openapi.yaml -o docs/api/index.html
+```
 
 ## 🚀 Technology Stack
 

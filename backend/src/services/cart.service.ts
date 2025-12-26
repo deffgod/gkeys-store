@@ -1,5 +1,9 @@
 import prisma from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
+import redisClient from '../config/redis.js';
+
+// Cache TTL for cart (15 minutes)
+const CART_CACHE_TTL = 15 * 60;
 
 export interface CartItem {
   gameId: string;
@@ -20,6 +24,29 @@ export interface CartResponse {
 }
 
 /**
+ * Get cache key for cart
+ */
+const getCartCacheKey = (userId?: string, sessionId?: string): string => {
+  const identifier = userId || sessionId!;
+  return `cart:${identifier}`;
+};
+
+/**
+ * Invalidate cart cache
+ */
+const invalidateCartCache = async (userId?: string, sessionId?: string): Promise<void> => {
+  try {
+    if (redisClient.isOpen) {
+      const cacheKey = getCartCacheKey(userId, sessionId);
+      await redisClient.del(cacheKey);
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability
+    console.warn('[Cart Cache] Failed to invalidate cache:', err);
+  }
+};
+
+/**
  * Get cart items for user (authenticated) or session (guest)
  */
 export const getCart = async (userId?: string, sessionId?: string): Promise<CartResponse> => {
@@ -27,6 +54,23 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     throw new AppError('User ID or session ID required', 400);
   }
 
+  const cacheKey = getCartCacheKey(userId, sessionId);
+
+  // Try to get from cache
+  try {
+    if (redisClient.isOpen) {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability - continue to database
+    console.warn('[Cart Cache] Failed to read from cache:', err);
+  }
+
+  // Fetch from database
+  // For guests, use sessionId as userId (temporary workaround until schema supports sessionId)
   const cartItems = await prisma.cartItem.findMany({
     where: userId ? { userId } : { userId: sessionId },
     include: {
@@ -51,7 +95,7 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     0
   );
 
-  return {
+  const result: CartResponse = {
     items: cartItems.map((item) => ({
       gameId: item.gameId,
       quantity: item.quantity,
@@ -66,6 +110,18 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     })),
     total: Number(total.toFixed(2)),
   };
+
+  // Cache the result
+  try {
+    if (redisClient.isOpen) {
+      await redisClient.setEx(cacheKey, CART_CACHE_TTL, JSON.stringify(result));
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability
+    console.warn('[Cart Cache] Failed to write to cache:', err);
+  }
+
+  return result;
 };
 
 /**
@@ -136,6 +192,9 @@ export const addToCart = async (
       },
     });
   }
+
+  // Invalidate cache after modification
+  await invalidateCartCache(userId, sessionId);
 };
 
 /**
@@ -170,6 +229,9 @@ export const updateCartItem = async (
       quantity,
     },
   });
+
+  // Invalidate cache after modification
+  await invalidateCartCache(userId, sessionId);
 };
 
 /**
@@ -194,6 +256,9 @@ export const removeFromCart = async (
       },
     },
   });
+
+  // Invalidate cache after modification
+  await invalidateCartCache(userId, sessionId);
 };
 
 /**
@@ -211,6 +276,9 @@ export const clearCart = async (userId?: string, sessionId?: string): Promise<vo
       userId: identifier,
     },
   });
+
+  // Invalidate cache after modification
+  await invalidateCartCache(userId, sessionId);
 };
 
 /**
@@ -320,16 +388,9 @@ export const migrateSessionCartToUser = async (
     }
   });
 
-  // Invalidate cache after migration (non-blocking)
-  try {
-    const { invalidateCache } = await import('./cache.service.js');
-    await invalidateCache(`session:${sessionId}:cart`);
-    await invalidateCache(`user:${userId}:cart`);
-    console.log(`[Cart Migration] Cache invalidated for session ${sessionId} and user ${userId}`);
-  } catch (cacheError) {
-    // Non-blocking - log but don't fail migration
-    console.warn(`[Cart Migration] Failed to invalidate cache:`, cacheError);
-  }
+  // Invalidate both session and user cart caches
+  await invalidateCartCache(undefined, sessionId);
+  await invalidateCartCache(userId, undefined);
 };
 
 /**

@@ -1,0 +1,43 @@
+post:
+  tags:
+    - Auth
+  summary: Регистрация нового пользователя
+  description: |
+    Создает новый аккаунт пользователя.
+    
+    Требования к паролю:
+    - Минимум 8 символов
+    - Должен содержать заглавную букву
+    - Должен содержать строчную букву
+    - Должен содержать цифру
+  operationId: registerUser
+  requestBody:
+    $ref: '../../components/requestBodies.yaml#/RegisterRequest'
+  responses:
+    '201':
+      description: Пользователь успешно зарегистрирован
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '../../components/schemas.yaml#/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '../../components/schemas.yaml#/AuthResponse'
+    '400':
+      $ref: '../../components/responses.yaml#/BadRequest'
+    '409':
+      description: Email уже зарегистрирован
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas.yaml#/Error'
+          example:
+            success: false
+            error:
+              message: Email already registered
+              code: CONFLICT002
+    '500':
+      $ref: '../../components/responses.yaml#/InternalServerError'
+

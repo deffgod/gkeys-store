@@ -1,0 +1,703 @@
+openapi: 3.0.0
+info:
+  title: GKEYS Store API
+  version: 1.0.0
+  description: |
+    RESTful API для платформы продажи игровых ключей GKEYS Store.
+    
+    API предоставляет функциональность для:
+    - Аутентификации и управления пользователями
+    - Каталога игр с фильтрацией и поиском
+    - Управления заказами
+    - Корзины покупок
+    - Избранного (Wishlist)
+    - Административной панели
+    - Интеграции с G2A API
+    
+    Все запросы к защищенным endpoints требуют JWT токен в заголовке Authorization.
+  contact:
+    name: GKEYS Store Support
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+  - url: https://your-project.vercel.app/api
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Аутентификация и авторизация пользователей
+  - name: Games
+    description: Каталог игр, поиск и фильтрация
+  - name: Orders
+    description: Управление заказами
+  - name: Cart
+    description: Корзина покупок
+  - name: Wishlist
+    description: Избранное
+  - name: User
+    description: Профиль пользователя и настройки
+  - name: Admin
+    description: Административная панель (требует роль ADMIN)
+  - name: G2A
+    description: Интеграция с G2A API и webhooks
+  - name: Error codes
+    description: Коды ошибок API
+    externalDocs:
+      url: ./errors.md
+  - name: Changelog
+    x-traitTag: true
+    description: История изменений API
+    externalDocs:
+      url: ./changelog.md
+
+x-tagGroups:
+  - name: Public
+    tags:
+      - Auth
+      - Games
+  - name: User
+    tags:
+      - Orders
+      - Cart
+      - Wishlist
+      - User
+  - name: Admin
+    tags:
+      - Admin
+      - G2A
+
+paths:
+  # Authentication endpoints
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация нового пользователя
+      description: |
+        Создает новый аккаунт пользователя.
+        
+        Требования к паролю:
+        - Минимум 8 символов
+        - Должен содержать заглавную букву
+        - Должен содержать строчную букву
+        - Должен содержать цифру
+      operationId: registerUser
+      requestBody:
+        $ref: './components/requestBodies.yaml#/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './components/schemas.yaml#/Success'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: './components/schemas.yaml#/AuthResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '409':
+          description: Email уже зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Error'
+              example:
+                success: false
+                error:
+                  message: Email already registered
+                  code: CONFLICT002
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Вход в систему
+      description: |
+        Аутентификация пользователя по email и паролю.
+        
+        При успешной авторизации:
+        - Возвращает JWT токен и refresh токен
+        - Автоматически мигрирует корзину и избранное из session (если есть sessionId cookie)
+      operationId: loginUser
+      requestBody:
+        $ref: './components/requestBodies.yaml#/LoginRequest'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/AuthResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Error'
+              example:
+                success: false
+                error:
+                  message: Invalid credentials
+                  code: AUTH004
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Обновление токена
+      description: Обновляет access токен используя refresh токен
+      operationId: refreshToken
+      requestBody:
+        $ref: './components/requestBodies.yaml#/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './components/schemas.yaml#/Success'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: './components/schemas.yaml#/RefreshTokenResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # Games endpoints
+  /games:
+    get:
+      tags:
+        - Games
+      summary: Получить список игр
+      description: Возвращает список игр с фильтрацией, сортировкой и пагинацией
+      operationId: getGames
+      parameters:
+        - $ref: './components/parameters.yaml#/Page'
+        - $ref: './components/parameters.yaml#/PageSize'
+        - $ref: './components/parameters.yaml#/Search'
+        - $ref: './components/parameters.yaml#/Sort'
+        - $ref: './components/parameters.yaml#/InStockOnly'
+        - $ref: './components/parameters.yaml#/Platforms'
+        - $ref: './components/parameters.yaml#/Genres'
+        - $ref: './components/parameters.yaml#/PriceMin'
+        - $ref: './components/parameters.yaml#/PriceMax'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/GamesListResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /games/{id}:
+    get:
+      tags:
+        - Games
+      summary: Получить игру по ID
+      description: Возвращает детальную информацию об игре
+      operationId: getGameById
+      parameters:
+        - $ref: './components/parameters.yaml#/GameId'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/GameResponse'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /games/search:
+    get:
+      tags:
+        - Games
+      summary: Поиск игр
+      description: Поиск игр по запросу
+      operationId: searchGames
+      parameters:
+        - $ref: './components/parameters.yaml#/Search'
+        - $ref: './components/parameters.yaml#/Page'
+        - $ref: './components/parameters.yaml#/PageSize'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/GamesListResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # Orders endpoints
+  /orders:
+    post:
+      tags:
+        - Orders
+      summary: Создать заказ
+      description: Создает новый заказ (требует авторизации)
+      operationId: createOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: './components/requestBodies.yaml#/CreateOrderRequest'
+      responses:
+        '201':
+          $ref: './components/responses.yaml#/OrderResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    get:
+      tags:
+        - Orders
+      summary: Получить список заказов
+      description: Возвращает список заказов пользователя (требует авторизации)
+      operationId: getUserOrders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: './components/parameters.yaml#/Page'
+        - $ref: './components/parameters.yaml#/PageSize'
+        - $ref: './components/parameters.yaml#/Status'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/OrdersListResponse'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Получить заказ по ID
+      description: Возвращает детальную информацию о заказе (требует авторизации)
+      operationId: getOrderById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: './components/parameters.yaml#/OrderId'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/OrderResponse'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # Cart endpoints
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Получить корзину
+      description: Возвращает корзину покупок (поддерживает guest и authenticated пользователей)
+      operationId: getCart
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/CartResponse'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    post:
+      tags:
+        - Cart
+      summary: Добавить товар в корзину
+      description: Добавляет игру в корзину
+      operationId: addToCart
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      requestBody:
+        $ref: './components/requestBodies.yaml#/AddToCartRequest'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/CartResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    delete:
+      tags:
+        - Cart
+      summary: Очистить корзину
+      description: Удаляет все товары из корзины
+      operationId: clearCart
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Корзина очищена
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Success'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /cart/{gameId}:
+    put:
+      tags:
+        - Cart
+      summary: Обновить количество товара
+      description: Обновляет количество товара в корзине
+      operationId: updateCartItem
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        $ref: './components/requestBodies.yaml#/UpdateCartItemRequest'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/CartResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    delete:
+      tags:
+        - Cart
+      summary: Удалить товар из корзины
+      description: Удаляет игру из корзины
+      operationId: removeFromCart
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/CartResponse'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /cart/migrate:
+    post:
+      tags:
+        - Cart
+      summary: Миграция корзины
+      description: Мигрирует корзину из session в user cart после логина (требует авторизации)
+      operationId: migrateCart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Корзина успешно мигрирована
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Success'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # Wishlist endpoints
+  /wishlist:
+    get:
+      tags:
+        - Wishlist
+      summary: Получить избранное
+      description: Возвращает список игр в избранном (поддерживает guest и authenticated пользователей)
+      operationId: getWishlist
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/WishlistResponse'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    post:
+      tags:
+        - Wishlist
+      summary: Добавить игру в избранное
+      description: Добавляет игру в избранное
+      operationId: addToWishlist
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      requestBody:
+        $ref: './components/requestBodies.yaml#/AddToWishlistRequest'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/WishlistResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '409':
+          description: Игра уже в избранном
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Error'
+              example:
+                success: false
+                error:
+                  message: Game already in wishlist
+                  code: CONFLICT004
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    delete:
+      tags:
+        - Wishlist
+      summary: Удалить игру из избранного
+      description: Удаляет игру из избранного
+      operationId: removeFromWishlist
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/WishlistResponse'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /wishlist/{gameId}/check:
+    get:
+      tags:
+        - Wishlist
+      summary: Проверить наличие игры в избранном
+      description: Проверяет, находится ли игра в избранном
+      operationId: checkWishlist
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/WishlistCheckResponse'
+        '404':
+          $ref: './components/responses.yaml#/NotFound'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /wishlist/migrate:
+    post:
+      tags:
+        - Wishlist
+      summary: Миграция избранного
+      description: Мигрирует избранное из session в user wishlist после логина (требует авторизации)
+      operationId: migrateWishlist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Избранное успешно мигрировано
+          content:
+            application/json:
+              schema:
+                $ref: './components/schemas.yaml#/Success'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # User endpoints
+  /user/profile:
+    get:
+      tags:
+        - User
+      summary: Получить профиль
+      description: Возвращает профиль текущего пользователя (требует авторизации)
+      operationId: getUserProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/UserProfileResponse'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+    put:
+      tags:
+        - User
+      summary: Обновить профиль
+      description: Обновляет профиль пользователя (требует авторизации)
+      operationId: updateUserProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: './components/requestBodies.yaml#/UpdateProfileRequest'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/UserProfileResponse'
+        '400':
+          $ref: './components/responses.yaml#/BadRequest'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /user/balance:
+    get:
+      tags:
+        - User
+      summary: Получить баланс
+      description: Возвращает баланс пользователя (требует авторизации)
+      operationId: getUserBalance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Баланс пользователя
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './components/schemas.yaml#/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          balance:
+                            type: number
+                            format: float
+                            example: 100.50
+                          currency:
+                            type: string
+                            example: EUR
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  /user/transactions:
+    get:
+      tags:
+        - User
+      summary: Получить транзакции
+      description: Возвращает список транзакций пользователя (требует авторизации)
+      operationId: getUserTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: './components/parameters.yaml#/Page'
+        - $ref: './components/parameters.yaml#/PageSize'
+        - $ref: './components/parameters.yaml#/DateFrom'
+        - $ref: './components/parameters.yaml#/DateTo'
+      responses:
+        '200':
+          $ref: './components/responses.yaml#/TransactionsListResponse'
+        '401':
+          $ref: './components/responses.yaml#/Unauthorized'
+        '500':
+          $ref: './components/responses.yaml#/InternalServerError'
+
+  # Health check
+  /health:
+    get:
+      tags:
+        - Public
+      summary: Health check
+      description: Проверка работоспособности API
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API работает
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+                      redis:
+                        type: string
+                        example: ok
+                      g2a:
+                        type: string
+                        example: ok
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен полученный при авторизации
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionId
+      description: Session ID для guest пользователей (корзина и избранное)
+
+  schemas:
+    $ref: './components/schemas.yaml'
+  
+  parameters:
+    $ref: './components/parameters.yaml'
+  
+  requestBodies:
+    $ref: './components/requestBodies.yaml'
+  
+  responses:
+    $ref: './components/responses.yaml'
+
+security:
+  - bearerAuth: []
+

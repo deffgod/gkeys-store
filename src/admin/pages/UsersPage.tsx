@@ -17,7 +17,8 @@ import {
   FiLogIn,
   FiCreditCard,
   FiCheckCircle,
-  FiXCircle
+  FiXCircle,
+  FiTrash2
 } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
 import type { UserSearchResult, UserDetails } from '../services/adminApi';
@@ -132,6 +133,14 @@ const UsersPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<'USER' | 'ADMIN' | null>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'activity'>('details');
+  const [editingUser, setEditingUser] = useState<{
+    nickname: string;
+    firstName: string;
+    lastName: string;
+  } | null>(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -201,11 +210,15 @@ const UsersPage: React.FC = () => {
 
     try {
       setUpdatingBalance(true);
-      const result = await adminApi.updateUserBalance(userId, amount, balanceReason);
-      alert(`Balance updated successfully. New balance: ${formatCurrency(result.newBalance)}`);
+      // Use updateUser with balance instead of updateUserBalance for consistency
+      const currentUser = selectedUser || await adminApi.getUserDetails(userId);
+      const newBalance = Number(currentUser.balance) + amount;
+      await adminApi.updateUser(userId, { balance: newBalance });
+      alert(`Balance updated successfully. New balance: ${formatCurrency(newBalance)}`);
       setBalanceAmount('');
       setBalanceReason('');
       await handleViewUser(userId); // Refresh user details
+      fetchUsers(); // Refresh user list
     } catch (err) {
       console.error('Failed to update balance:', err);
       alert('Failed to update balance');
@@ -221,14 +234,65 @@ const UsersPage: React.FC = () => {
 
     try {
       setUpdatingRole(true);
-      await adminApi.updateUserRole(userId, newRole);
+      await adminApi.updateUser(userId, { role: newRole });
       alert(`User role updated to ${newRole}`);
       await handleViewUser(userId); // Refresh user details
+      fetchUsers(); // Refresh user list
     } catch (err) {
       console.error('Failed to update role:', err);
       alert('Failed to update role');
     } finally {
       setUpdatingRole(false);
+    }
+  };
+
+  const handleEditUser = (user: UserDetails) => {
+    setEditingUser({
+      nickname: user.nickname,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+    });
+  };
+
+  const handleSaveUser = async (userId: string) => {
+    if (!editingUser) return;
+
+    try {
+      setUpdatingUser(true);
+      await adminApi.updateUser(userId, {
+        nickname: editingUser.nickname,
+        firstName: editingUser.firstName || undefined,
+        lastName: editingUser.lastName || undefined,
+      });
+      alert('User information updated successfully');
+      setEditingUser(null);
+      await handleViewUser(userId); // Refresh user details
+      fetchUsers(); // Refresh user list
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      alert('Failed to update user information');
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingUser(true);
+      await adminApi.deleteUser(userId);
+      alert('User deleted successfully');
+      setDeleteConfirm(null);
+      setSelectedUser(null);
+      fetchUsers(); // Refresh user list
+    } catch (err: any) {
+      console.error('Failed to delete user:', err);
+      alert(err?.response?.data?.error?.message || 'Failed to delete user. User may have active orders.');
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -807,6 +871,127 @@ const UsersPage: React.FC = () => {
                           </div>
                         </div>
 
+                        {/* User Edit Form */}
+                        <div style={{
+                          backgroundColor: theme.colors.surfaceLight,
+                          borderRadius: '12px',
+                          padding: '20px',
+                          marginBottom: '24px',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '600' }}>
+                              User Information
+                            </h3>
+                            {!editingUser ? (
+                              <button
+                                type="button"
+                                onClick={() => handleEditUser(selectedUser)}
+                                style={{
+                                  ...buttonStyle,
+                                  backgroundColor: theme.colors.surface,
+                                  color: theme.colors.text,
+                                  padding: '8px 16px',
+                                }}
+                              >
+                                <FiEdit />
+                                Edit
+                              </button>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingUser(null)}
+                                  style={{
+                                    ...buttonStyle,
+                                    backgroundColor: theme.colors.surface,
+                                    color: theme.colors.text,
+                                    padding: '8px 16px',
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveUser(selectedUser.id)}
+                                  disabled={updatingUser}
+                                  style={{
+                                    ...buttonStyle,
+                                    backgroundColor: updatingUser ? theme.colors.surface : theme.colors.primary,
+                                    color: updatingUser ? theme.colors.textSecondary : theme.colors.background,
+                                    padding: '8px 16px',
+                                    cursor: updatingUser ? 'not-allowed' : 'pointer',
+                                  }}
+                                >
+                                  <FiSave />
+                                  {updatingUser ? 'Saving...' : 'Save'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {editingUser ? (
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                                  Nickname
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editingUser.nickname}
+                                  onChange={(e) => setEditingUser({ ...editingUser, nickname: e.target.value })}
+                                  style={inputStyle}
+                                />
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                  <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                                    First Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editingUser.firstName}
+                                    onChange={(e) => setEditingUser({ ...editingUser, firstName: e.target.value })}
+                                    style={inputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                                    Last Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editingUser.lastName}
+                                    onChange={(e) => setEditingUser({ ...editingUser, lastName: e.target.value })}
+                                    style={inputStyle}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                                  Nickname
+                                </label>
+                                <p style={{ color: theme.colors.text, fontSize: '14px' }}>{selectedUser.nickname}</p>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                  <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                                    First Name
+                                  </label>
+                                  <p style={{ color: theme.colors.text, fontSize: '14px' }}>{selectedUser.firstName || '—'}</p>
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                                    Last Name
+                                  </label>
+                                  <p style={{ color: theme.colors.text, fontSize: '14px' }}>{selectedUser.lastName || '—'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Balance Update Form */}
                         <div style={{
                           backgroundColor: theme.colors.surfaceLight,
@@ -907,6 +1092,42 @@ const UsersPage: React.FC = () => {
                               {updatingRole ? 'Updating...' : 'Update Role'}
                             </button>
                           </div>
+                        </div>
+
+                        {/* Delete User */}
+                        <div style={{
+                          backgroundColor: `${theme.colors.error}20`,
+                          borderRadius: '12px',
+                          padding: '20px',
+                          marginBottom: '24px',
+                          border: `1px solid ${theme.colors.error}40`,
+                        }}>
+                          <h3 style={{ color: theme.colors.error, fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                            Danger Zone
+                          </h3>
+                          <p style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
+                            Deleting a user will permanently remove their account and all associated data. This action cannot be undone.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirm(selectedUser.id)}
+                            disabled={deletingUser || selectedUser.orders.length > 0}
+                            style={{
+                              ...buttonStyle,
+                              backgroundColor: deletingUser || selectedUser.orders.length > 0 ? theme.colors.surface : theme.colors.error,
+                              color: deletingUser || selectedUser.orders.length > 0 ? theme.colors.textSecondary : '#ffffff',
+                              cursor: deletingUser || selectedUser.orders.length > 0 ? 'not-allowed' : 'pointer',
+                              opacity: deletingUser || selectedUser.orders.length > 0 ? 0.6 : 1,
+                            }}
+                          >
+                            <FiXCircle />
+                            {deletingUser ? 'Deleting...' : 'Delete User'}
+                          </button>
+                          {selectedUser.orders.length > 0 && (
+                            <p style={{ color: theme.colors.error, fontSize: '12px', marginTop: '8px' }}>
+                              Cannot delete user with active orders. Please cancel or complete orders first.
+                            </p>
+                          )}
                         </div>
 
                         {/* Orders */}
@@ -1239,6 +1460,77 @@ const UsersPage: React.FC = () => {
                   </div>
                 </>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px',
+            }}
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: '16px',
+                padding: '24px',
+                maxWidth: '400px',
+                width: '100%',
+              }}
+            >
+              <h3 style={{ color: theme.colors.error, fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                Delete User
+              </h3>
+              <p style={{ color: theme.colors.textSecondary, fontSize: '14px', marginBottom: '24px' }}>
+                Are you sure you want to delete this user? This action cannot be undone and will permanently remove all user data.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(null)}
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: theme.colors.surfaceLight,
+                    color: theme.colors.text,
+                    padding: '10px 20px',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteUser(deleteConfirm)}
+                  disabled={deletingUser}
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: deletingUser ? theme.colors.surface : theme.colors.error,
+                    color: deletingUser ? theme.colors.textSecondary : '#ffffff',
+                    padding: '10px 20px',
+                    cursor: deletingUser ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {deletingUser ? 'Deleting...' : 'Delete User'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

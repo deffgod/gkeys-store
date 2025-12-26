@@ -74,6 +74,19 @@ app.use(sessionMiddleware);
 
 // Health check with G2A and idempotency store checks
 app.get('/health', async (req, res) => {
+  // Also handle /api/health for consistency
+  const health = await getHealthStatus();
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+
+app.get('/api/health', async (req, res) => {
+  const health = await getHealthStatus();
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+
+async function getHealthStatus() {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -121,9 +134,8 @@ app.get('/health', async (req, res) => {
     health.status = 'degraded';
   }
   
-  const statusCode = health.status === 'ok' ? 200 : 503;
-  res.status(statusCode).json(health);
-});
+  return health;
+}
 
 // API Routes
 import authRoutes from './routes/auth.routes.js';

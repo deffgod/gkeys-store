@@ -14,8 +14,12 @@ export interface AuthResponse {
   user: {
     id: string;
     email: string;
-    name: string;
+    name?: string;
+    nickname?: string;
+    firstName?: string;
+    lastName?: string;
     avatar?: string;
+    role?: string;
   };
   token: string;
   refreshToken: string;

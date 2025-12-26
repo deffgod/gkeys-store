@@ -8,10 +8,13 @@ import {
   FiPackage,
   FiCheck,
   FiClock,
-  FiXCircle
+  FiXCircle,
+  FiEdit,
+  FiSave,
+  FiTrash2
 } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
-import type { OrderItem } from '../services/adminApi';
+import type { OrderItem, OrderDetails } from '../services/adminApi';
 
 const theme = {
   colors: {
@@ -111,7 +114,17 @@ const OrdersPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingOrder, setUpdatingOrder] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<{
+    status: string;
+    paymentStatus: string;
+    paymentMethod: string;
+  } | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const fetchOrders = async () => {
     try {
@@ -131,18 +144,84 @@ const OrdersPage: React.FC = () => {
     fetchOrders();
   }, [page, statusFilter]);
 
+  const handleViewOrder = async (orderId: string) => {
+    setLoadingDetails(true);
+    setOrderDetails(null);
+    setEditingOrder(null);
+    setCancelReason('');
+    try {
+      const details = await adminApi.getOrderDetails(orderId);
+      setOrderDetails(details);
+      setEditingOrder({
+        status: details.status,
+        paymentStatus: details.paymentStatus || 'PENDING',
+        paymentMethod: details.paymentMethod || '',
+      });
+    } catch (err) {
+      console.error('Failed to fetch order details:', err);
+      alert('Failed to load order details');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       setUpdatingStatus(true);
-      await adminApi.updateOrderStatus(orderId, newStatus);
+      await adminApi.updateOrder(orderId, { status: newStatus as any });
       fetchOrders();
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
-    } catch (err) {
+      if (orderDetails && orderDetails.id === orderId) {
+        await handleViewOrder(orderId); // Refresh details
+      }
+    } catch (err: any) {
       console.error('Failed to update order status:', err);
+      alert(err?.response?.data?.error?.message || 'Failed to update order status');
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleUpdateOrder = async (orderId: string) => {
+    if (!editingOrder) return;
+
+    try {
+      setUpdatingOrder(true);
+      await adminApi.updateOrder(orderId, {
+        status: editingOrder.status as any,
+        paymentStatus: editingOrder.paymentStatus as any,
+        paymentMethod: editingOrder.paymentMethod || undefined,
+      });
+      alert('Order updated successfully');
+      await handleViewOrder(orderId); // Refresh details
+      fetchOrders(); // Refresh list
+    } catch (err: any) {
+      console.error('Failed to update order:', err);
+      alert(err?.response?.data?.error?.message || 'Failed to update order');
+    } finally {
+      setUpdatingOrder(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to cancel this order? This will refund the payment and cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setCancellingOrder(true);
+      await adminApi.cancelOrder(orderId, cancelReason || undefined);
+      alert('Order cancelled successfully');
+      setCancelReason('');
+      await handleViewOrder(orderId); // Refresh details
+      fetchOrders(); // Refresh list
+    } catch (err: any) {
+      console.error('Failed to cancel order:', err);
+      alert(err?.response?.data?.error?.message || 'Failed to cancel order');
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -418,7 +497,10 @@ const OrdersPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '16px', textAlign: 'right' }}>
                       <button
-                        onClick={() => setSelectedOrder(order)}
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          handleViewOrder(order.id);
+                        }}
                         style={{
                           padding: '8px',
                           borderRadius: '6px',
@@ -568,132 +650,365 @@ const OrdersPage: React.FC = () => {
               </div>
 
               <div style={{ padding: '24px' }}>
-                {/* Customer Info */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ 
-                    color: theme.colors.textSecondary, 
-                    fontSize: '12px', 
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    marginBottom: '12px',
-                  }}>
-                    Customer
-                  </h4>
-                  <div style={{
-                    backgroundColor: theme.colors.surfaceLight,
-                    borderRadius: '12px',
-                    padding: '16px',
-                  }}>
-                    <p style={{ color: theme.colors.text, fontWeight: '500' }}>
-                      {selectedOrder.userNickname}
-                    </p>
-                    <p style={{ color: theme.colors.textSecondary, fontSize: '14px' }}>
-                      {selectedOrder.userEmail}
-                    </p>
+                {loadingDetails ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        border: `3px solid ${theme.colors.border}`,
+                        borderTopColor: theme.colors.primary,
+                        borderRadius: '50%',
+                      }}
+                    />
                   </div>
-                </div>
-
-                {/* Status */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ 
-                    color: theme.colors.textSecondary, 
-                    fontSize: '12px', 
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    marginBottom: '12px',
-                  }}>
-                    Status
-                  </h4>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED'].map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => handleUpdateStatus(selectedOrder.id, status)}
-                        disabled={updatingStatus || selectedOrder.status === status}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: `1px solid ${selectedOrder.status === status ? getStatusColor(status) : theme.colors.border}`,
-                          backgroundColor: selectedOrder.status === status ? `${getStatusColor(status)}20` : 'transparent',
-                          color: selectedOrder.status === status ? getStatusColor(status) : theme.colors.text,
-                          cursor: selectedOrder.status === status ? 'default' : 'pointer',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          opacity: updatingStatus ? 0.5 : 1,
-                        }}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Items */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ 
-                    color: theme.colors.textSecondary, 
-                    fontSize: '12px', 
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    marginBottom: '12px',
-                  }}>
-                    Items ({selectedOrder.itemsCount})
-                  </h4>
-                  <div style={{
-                    backgroundColor: theme.colors.surfaceLight,
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                  }}>
-                    {selectedOrder.items.map((item, index) => (
-                      <div 
-                        key={index}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '16px',
-                          borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
-                        }}
-                      >
-                        <div>
-                          <p style={{ color: theme.colors.text, fontWeight: '500' }}>
-                            {item.gameTitle}
-                          </p>
-                          {item.key && (
-                            <p style={{ 
-                              color: theme.colors.textSecondary, 
-                              fontSize: '12px',
-                              fontFamily: 'monospace',
-                              marginTop: '4px',
-                            }}>
-                              Key: {item.key}
-                            </p>
-                          )}
-                        </div>
-                        <p style={{ color: theme.colors.success, fontWeight: '600' }}>
-                          {formatCurrency(item.price)}
+                ) : orderDetails ? (
+                  <>
+                    {/* Customer Info */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <h4 style={{ 
+                        color: theme.colors.textSecondary, 
+                        fontSize: '12px', 
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        marginBottom: '12px',
+                      }}>
+                        Customer
+                      </h4>
+                      <div style={{
+                        backgroundColor: theme.colors.surfaceLight,
+                        borderRadius: '12px',
+                        padding: '16px',
+                      }}>
+                        <p style={{ color: theme.colors.text, fontWeight: '500' }}>
+                          {orderDetails.user.nickname}
+                        </p>
+                        <p style={{ color: theme.colors.textSecondary, fontSize: '14px' }}>
+                          {orderDetails.user.email}
                         </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Total */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '16px',
-                  backgroundColor: theme.colors.surfaceLight,
-                  borderRadius: '12px',
-                }}>
-                  <span style={{ color: theme.colors.text, fontWeight: '600', fontSize: '16px' }}>
-                    Total
-                  </span>
-                  <span style={{ color: theme.colors.success, fontWeight: '700', fontSize: '20px' }}>
-                    {formatCurrency(selectedOrder.total)}
-                  </span>
-                </div>
+                    {/* Order Edit Form */}
+                    <div style={{
+                      backgroundColor: theme.colors.surfaceLight,
+                      borderRadius: '12px',
+                      padding: '20px',
+                      marginBottom: '24px',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h4 style={{ 
+                          color: theme.colors.text, 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                        }}>
+                          Order Information
+                        </h4>
+                        {editingOrder && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingOrder({
+                                  status: orderDetails.status,
+                                  paymentStatus: orderDetails.paymentStatus || 'PENDING',
+                                  paymentMethod: orderDetails.paymentMethod || '',
+                                });
+                              }}
+                              style={{
+                                ...buttonStyle,
+                                backgroundColor: theme.colors.surface,
+                                color: theme.colors.text,
+                                padding: '8px 16px',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateOrder(orderDetails.id)}
+                              disabled={updatingOrder}
+                              style={{
+                                ...buttonStyle,
+                                backgroundColor: updatingOrder ? theme.colors.surface : theme.colors.primary,
+                                color: updatingOrder ? theme.colors.textSecondary : theme.colors.background,
+                                padding: '8px 16px',
+                                cursor: updatingOrder ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              <FiSave />
+                              {updatingOrder ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {editingOrder ? (
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                              Order Status
+                            </label>
+                            <select
+                              value={editingOrder.status}
+                              onChange={(e) => setEditingOrder({ ...editingOrder, status: e.target.value })}
+                              style={inputStyle}
+                            >
+                              <option value="PENDING">PENDING</option>
+                              <option value="PROCESSING">PROCESSING</option>
+                              <option value="COMPLETED">COMPLETED</option>
+                              <option value="FAILED">FAILED</option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                              Payment Status
+                            </label>
+                            <select
+                              value={editingOrder.paymentStatus}
+                              onChange={(e) => setEditingOrder({ ...editingOrder, paymentStatus: e.target.value })}
+                              style={inputStyle}
+                            >
+                              <option value="PENDING">PENDING</option>
+                              <option value="PROCESSING">PROCESSING</option>
+                              <option value="COMPLETED">COMPLETED</option>
+                              <option value="FAILED">FAILED</option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '8px' }}>
+                              Payment Method
+                            </label>
+                            <input
+                              type="text"
+                              value={editingOrder.paymentMethod}
+                              onChange={(e) => setEditingOrder({ ...editingOrder, paymentMethod: e.target.value })}
+                              placeholder="e.g., stripe, paypal, balance"
+                              style={inputStyle}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                              Order Status
+                            </label>
+                            <p style={{ color: theme.colors.text, fontSize: '14px' }}>{orderDetails.status}</p>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                              Payment Status
+                            </label>
+                            <p style={{ color: theme.colors.text, fontSize: '14px' }}>{orderDetails.paymentStatus || '—'}</p>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '4px' }}>
+                              Payment Method
+                            </label>
+                            <p style={{ color: theme.colors.text, fontSize: '14px' }}>{orderDetails.paymentMethod || '—'}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingOrder({
+                              status: orderDetails.status,
+                              paymentStatus: orderDetails.paymentStatus || 'PENDING',
+                              paymentMethod: orderDetails.paymentMethod || '',
+                            })}
+                            style={{
+                              ...buttonStyle,
+                              backgroundColor: theme.colors.surface,
+                              color: theme.colors.text,
+                              padding: '8px 16px',
+                              marginTop: '8px',
+                            }}
+                          >
+                            <FiEdit />
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Items */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <h4 style={{ 
+                        color: theme.colors.textSecondary, 
+                        fontSize: '12px', 
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        marginBottom: '12px',
+                      }}>
+                        Items ({orderDetails.items.length})
+                      </h4>
+                      <div style={{
+                        backgroundColor: theme.colors.surfaceLight,
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                      }}>
+                        {orderDetails.items.map((item, index) => (
+                          <div 
+                            key={item.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '16px',
+                              borderTop: index > 0 ? `1px solid ${theme.colors.border}` : 'none',
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <p style={{ color: theme.colors.text, fontWeight: '500' }}>
+                                {item.game.title}
+                              </p>
+                              <p style={{ color: theme.colors.textSecondary, fontSize: '12px' }}>
+                                Quantity: {item.quantity} × {formatCurrency(item.price)}
+                              </p>
+                              {item.key && (
+                                <p style={{ 
+                                  color: item.keyActivated ? theme.colors.success : theme.colors.warning, 
+                                  fontSize: '12px',
+                                  fontFamily: 'monospace',
+                                  marginTop: '4px',
+                                }}>
+                                  Key: {item.key} {item.keyActivated && '(Activated)'}
+                                </p>
+                              )}
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ color: theme.colors.success, fontWeight: '600' }}>
+                                {formatCurrency(item.price * item.quantity)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Transaction Info */}
+                    {orderDetails.transaction && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <h4 style={{ 
+                          color: theme.colors.textSecondary, 
+                          fontSize: '12px', 
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          marginBottom: '12px',
+                        }}>
+                          Transaction
+                        </h4>
+                        <div style={{
+                          backgroundColor: theme.colors.surfaceLight,
+                          borderRadius: '12px',
+                          padding: '16px',
+                        }}>
+                          <div style={{ display: 'grid', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Type:</span>
+                              <span style={{ color: theme.colors.text, fontSize: '13px' }}>{orderDetails.transaction.type}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Amount:</span>
+                              <span style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '600' }}>
+                                {formatCurrency(orderDetails.transaction.amount)} {orderDetails.transaction.currency}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Status:</span>
+                              <span style={{ 
+                                color: getStatusColor(orderDetails.transaction.status), 
+                                fontSize: '13px',
+                                fontWeight: '500',
+                              }}>
+                                {orderDetails.transaction.status}
+                              </span>
+                            </div>
+                            {orderDetails.transaction.transactionHash && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>Hash:</span>
+                                <span style={{ color: theme.colors.text, fontSize: '12px', fontFamily: 'monospace' }}>
+                                  {orderDetails.transaction.transactionHash.slice(0, 16)}...
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '16px',
+                      backgroundColor: theme.colors.surfaceLight,
+                      borderRadius: '12px',
+                      marginBottom: '24px',
+                    }}>
+                      <div>
+                        <p style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>
+                          Subtotal: {formatCurrency(orderDetails.subtotal)}
+                        </p>
+                        {orderDetails.discount > 0 && (
+                          <p style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>
+                            Discount: -{formatCurrency(orderDetails.discount)}
+                          </p>
+                        )}
+                      </div>
+                      <span style={{ color: theme.colors.success, fontWeight: '700', fontSize: '20px' }}>
+                        {formatCurrency(orderDetails.total)}
+                      </span>
+                    </div>
+
+                    {/* Cancel Order */}
+                    {orderDetails.status !== 'CANCELLED' && (
+                      <div style={{
+                        backgroundColor: `${theme.colors.error}20`,
+                        borderRadius: '12px',
+                        padding: '20px',
+                        border: `1px solid ${theme.colors.error}40`,
+                      }}>
+                        <h4 style={{ color: theme.colors.error, fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                          Danger Zone
+                        </h4>
+                        <p style={{ color: theme.colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
+                          Cancelling this order will refund the payment and cannot be undone.
+                        </p>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <input
+                            type="text"
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            placeholder="Reason for cancellation (optional)"
+                            style={inputStyle}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder(orderDetails.id)}
+                            disabled={cancellingOrder}
+                            style={{
+                              ...buttonStyle,
+                              backgroundColor: cancellingOrder ? theme.colors.surface : theme.colors.error,
+                              color: cancellingOrder ? theme.colors.textSecondary : '#ffffff',
+                              cursor: cancellingOrder ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            <FiTrash2 />
+                            {cancellingOrder ? 'Cancelling...' : 'Cancel Order'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '40px' }}>
+                    Failed to load order details
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>

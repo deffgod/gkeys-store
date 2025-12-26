@@ -3,6 +3,8 @@ import {
   getDashboardController,
   searchUsersController,
   getUserDetailsController,
+  updateUserController,
+  deleteUserController,
   getTransactionsController,
   generateFakeDataController,
   exportUserReportController,
@@ -14,14 +16,19 @@ import {
   syncG2APlatformsController,
   getG2ASyncProgressController,
   getGamesController,
+  getGameByIdController,
   createGameController,
   updateGameController,
   deleteGameController,
   getBlogPostsController,
+  getBlogPostByIdController,
   createBlogPostController,
   updateBlogPostController,
   deleteBlogPostController,
   getOrdersController,
+  getOrderDetailsController,
+  updateOrderController,
+  cancelOrderController,
   updateOrderStatusController,
   getG2AMetricsController,
   getPaymentMethodsController,
@@ -49,6 +56,22 @@ import {
   updateUserBalanceController,
   updateUserRoleController,
   getUserActivityController,
+  getAllCategoriesController,
+  createCategoryController,
+  updateCategoryController,
+  deleteCategoryController,
+  getAllGenresController,
+  createGenreController,
+  updateGenreController,
+  deleteGenreController,
+  getAllPlatformsController,
+  createPlatformController,
+  updatePlatformController,
+  deletePlatformController,
+  getAllTagsController,
+  createTagController,
+  updateTagController,
+  deleteTagController,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
@@ -64,6 +87,8 @@ router.get('/dashboard', getDashboardController);
 // Users
 router.get('/users', searchUsersController);
 router.get('/users/:id', getUserDetailsController);
+router.put('/users/:id', updateUserController);
+router.delete('/users/:id', deleteUserController);
 router.get('/users/:id/export', exportUserReportController);
 router.post('/users/:id/generate-fake-data', generateFakeDataController);
 
@@ -72,19 +97,24 @@ router.get('/transactions', getTransactionsController);
 
 // Games CRUD
 router.get('/games', getGamesController);
+router.get('/games/:id', getGameByIdController);
 router.post('/games', createGameController);
 router.put('/games/:id', updateGameController);
 router.delete('/games/:id', deleteGameController);
 
 // Blog Posts CRUD
 router.get('/blog', getBlogPostsController);
+router.get('/blog/:id', getBlogPostByIdController);
 router.post('/blog', createBlogPostController);
 router.put('/blog/:id', updateBlogPostController);
 router.delete('/blog/:id', deleteBlogPostController);
 
 // Orders
 router.get('/orders', getOrdersController);
-router.put('/orders/:id/status', updateOrderStatusController);
+router.get('/orders/:id', getOrderDetailsController);
+router.put('/orders/:id', updateOrderController);
+router.post('/orders/:id/cancel', cancelOrderController);
+router.put('/orders/:id/status', updateOrderStatusController); // Keep for backward compatibility
 
 // G2A Integration
 router.get('/g2a/test-connection', testG2AConnectionController);
@@ -134,5 +164,26 @@ router.post('/cache/clear', clearAllCacheController);
 router.put('/users/:id/balance', updateUserBalanceController);
 router.put('/users/:id/role', updateUserRoleController);
 router.get('/users/:id/activity', getUserActivityController);
+
+// Catalog Metadata Management
+router.get('/categories', getAllCategoriesController);
+router.post('/categories', createCategoryController);
+router.put('/categories/:id', updateCategoryController);
+router.delete('/categories/:id', deleteCategoryController);
+
+router.get('/genres', getAllGenresController);
+router.post('/genres', createGenreController);
+router.put('/genres/:id', updateGenreController);
+router.delete('/genres/:id', deleteGenreController);
+
+router.get('/platforms', getAllPlatformsController);
+router.post('/platforms', createPlatformController);
+router.put('/platforms/:id', updatePlatformController);
+router.delete('/platforms/:id', deletePlatformController);
+
+router.get('/tags', getAllTagsController);
+router.post('/tags', createTagController);
+router.put('/tags/:id', updateTagController);
+router.delete('/tags/:id', deleteTagController);
 
 export default router;

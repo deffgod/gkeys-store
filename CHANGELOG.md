@@ -14,7 +14,37 @@
 - Extended analytics
 - Multi-language support (i18n)
 
-## [1.0.0] - 2024-12-23
+## [1.0.0] - 2024-12-26
+
+### Added
+- Complete admin panel with product, user, order, and blog management
+- Guest cart and wishlist support with session management
+- G2A integration with real-time synchronization progress tracking
+- Catalog metadata management (categories, genres, platforms, tags)
+- Enhanced authentication with cart/wishlist migration on login
+- Session middleware for guest user support
+- Redis caching for cart and wishlist with graceful degradation
+- Comprehensive API documentation (OpenAPI 3.0)
+- Admin audit logging for critical operations
+- Integration tests for cart/wishlist migration and admin operations
+
+### Changed
+- Updated API base URL handling in frontend
+- Improved error handling and validation
+- Enhanced session management for better guest experience
+- Optimized database queries with proper indexing
+
+### Fixed
+- Fixed login/registration API endpoints routing
+- Fixed cart and wishlist functionality for guest users
+- Fixed Prisma schema synchronization issues
+- Fixed VITE_API_BASE_URL configuration
+- Fixed session middleware database connection handling
+
+### Removed
+- Temporary documentation files (AUTH_FIXES.md, DEPLOYMENT_FIXES.md, REGISTRATION_FIX.md)
+
+## [0.9.0] - 2024-12-23
 
 ### Added
 

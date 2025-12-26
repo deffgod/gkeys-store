@@ -1,0 +1,41 @@
+post:
+  tags:
+    - Auth
+  summary: Вход в систему
+  description: |
+    Аутентификация пользователя по email и паролю.
+    
+    При успешной авторизации:
+    - Возвращает JWT токен и refresh токен
+    - Автоматически мигрирует корзину и избранное из session (если есть sessionId cookie)
+  operationId: loginUser
+  requestBody:
+    $ref: '../../components/requestBodies.yaml#/LoginRequest'
+  responses:
+    '200':
+      description: Успешная авторизация
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '../../components/schemas.yaml#/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '../../components/schemas.yaml#/AuthResponse'
+    '400':
+      $ref: '../../components/responses.yaml#/BadRequest'
+    '401':
+      description: Неверные учетные данные
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas.yaml#/Error'
+          example:
+            success: false
+            error:
+              message: Invalid credentials
+              code: AUTH004
+    '500':
+      $ref: '../../components/responses.yaml#/InternalServerError'
+

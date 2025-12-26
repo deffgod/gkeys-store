@@ -16,11 +16,8 @@ export const sessionMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    // Check if user is authenticated
-    if (req.headers.authorization?.startsWith('Bearer ')) {
-      // Authenticated user - no session needed
-      return next();
-    }
+    // Always try to get/create session for guest users
+    // Even authenticated users might need session for cart/wishlist migration
 
     // For guest users, get or create session ID
     let sessionId: string | undefined;

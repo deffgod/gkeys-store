@@ -1,0 +1,96 @@
+# Request Bodies
+
+RegisterRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/RegisterRequest'
+      example:
+        email: user@example.com
+        password: Password123
+        nickname: UserNickname
+        firstName: John
+        lastName: Doe
+
+LoginRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/LoginRequest'
+      example:
+        email: user@example.com
+        password: Password123
+
+RefreshTokenRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/RefreshTokenRequest'
+      example:
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+CreateOrderRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/CreateOrderRequest'
+      example:
+        items:
+          - gameId: 123e4567-e89b-12d3-a456-426614174000
+            quantity: 1
+        promoCode: SAVE10
+
+AddToCartRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/AddToCartRequest'
+      example:
+        gameId: 123e4567-e89b-12d3-a456-426614174000
+        quantity: 1
+
+UpdateCartItemRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/UpdateCartItemRequest'
+      example:
+        quantity: 2
+
+AddToWishlistRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/AddToWishlistRequest'
+      example:
+        gameId: 123e4567-e89b-12d3-a456-426614174000
+
+UpdateProfileRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/UpdateProfileRequest'
+      example:
+        nickname: NewNickname
+        firstName: John
+        lastName: Doe
+        avatar: https://example.com/avatar.jpg
+
+ChangePasswordRequest:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas.yaml#/ChangePasswordRequest'
+      example:
+        currentPassword: OldPassword123
+        newPassword: NewPassword123
+

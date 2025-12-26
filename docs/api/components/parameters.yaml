@@ -1,0 +1,183 @@
+# Common Parameters
+
+Page:
+  name: page
+  in: query
+  description: Номер страницы
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    default: 1
+    example: 1
+
+PageSize:
+  name: pageSize
+  in: query
+  description: Количество элементов на странице
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 20
+    example: 20
+
+GameId:
+  name: id
+  in: path
+  description: ID игры
+  required: true
+  schema:
+    type: string
+    format: uuid
+    example: 123e4567-e89b-12d3-a456-426614174000
+
+GameSlug:
+  name: slug
+  in: path
+  description: Slug игры
+  required: true
+  schema:
+    type: string
+    example: cyberpunk-2077
+
+OrderId:
+  name: id
+  in: path
+  description: ID заказа
+  required: true
+  schema:
+    type: string
+    format: uuid
+    example: 123e4567-e89b-12d3-a456-426614174000
+
+UserId:
+  name: id
+  in: path
+  description: ID пользователя
+  required: true
+  schema:
+    type: string
+    format: uuid
+    example: 123e4567-e89b-12d3-a456-426614174000
+
+Genre:
+  name: genre
+  in: path
+  description: Название жанра
+  required: true
+  schema:
+    type: string
+    example: Action
+
+# Query Parameters
+
+Search:
+  name: search
+  in: query
+  description: Поисковый запрос
+  required: false
+  schema:
+    type: string
+    example: cyberpunk
+
+Sort:
+  name: sort
+  in: query
+  description: Сортировка результатов
+  required: false
+  schema:
+    type: string
+    enum: [popular, newest, price-asc, price-desc]
+    default: popular
+    example: popular
+
+InStockOnly:
+  name: inStockOnly
+  in: query
+  description: Показывать только товары в наличии
+  required: false
+  schema:
+    type: boolean
+    default: false
+    example: true
+
+Platforms:
+  name: platforms
+  in: query
+  description: Фильтр по платформам (можно указать несколько через запятую)
+  required: false
+  schema:
+    type: array
+    items:
+      type: string
+    style: form
+    explode: false
+    example: [PC, PlayStation 5]
+
+Genres:
+  name: genres
+  in: query
+  description: Фильтр по жанрам (можно указать несколько через запятую)
+  required: false
+  schema:
+    type: array
+    items:
+      type: string
+    style: form
+    explode: false
+    example: [Action, RPG]
+
+PriceMin:
+  name: priceMin
+  in: query
+  description: Минимальная цена
+  required: false
+  schema:
+    type: number
+    format: float
+    minimum: 0
+    example: 10.0
+
+PriceMax:
+  name: priceMax
+  in: query
+  description: Максимальная цена
+  required: false
+  schema:
+    type: number
+    format: float
+    minimum: 0
+    example: 100.0
+
+Status:
+  name: status
+  in: query
+  description: Фильтр по статусу
+  required: false
+  schema:
+    type: string
+    enum: [pending, processing, completed, cancelled, refunded]
+    example: completed
+
+DateFrom:
+  name: dateFrom
+  in: query
+  description: Начальная дата (ISO 8601)
+  required: false
+  schema:
+    type: string
+    format: date-time
+    example: 2024-01-01T00:00:00Z
+
+DateTo:
+  name: dateTo
+  in: query
+  description: Конечная дата (ISO 8601)
+  required: false
+  schema:
+    type: string
+    format: date-time
+    example: 2024-12-31T23:59:59Z
+
