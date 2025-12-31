@@ -4,28 +4,50 @@ import { withAccelerate } from '@prisma/extension-accelerate';
 let prisma: ReturnType<typeof createPrismaClient> | null = null;
 
 function createPrismaClient() {
-  // In production or if DIRECT_URL is available, use direct connection
-  // Prisma Accelerate can have connection issues on serverless
+  // Always prefer DIRECT_URL if available (especially for Vercel/serverless)
+  // Prisma Accelerate can have connection issues on serverless environments
+  const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const hasDirectUrl = !!process.env.DIRECT_URL;
+  const hasPrismaAccelerate = process.env.DATABASE_URL?.includes('prisma.io');
+  
+  // Use direct connection if:
+  // 1. We're on Vercel (serverless)
+  // 2. We're in production
+  // 3. DIRECT_URL is explicitly provided
+  // 4. DATABASE_URL points to Prisma Accelerate (which can be unreliable)
   const useDirectConnection = 
-    process.env.NODE_ENV === 'production' || 
-    !process.env.DATABASE_URL?.includes('prisma.io') ||
+    isVercel || 
+    isProduction || 
+    hasDirectUrl || 
+    hasPrismaAccelerate ||
     process.env.FORCE_DIRECT_DB === 'true';
 
-  if (useDirectConnection && process.env.DIRECT_URL) {
-    // Use direct connection (bypass Accelerate) for production/serverless
+  if (useDirectConnection) {
+    // Use direct connection (bypass Accelerate)
+    const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+    
+    if (!dbUrl) {
+      console.error('❌ DATABASE_URL or DIRECT_URL must be set');
+      throw new Error('Database connection URL is required');
+    }
+
+    console.log(`🔗 Using direct database connection${isVercel ? ' (Vercel/serverless)' : ''}`);
+    
     return new PrismaClient({
       datasources: {
         db: {
-          url: process.env.DIRECT_URL,
+          url: dbUrl,
         },
       },
-      log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn'],
+      log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'info'],
     });
   }
 
-  // Use Accelerate for development (if available)
+  // Use Accelerate only for local development (if available and not Prisma Accelerate URL)
+  console.log('⚡ Using Prisma Accelerate (development mode)');
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn'],
+    log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'info'],
   }).$extends(withAccelerate());
 }
 
