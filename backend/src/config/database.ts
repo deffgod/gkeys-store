@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { withAccelerate } from '@prisma/extension-accelerate';
 
-let prisma: ReturnType<typeof createPrismaClient> | null = null;
+let prisma: PrismaClient | null = null;
 
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   // Always prefer DIRECT_URL if available (especially for Vercel/serverless)
   // Prisma Accelerate can have connection issues on serverless environments
   const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
@@ -23,15 +22,15 @@ function createPrismaClient() {
     hasPrismaAccelerate ||
     process.env.FORCE_DIRECT_DB === 'true';
 
+  const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+  
+  if (!dbUrl) {
+    console.error('❌ DATABASE_URL or DIRECT_URL must be set');
+    throw new Error('Database connection URL is required');
+  }
+
   if (useDirectConnection) {
     // Use direct connection (bypass Accelerate)
-    const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      console.error('❌ DATABASE_URL or DIRECT_URL must be set');
-      throw new Error('Database connection URL is required');
-    }
-
     console.log(`🔗 Using direct database connection${isVercel ? ' (Vercel/serverless)' : ''}`);
     
     return new PrismaClient({
@@ -44,11 +43,16 @@ function createPrismaClient() {
     });
   }
 
-  // Use Accelerate only for local development (if available and not Prisma Accelerate URL)
-  console.log('⚡ Using Prisma Accelerate (development mode)');
+  // Use standard PrismaClient for local development (without Accelerate to avoid type issues)
+  console.log('🔗 Using standard Prisma Client (development mode)');
   return new PrismaClient({
+    datasources: {
+      db: {
+        url: dbUrl,
+      },
+    },
     log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'info'],
-  }).$extends(withAccelerate());
+  });
 }
 
 /**
@@ -90,6 +94,6 @@ try {
   }
 }
 
-// Export with proper type assertion - prisma is guaranteed to be initialized
+// Export with proper type - prisma is guaranteed to be initialized
 // or the process would have exited in production
-export default prisma!;
+export default prisma as PrismaClient;
