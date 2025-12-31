@@ -4,6 +4,26 @@ import { withAccelerate } from '@prisma/extension-accelerate';
 let prisma: ReturnType<typeof createPrismaClient> | null = null;
 
 function createPrismaClient() {
+  // In production or if DIRECT_URL is available, use direct connection
+  // Prisma Accelerate can have connection issues on serverless
+  const useDirectConnection = 
+    process.env.NODE_ENV === 'production' || 
+    !process.env.DATABASE_URL?.includes('prisma.io') ||
+    process.env.FORCE_DIRECT_DB === 'true';
+
+  if (useDirectConnection && process.env.DIRECT_URL) {
+    // Use direct connection (bypass Accelerate) for production/serverless
+    return new PrismaClient({
+      datasources: {
+        db: {
+          url: process.env.DIRECT_URL,
+        },
+      },
+      log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn'],
+    });
+  }
+
+  // Use Accelerate for development (if available)
   return new PrismaClient({
     log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn'],
   }).$extends(withAccelerate());
