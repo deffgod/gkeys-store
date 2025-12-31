@@ -28,4 +28,3 @@ router.post('/wishlist/:gameId', addToWishlistController);
 router.delete('/wishlist/:gameId', removeFromWishlistController);
 
 export default router;
-

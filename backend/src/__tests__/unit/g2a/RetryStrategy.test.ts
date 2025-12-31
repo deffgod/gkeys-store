@@ -26,7 +26,8 @@ describe('RetryStrategy', () => {
 
   describe('Retry Logic', () => {
     it('should retry on retryable errors', async () => {
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new G2AError(G2AErrorCode.G2A_TIMEOUT, 'Timeout'))
         .mockRejectedValueOnce(new G2AError(G2AErrorCode.G2A_TIMEOUT, 'Timeout'))
         .mockResolvedValueOnce('Success');
@@ -38,21 +39,19 @@ describe('RetryStrategy', () => {
     });
 
     it('should not retry on non-retryable errors', async () => {
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'Auth failed'));
 
-      await expect(retryStrategy.execute(fn, 'testOp'))
-        .rejects.toThrow('Auth failed');
+      await expect(retryStrategy.execute(fn, 'testOp')).rejects.toThrow('Auth failed');
 
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
     it('should respect max retries', async () => {
-      const fn = vi.fn()
-        .mockRejectedValue(new G2AError(G2AErrorCode.G2A_TIMEOUT, 'Timeout'));
+      const fn = vi.fn().mockRejectedValue(new G2AError(G2AErrorCode.G2A_TIMEOUT, 'Timeout'));
 
-      await expect(retryStrategy.execute(fn, 'testOp'))
-        .rejects.toThrow('Timeout');
+      await expect(retryStrategy.execute(fn, 'testOp')).rejects.toThrow('Timeout');
 
       // Initial attempt + 3 retries = 4 total
       expect(fn).toHaveBeenCalledTimes(4);

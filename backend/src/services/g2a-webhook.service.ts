@@ -20,14 +20,11 @@ export const validateG2AWebhookSignature = (
 ): boolean => {
   const config = getG2AConfig();
   const secret = config.apiHash; // Use API hash as webhook secret
-  
+
   // Create expected signature: HMAC-SHA256(payload + timestamp + nonce + secret)
   const stringToSign = `${payload}${timestamp}${nonce}${secret}`;
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(stringToSign)
-    .digest('hex');
-  
+  const expectedSignature = crypto.createHmac('sha256', secret).update(stringToSign).digest('hex');
+
   return crypto.timingSafeEqual(
     Buffer.from(signature, 'hex'),
     Buffer.from(expectedSignature, 'hex')
@@ -46,9 +43,7 @@ export const validateTimestamp = (timestamp: number): boolean => {
 /**
  * Get or create idempotency record
  */
-export const getIdempotencyRecord = async (
-  key: string
-): Promise<IdempotencyRecord | null> => {
+export const getIdempotencyRecord = async (key: string): Promise<IdempotencyRecord | null> => {
   try {
     // Try Redis first (faster)
     if (redisClient.isOpen) {
@@ -61,7 +56,7 @@ export const getIdempotencyRecord = async (
         };
       }
     }
-    
+
     // Fallback to database
     // Note: This assumes you have an idempotency table in Prisma schema
     // For now, we'll use a simple in-memory cache or Redis-only approach
@@ -88,7 +83,7 @@ export const storeIdempotencyRecord = async (
       last_error: error || null,
       updated_at: new Date(),
     };
-    
+
     // Store in Redis
     if (redisClient.isOpen) {
       await redisClient.setEx(
@@ -97,7 +92,7 @@ export const storeIdempotencyRecord = async (
         JSON.stringify(record)
       );
     }
-    
+
     // TODO: Also store in database if idempotency table exists
   } catch (err) {
     console.error(`Error storing idempotency record for ${key}`, err);
@@ -121,7 +116,7 @@ export const updateIdempotencyAttempts = async (
       last_error: error || null,
       updated_at: new Date(),
     };
-    
+
     if (redisClient.isOpen) {
       await redisClient.setEx(
         `idempotency:${key}`,
@@ -142,53 +137,59 @@ export const processG2AWebhook = async (
   headers: Record<string, string>
 ): Promise<{ success: boolean; message: string }> => {
   // Record webhook total metric
-  import('./g2a-metrics.service.js').then(m => m.incrementMetric('webhook_total')).catch(() => {});
-  
+  import('./g2a-metrics.service.js')
+    .then((m) => m.incrementMetric('webhook_total'))
+    .catch(() => {});
+
   const { event_id, order_id, type, payload, signature, nonce, timestamp } = event;
-  
+
   // Validate required fields
   if (!event_id || !order_id || !type || !signature || !nonce || !timestamp) {
     throw new AppError('Missing required webhook fields', 400);
   }
-  
+
   // Validate timestamp (prevent replay attacks)
   if (!validateTimestamp(timestamp)) {
     throw new AppError('Webhook timestamp is too old or too far in future', 400);
   }
-  
+
   // Check idempotency (prevent duplicate processing)
   const idempotencyKey = `${event_id}:${order_id}:${type}`;
   const existing = await getIdempotencyRecord(idempotencyKey);
-  
+
   if (existing?.status === 'done') {
     return { success: true, message: 'Event already processed' };
   }
-  
+
   if (existing?.status === 'processing') {
     // If still processing, wait a bit and check again (simple retry logic)
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const recheck = await getIdempotencyRecord(idempotencyKey);
     if (recheck?.status === 'done') {
       return { success: true, message: 'Event already processed' };
     }
   }
-  
+
   // Mark as processing
   await storeIdempotencyRecord(idempotencyKey, 'processing');
-  
+
   try {
     // Validate signature
     const payloadString = JSON.stringify(payload);
     if (!validateG2AWebhookSignature(payloadString, signature, timestamp, nonce)) {
       await updateIdempotencyAttempts(idempotencyKey, 'failed', 'Invalid signature');
       // Record invalid webhook metric
-      import('./g2a-metrics.service.js').then(m => m.incrementMetric('webhook_invalid')).catch(() => {});
+      import('./g2a-metrics.service.js')
+        .then((m) => m.incrementMetric('webhook_invalid'))
+        .catch(() => {});
       throw new AppError('Invalid webhook signature', 401);
     }
-    
+
     // Record valid webhook metric
-    import('./g2a-metrics.service.js').then(m => m.incrementMetric('webhook_valid')).catch(() => {});
-    
+    import('./g2a-metrics.service.js')
+      .then((m) => m.incrementMetric('webhook_valid'))
+      .catch(() => {});
+
     // Process webhook based on type
     switch (type) {
       case 'order.status_changed':
@@ -199,10 +200,10 @@ export const processG2AWebhook = async (
       default:
         console.log(`Unhandled webhook type: ${type}`, payload);
     }
-    
+
     // Mark as done
     await storeIdempotencyRecord(idempotencyKey, 'done');
-    
+
     return { success: true, message: 'Webhook processed successfully' };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -221,42 +222,42 @@ const handleOrderStatusWebhook = async (
   if (!prisma) {
     throw new AppError('Database not available', 503);
   }
-  
+
   // Find order in database
   const order = await prisma.order.findFirst({
     where: {
-      OR: [
-        { id: orderId },
-        { externalOrderId: orderId },
-      ],
+      OR: [{ id: orderId }, { externalOrderId: orderId }],
     },
   });
-  
+
   if (!order) {
     console.warn(`Order not found for webhook: ${orderId}`);
     return;
   }
-  
+
   // Update order status based on payload
   const status = payload.status as string;
   if (status) {
-    const orderStatusMap: Record<string, 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'> = {
+    const orderStatusMap: Record<
+      string,
+      'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+    > = {
       pending: 'PENDING',
       processing: 'PROCESSING',
       completed: 'COMPLETED',
       failed: 'FAILED',
       cancelled: 'CANCELLED',
     };
-    
+
     const mappedStatus = orderStatusMap[status.toLowerCase()];
     if (mappedStatus) {
       await prisma.order.update({
         where: { id: order.id },
         data: { status: mappedStatus },
       });
-      
+
       console.log(`Order ${order.id} status updated to ${mappedStatus} via webhook`);
-      
+
       // Invalidate cache after order status update
       try {
         const { invalidateCache } = await import('./cache.service.js');

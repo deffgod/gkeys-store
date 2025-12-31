@@ -8,7 +8,10 @@ import { createG2AClient } from './g2a.service.js';
 const logger = {
   info: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.log(`[G2A Reservation] [${timestamp}] [INFO] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.log(
+      `[G2A Reservation] [${timestamp}] [INFO] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   error: (message: string, error?: unknown) => {
     const timestamp = new Date().toISOString();
@@ -16,12 +19,18 @@ const logger = {
   },
   warn: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.warn(`[G2A Reservation] [${timestamp}] [WARN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.warn(
+      `[G2A Reservation] [${timestamp}] [WARN] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   debug: (message: string, data?: Record<string, unknown>) => {
     if (process.env.NODE_ENV === 'development') {
       const timestamp = new Date().toISOString();
-      console.log(`[G2A Reservation] [${timestamp}] [DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+      console.log(
+        `[G2A Reservation] [${timestamp}] [DEBUG] ${message}`,
+        data ? JSON.stringify(data, null, 2) : ''
+      );
     }
   },
 };
@@ -79,10 +88,11 @@ const handleG2AReservationError = (error: unknown, operation: string): G2AError 
     const axiosError = error as AxiosError;
     const status = axiosError.response?.status;
     const data = axiosError.response?.data;
-    
-    const errorMessage = typeof data === 'object' && data !== null && 'message' in data
-      ? String(data.message)
-      : axiosError.message;
+
+    const errorMessage =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? String(data.message)
+        : axiosError.message;
 
     return new G2AError(
       G2AErrorCode.G2A_API_ERROR,
@@ -107,23 +117,25 @@ const handleG2AReservationError = (error: unknown, operation: string): G2AError 
  * @returns {Promise<G2AReservation>} Created reservation
  * @throws {G2AError} If API call fails or timeout (9 seconds)
  */
-export const createReservation = async (data: CreateReservationRequest): Promise<G2AReservation> => {
+export const createReservation = async (
+  data: CreateReservationRequest
+): Promise<G2AReservation> => {
   try {
-    logger.info('Creating reservation', { orderId: data.orderId, productId: data.productId, quantity: data.quantity });
-    
+    logger.info('Creating reservation', {
+      orderId: data.orderId,
+      productId: data.productId,
+      quantity: data.quantity,
+    });
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     // Set timeout to 9 seconds as per G2A requirements
     const timeout = 9000;
-    
-    const response = await client.post<G2AReservation>(
-      '/reservations',
-      data,
-      {
-        timeout,
-      }
-    );
+
+    const response = await client.post<G2AReservation>('/reservations', data, {
+      timeout,
+    });
 
     logger.info('Reservation created successfully', {
       reservationId: response.data.reservationId,
@@ -134,7 +146,7 @@ export const createReservation = async (data: CreateReservationRequest): Promise
     return response.data;
   } catch (error) {
     const g2aError = handleG2AReservationError(error, 'createReservation');
-    
+
     // Handle timeout specifically (9 seconds requirement)
     if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
       throw new G2AError(
@@ -143,7 +155,7 @@ export const createReservation = async (data: CreateReservationRequest): Promise
         { orderId: data.orderId, originalError: g2aError }
       );
     }
-    
+
     logger.error('Error creating reservation', g2aError);
     throw g2aError;
   }
@@ -157,16 +169,18 @@ export const createReservation = async (data: CreateReservationRequest): Promise
  * @returns {Promise<ConfirmReservationResponse>} Confirmation result
  * @throws {G2AError} If API call fails or timeout
  */
-export const confirmReservation = async (reservationId: string): Promise<ConfirmReservationResponse> => {
+export const confirmReservation = async (
+  reservationId: string
+): Promise<ConfirmReservationResponse> => {
   try {
     logger.info('Confirming reservation', { reservationId });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     // Set timeout to 9 seconds as per G2A requirements
     const timeout = 9000;
-    
+
     const response = await client.post<ConfirmReservationResponse>(
       `/reservations/${reservationId}/confirm`,
       {},
@@ -183,7 +197,7 @@ export const confirmReservation = async (reservationId: string): Promise<Confirm
     return response.data;
   } catch (error) {
     const g2aError = handleG2AReservationError(error, 'confirmReservation');
-    
+
     // Handle timeout specifically (9 seconds requirement)
     if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
       throw new G2AError(
@@ -192,7 +206,7 @@ export const confirmReservation = async (reservationId: string): Promise<Confirm
         { reservationId, originalError: g2aError }
       );
     }
-    
+
     logger.error('Error confirming reservation', g2aError);
     throw g2aError;
   }
@@ -209,10 +223,10 @@ export const confirmReservation = async (reservationId: string): Promise<Confirm
 export const checkInventory = async (orderId: string): Promise<InventoryCheckResponse> => {
   try {
     logger.debug('Checking inventory', { orderId });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const response = await client.get<InventoryCheckResponse>(`/inventory/${orderId}`);
 
     logger.debug('Inventory check completed', {
@@ -244,12 +258,12 @@ export const waitForInventoryReady = async (
   pollInterval: number = 5000 // 5 seconds default
 ): Promise<InventoryCheckResponse> => {
   const startTime = Date.now();
-  
+
   logger.info('Starting inventory polling', { orderId, maxWaitTime, pollInterval });
-  
+
   while (true) {
     const elapsed = Date.now() - startTime;
-    
+
     if (elapsed > maxWaitTime) {
       throw new G2AError(
         G2AErrorCode.G2A_TIMEOUT,
@@ -257,9 +271,9 @@ export const waitForInventoryReady = async (
         { orderId, maxWaitTime, elapsed }
       );
     }
-    
+
     const inventory = await checkInventory(orderId);
-    
+
     if (inventory.stockReady) {
       logger.info('Inventory ready', {
         orderId,
@@ -268,14 +282,14 @@ export const waitForInventoryReady = async (
       });
       return inventory;
     }
-    
+
     // Stock not ready yet, wait and poll again
     logger.debug('Inventory not ready yet', {
       orderId,
       elapsed,
     });
-    
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 };
 
@@ -320,7 +334,7 @@ export const getAllReservationsForAdmin = async (filters?: {
   // 1. Store reservationId in Order model when reservation is created
   // 2. Query orders with externalOrderId and reconstruct reservation info
   // 3. Or call G2A API for each order to get reservation status
-  
+
   return {
     reservations: [],
     total: 0,
@@ -340,11 +354,10 @@ export const cancelReservationForAdmin = async (reservationId: string): Promise<
   // Reservations typically expire automatically after their expiration time
   // This is a placeholder for potential future implementation
   // If G2A API supports cancellation, implement it here
-  
+
   throw new G2AError(
     G2AErrorCode.G2A_API_ERROR,
     'Reservation cancellation not supported by G2A API. Reservations expire automatically.',
     { reservationId }
   );
 };
-

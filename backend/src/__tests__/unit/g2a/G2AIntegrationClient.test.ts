@@ -61,10 +61,10 @@ describe('G2AIntegrationClient', () => {
   describe('Configuration', () => {
     it('should create client with valid config', async () => {
       const client = await G2AIntegrationClient.create(mockConfig);
-      
+
       expect(client).toBeDefined();
       expect(client.isInitialized()).toBe(true);
-      
+
       const config = client.getConfig();
       expect(config.apiKey).toBe('test-key');
       expect(config.env).toBe('sandbox');
@@ -75,10 +75,10 @@ describe('G2AIntegrationClient', () => {
         apiKey: 'test-key',
         apiHash: 'test-hash',
       };
-      
+
       const client = await G2AIntegrationClient.create(partialConfig);
       const config = client.getConfig();
-      
+
       // Check defaults are applied
       expect(config.timeoutMs).toBe(8000);
       expect(config.retry.maxRetries).toBe(3);
@@ -89,9 +89,8 @@ describe('G2AIntegrationClient', () => {
         apiKey: '',
         apiHash: '',
       } as any;
-      
-      await expect(G2AIntegrationClient.create(invalidConfig))
-        .rejects.toThrow();
+
+      await expect(G2AIntegrationClient.create(invalidConfig)).rejects.toThrow();
     });
   });
 
@@ -99,20 +98,21 @@ describe('G2AIntegrationClient', () => {
     it('should return same instance when calling getInstance', async () => {
       const instance1 = await G2AIntegrationClient.getInstance(mockConfig);
       const instance2 = await G2AIntegrationClient.getInstance();
-      
+
       expect(instance1).toBe(instance2);
     });
 
     it('should throw if getInstance called without config on first call', async () => {
-      await expect(G2AIntegrationClient.getInstance())
-        .rejects.toThrow('must be initialized with config');
+      await expect(G2AIntegrationClient.getInstance()).rejects.toThrow(
+        'must be initialized with config'
+      );
     });
   });
 
   describe('API Modules', () => {
     it('should have all API modules initialized', async () => {
       const client = await G2AIntegrationClient.create(mockConfig);
-      
+
       expect(client.products).toBeDefined();
       expect(client.orders).toBeDefined();
       expect(client.offers).toBeDefined();

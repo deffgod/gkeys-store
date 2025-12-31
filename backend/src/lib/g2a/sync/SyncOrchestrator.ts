@@ -31,14 +31,14 @@ export class SyncOrchestrator {
     private conflictResolver: ConflictResolver,
     private logger: G2ALogger
   ) {}
-  
+
   /**
    * Orchestrate full synchronization
    */
   async sync(options: SyncOrchestratorOptions = {}): Promise<SyncOrchestratorResult> {
     const startTime = Date.now();
     const errors: string[] = [];
-    
+
     this.logger.info('Starting sync orchestration', {
       syncCatalog: options.syncCatalog ?? true,
       syncCategories: options.syncCategories ?? false,
@@ -46,62 +46,62 @@ export class SyncOrchestrator {
       syncPlatforms: options.syncPlatforms ?? false,
       parallel: options.parallel ?? false,
     });
-    
+
     const result: SyncOrchestratorResult = {
       totalDuration: 0,
       errors,
     };
-    
+
     if (options.parallel) {
       // Parallel execution
       const promises: Promise<void>[] = [];
-      
+
       if (options.syncCatalog ?? true) {
         promises.push(this.syncCatalogWithErrorHandling(options, result, errors));
       }
-      
+
       if (options.syncCategories) {
         promises.push(this.syncCategoriesWithErrorHandling(result, errors));
       }
-      
+
       if (options.syncGenres) {
         promises.push(this.syncGenresWithErrorHandling(result, errors));
       }
-      
+
       if (options.syncPlatforms) {
         promises.push(this.syncPlatformsWithErrorHandling(result, errors));
       }
-      
+
       await Promise.allSettled(promises);
     } else {
       // Sequential execution
       if (options.syncCatalog ?? true) {
         await this.syncCatalogWithErrorHandling(options, result, errors);
       }
-      
+
       if (options.syncCategories) {
         await this.syncCategoriesWithErrorHandling(result, errors);
       }
-      
+
       if (options.syncGenres) {
         await this.syncGenresWithErrorHandling(result, errors);
       }
-      
+
       if (options.syncPlatforms) {
         await this.syncPlatformsWithErrorHandling(result, errors);
       }
     }
-    
+
     result.totalDuration = Date.now() - startTime;
-    
+
     this.logger.info('Sync orchestration completed', {
       totalDuration: result.totalDuration,
       errorCount: errors.length,
     });
-    
+
     return result;
   }
-  
+
   /**
    * Sync catalog with error handling
    */
@@ -120,7 +120,7 @@ export class SyncOrchestrator {
       this.logger.error('Catalog sync failed', error);
     }
   }
-  
+
   /**
    * Sync categories with error handling
    */
@@ -141,7 +141,7 @@ export class SyncOrchestrator {
       this.logger.error('Category sync failed', error);
     }
   }
-  
+
   /**
    * Sync genres with error handling
    */
@@ -162,7 +162,7 @@ export class SyncOrchestrator {
       this.logger.error('Genre sync failed', error);
     }
   }
-  
+
   /**
    * Sync platforms with error handling
    */

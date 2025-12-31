@@ -4,11 +4,7 @@ import { register, login, refreshToken } from '../services/auth.service.js';
 import { RegisterRequest, LoginRequest } from '../types/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-export const registerController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const registerController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -27,11 +23,7 @@ export const registerController = async (
   }
 };
 
-export const loginController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const loginController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -55,11 +47,7 @@ export const loginController = async (
   }
 };
 
-export const refreshTokenController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const refreshTokenController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -77,4 +65,3 @@ export const refreshTokenController = async (
     next(error);
   }
 };
-

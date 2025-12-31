@@ -34,21 +34,14 @@ export const getUserProfile = async (userId: string): Promise<UserProfileRespons
     0
   );
 
-  const totalSaved = user.orders.reduce(
-    (sum, order) => sum + Number(order.discount),
-    0
-  );
+  const totalSaved = user.orders.reduce((sum, order) => sum + Number(order.discount), 0);
 
   const daysSinceRegistration = Math.floor(
     (Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)
   );
 
   // Count empty fields
-  const emptyFieldsCount = [
-    !user.firstName,
-    !user.lastName,
-    !user.avatar,
-  ].filter(Boolean).length;
+  const emptyFieldsCount = [!user.firstName, !user.lastName, !user.avatar].filter(Boolean).length;
 
   return {
     id: user.id,
@@ -255,10 +248,7 @@ export const getUserStats = async (userId: string): Promise<UserStatsResponse> =
     0
   );
 
-  const totalSaved = user.orders.reduce(
-    (sum, order) => sum + Number(order.discount),
-    0
-  );
+  const totalSaved = user.orders.reduce((sum, order) => sum + Number(order.discount), 0);
 
   const daysSinceRegistration = Math.floor(
     (Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)
@@ -345,10 +335,7 @@ export const updateUserBalance = async (
 /**
  * Update user role (admin function)
  */
-export const updateUserRole = async (
-  userId: string,
-  role: 'USER' | 'ADMIN'
-): Promise<void> => {
+export const updateUserRole = async (userId: string, role: 'USER' | 'ADMIN'): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true },
@@ -371,4 +358,3 @@ export const updateUserRole = async (
     console.warn('[User Role Update] Failed to invalidate cache:', cacheError);
   }
 };
-

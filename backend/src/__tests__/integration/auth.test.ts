@@ -89,13 +89,11 @@ describe('Auth Integration Tests', () => {
 
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'newuser@example.com',
-          password: 'password123',
-          confirmPassword: 'password123',
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        email: 'newuser@example.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      });
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
@@ -105,25 +103,21 @@ describe('Auth Integration Tests', () => {
     });
 
     it('should fail with missing email', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          password: 'password123',
-          confirmPassword: 'password123',
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        password: 'password123',
+        confirmPassword: 'password123',
+      });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
     });
 
     it('should fail with password mismatch', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: 'password123',
-          confirmPassword: 'different',
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        email: 'test@example.com',
+        password: 'password123',
+        confirmPassword: 'different',
+      });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -131,13 +125,11 @@ describe('Auth Integration Tests', () => {
     });
 
     it('should fail with short password', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: '12345',
-          confirmPassword: '12345',
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        email: 'test@example.com',
+        password: '12345',
+        confirmPassword: '12345',
+      });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -146,12 +138,10 @@ describe('Auth Integration Tests', () => {
 
   describe('POST /api/auth/login', () => {
     it('should login successfully with correct credentials', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'test@example.com',
-          password: 'password123',
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        email: 'test@example.com',
+        password: 'password123',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -160,12 +150,10 @@ describe('Auth Integration Tests', () => {
     });
 
     it('should fail with incorrect password', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'test@example.com',
-          password: 'wrongpassword',
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        email: 'test@example.com',
+        password: 'wrongpassword',
+      });
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
@@ -173,13 +161,10 @@ describe('Auth Integration Tests', () => {
     });
 
     it('should fail with missing credentials', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({});
+      const response = await request(app).post('/api/auth/login').send({});
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
     });
   });
 });
-

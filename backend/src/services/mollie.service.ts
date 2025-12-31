@@ -27,13 +27,13 @@ interface MollieWebhookPayload {
  */
 const getMollieHeaders = (): Record<string, string> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     throw new Error('Mollie API key not configured');
   }
 
   return {
-    'Authorization': `Bearer ${apiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   };
 };
@@ -50,7 +50,7 @@ export const createMolliePayment = async (
   webhookUrl: string
 ): Promise<{ paymentId: string; checkoutUrl: string }> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     throw new AppError('Mollie not configured', 500);
   }
@@ -98,11 +98,9 @@ export const createMolliePayment = async (
 /**
  * Get Mollie payment by ID
  */
-export const getMolliePayment = async (
-  paymentId: string
-): Promise<MolliePayment | null> => {
+export const getMolliePayment = async (paymentId: string): Promise<MolliePayment | null> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     return null;
   }
@@ -126,7 +124,7 @@ export const processMollieWebhook = async (
   paymentId: string
 ): Promise<{ success: boolean; userId?: string; amount?: number; status: string }> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     return { success: false, status: 'error' };
   }
@@ -188,7 +186,7 @@ export const createMollieRefund = async (
   description?: string
 ): Promise<{ refundId: string; status: string }> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     throw new AppError('Mollie not configured', 500);
   }
@@ -233,7 +231,7 @@ export const createMollieRefund = async (
  */
 export const getMolliePaymentMethods = async (): Promise<string[]> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     return [];
   }
@@ -273,7 +271,7 @@ export const createMolliePaymentWithMethod = async (
   issuer?: string
 ): Promise<{ paymentId: string; checkoutUrl: string }> => {
   const apiKey = process.env.MOLLIE_API_KEY;
-  
+
   if (!apiKey) {
     throw new AppError('Mollie not configured', 500);
   }
@@ -307,9 +305,10 @@ export const createMolliePaymentWithMethod = async (
   // });
 
   const paymentId = `tr_${Date.now().toString(36)}${Math.random().toString(36).substr(2, 6)}`;
-  const checkoutUrl = method === 'ideal' && issuer
-    ? `https://www.mollie.com/checkout/issuer/${method}/${paymentId}`
-    : `https://www.mollie.com/checkout/${method}/${paymentId}`;
+  const checkoutUrl =
+    method === 'ideal' && issuer
+      ? `https://www.mollie.com/checkout/issuer/${method}/${paymentId}`
+      : `https://www.mollie.com/checkout/${method}/${paymentId}`;
 
   console.log('[Mollie] Created payment with method:', {
     paymentId,
@@ -324,4 +323,3 @@ export const createMolliePaymentWithMethod = async (
     checkoutUrl,
   };
 };
-

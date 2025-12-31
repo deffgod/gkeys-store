@@ -28,7 +28,7 @@ export const getG2AMetrics = async (): Promise<G2AMetrics> => {
   } catch (err) {
     console.error('Error getting G2A metrics', err);
   }
-  
+
   // Default metrics
   return {
     requests_total: 0,
@@ -45,11 +45,13 @@ export const getG2AMetrics = async (): Promise<G2AMetrics> => {
 /**
  * Increment metric counter
  */
-export const incrementMetric = async (metric: keyof Omit<G2AMetrics, 'latency_ms'>): Promise<void> => {
+export const incrementMetric = async (
+  metric: keyof Omit<G2AMetrics, 'latency_ms'>
+): Promise<void> => {
   try {
     const metrics = await getG2AMetrics();
     metrics[metric] = (metrics[metric] as number) + 1;
-    
+
     if (redisClient.isOpen) {
       await redisClient.setEx(METRICS_KEY, METRICS_TTL, JSON.stringify(metrics));
     }
@@ -65,12 +67,12 @@ export const recordLatency = async (latencyMs: number): Promise<void> => {
   try {
     const metrics = await getG2AMetrics();
     metrics.latency_ms.push(latencyMs);
-    
+
     // Keep only last 1000 latency measurements
     if (metrics.latency_ms.length > 1000) {
       metrics.latency_ms = metrics.latency_ms.slice(-1000);
     }
-    
+
     if (redisClient.isOpen) {
       await redisClient.setEx(METRICS_KEY, METRICS_TTL, JSON.stringify(metrics));
     }
@@ -92,11 +94,11 @@ export const getLatencyStats = async (): Promise<{
 }> => {
   const metrics = await getG2AMetrics();
   const latencies = metrics.latency_ms.sort((a, b) => a - b);
-  
+
   if (latencies.length === 0) {
     return { avg: 0, min: 0, max: 0, p50: 0, p95: 0, p99: 0 };
   }
-  
+
   const sum = latencies.reduce((a, b) => a + b, 0);
   const avg = sum / latencies.length;
   const min = latencies[0];
@@ -104,6 +106,6 @@ export const getLatencyStats = async (): Promise<{
   const p50 = latencies[Math.floor(latencies.length * 0.5)];
   const p95 = latencies[Math.floor(latencies.length * 0.95)];
   const p99 = latencies[Math.floor(latencies.length * 0.99)];
-  
+
   return { avg, min, max, p50, p95, p99 };
 };

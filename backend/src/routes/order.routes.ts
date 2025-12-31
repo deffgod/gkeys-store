@@ -16,4 +16,3 @@ router.get('/', getUserOrdersController);
 router.get('/:id', getOrderByIdController);
 
 export default router;
-

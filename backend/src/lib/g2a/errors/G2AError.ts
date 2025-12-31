@@ -7,19 +7,19 @@ export enum G2AErrorCode {
   G2A_AUTH_FAILED = 'G2A_AUTH_FAILED',
   G2A_TOKEN_EXPIRED = 'G2A_TOKEN_EXPIRED',
   G2A_INVALID_CREDENTIALS = 'G2A_INVALID_CREDENTIALS',
-  
+
   // Resource errors
   G2A_PRODUCT_NOT_FOUND = 'G2A_PRODUCT_NOT_FOUND',
   G2A_ORDER_NOT_FOUND = 'G2A_ORDER_NOT_FOUND',
   G2A_OUT_OF_STOCK = 'G2A_OUT_OF_STOCK',
-  
+
   // API errors
   G2A_API_ERROR = 'G2A_API_ERROR',
   G2A_RATE_LIMIT = 'G2A_RATE_LIMIT',
   G2A_TIMEOUT = 'G2A_TIMEOUT',
   G2A_INVALID_REQUEST = 'G2A_INVALID_REQUEST',
   G2A_NETWORK_ERROR = 'G2A_NETWORK_ERROR',
-  
+
   // New error codes
   G2A_CIRCUIT_OPEN = 'G2A_CIRCUIT_OPEN',
   G2A_BATCH_PARTIAL_FAILURE = 'G2A_BATCH_PARTIAL_FAILURE',
@@ -41,12 +41,8 @@ export interface G2AErrorMetadata {
 export class G2AError extends Error {
   public readonly code: G2AErrorCode;
   public readonly metadata: G2AErrorMetadata;
-  
-  constructor(
-    code: G2AErrorCode,
-    message: string,
-    metadata?: Partial<G2AErrorMetadata>
-  ) {
+
+  constructor(code: G2AErrorCode, message: string, metadata?: Partial<G2AErrorMetadata>) {
     super(message);
     this.name = 'G2AError';
     this.code = code;
@@ -55,10 +51,10 @@ export class G2AError extends Error {
       timestamp: Date.now(),
       ...metadata,
     };
-    
+
     Object.setPrototypeOf(this, G2AError.prototype);
   }
-  
+
   static isRetryableError(code: G2AErrorCode): boolean {
     const retryableErrors = [
       G2AErrorCode.G2A_TIMEOUT,
@@ -68,11 +64,11 @@ export class G2AError extends Error {
     ];
     return retryableErrors.includes(code);
   }
-  
+
   isRetryable(): boolean {
     return this.metadata.retryable;
   }
-  
+
   toJSON(): Record<string, unknown> {
     return {
       name: this.name,
@@ -108,7 +104,7 @@ export class G2ABatchPartialFailureError extends G2AError {
         context: {
           successCount,
           failureCount,
-          failures: failures.map(f => ({
+          failures: failures.map((f) => ({
             index: f.index,
             error: f.error.message,
           })),
@@ -147,15 +143,11 @@ export class G2AValidationError extends G2AError {
 
 export class G2AQuotaExceededError extends G2AError {
   constructor(endpoint: string, retryAfter?: number) {
-    super(
-      G2AErrorCode.G2A_QUOTA_EXCEEDED,
-      `Rate limit quota exceeded for endpoint: ${endpoint}`,
-      {
-        retryable: true,
-        retryAfter,
-        endpoint,
-      }
-    );
+    super(G2AErrorCode.G2A_QUOTA_EXCEEDED, `Rate limit quota exceeded for endpoint: ${endpoint}`, {
+      retryable: true,
+      retryAfter,
+      endpoint,
+    });
     this.name = 'G2AQuotaExceededError';
   }
 }

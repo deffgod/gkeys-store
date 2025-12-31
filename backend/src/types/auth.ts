@@ -35,4 +35,3 @@ export interface RefreshTokenResponse {
   refreshToken: string;
   expiresIn: number;
 }
-

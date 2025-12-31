@@ -23,12 +23,12 @@ export class TokenManager {
   private cacheKeyPrefix = 'g2a:oauth2:token';
   private refreshThresholdMs = 5 * 60 * 1000; // 5 minutes
   private inMemoryCache: CachedToken | null = null;
-  
+
   constructor(
     private logger: G2ALogger,
     private redisUrl?: string
   ) {}
-  
+
   /**
    * Initialize Redis connection
    */
@@ -37,24 +37,27 @@ export class TokenManager {
       this.logger.warn('Redis URL not provided, using in-memory token cache only');
       return;
     }
-    
+
     try {
       this.redis = createClient({ url: this.redisUrl }) as RedisClientType;
       await this.redis.connect();
       this.logger.info('TokenManager: Redis connected for token caching');
     } catch (error) {
-      this.logger.warn('TokenManager: Failed to connect to Redis, falling back to in-memory cache', error);
+      this.logger.warn(
+        'TokenManager: Failed to connect to Redis, falling back to in-memory cache',
+        error
+      );
       this.redis = null;
     }
   }
-  
+
   /**
    * Get cached token key for environment
    */
   private getCacheKey(env: string): string {
     return `${this.cacheKeyPrefix}:${env}`;
   }
-  
+
   /**
    * Get token from cache (Redis or in-memory)
    */
@@ -75,7 +78,7 @@ export class TokenManager {
         this.logger.warn('Failed to get token from Redis', error);
       }
     }
-    
+
     // Fallback to in-memory cache
     if (this.inMemoryCache) {
       this.logger.debug('Token retrieved from in-memory cache', {
@@ -83,16 +86,16 @@ export class TokenManager {
       });
       return this.inMemoryCache;
     }
-    
+
     return null;
   }
-  
+
   /**
    * Store token in cache (Redis and in-memory)
    */
   private async storeInCache(env: string, token: CachedToken): Promise<void> {
     const ttlSeconds = Math.floor((token.expiresAt - Date.now()) / 1000);
-    
+
     // Store in Redis
     if (this.redis?.isOpen && ttlSeconds > 0) {
       try {
@@ -103,12 +106,12 @@ export class TokenManager {
         this.logger.warn('Failed to store token in Redis', error);
       }
     }
-    
+
     // Always store in in-memory cache as backup
     this.inMemoryCache = token;
     this.logger.debug('Token stored in in-memory cache');
   }
-  
+
   /**
    * Check if token needs refresh
    */
@@ -117,17 +120,14 @@ export class TokenManager {
     const timeUntilExpiry = cachedToken.expiresAt - now;
     return timeUntilExpiry < this.refreshThresholdMs;
   }
-  
+
   /**
    * Get OAuth2 access token (from cache or fetch new)
    */
-  async getToken(
-    env: string,
-    fetchTokenFn: () => Promise<OAuth2TokenResponse>
-  ): Promise<string> {
+  async getToken(env: string, fetchTokenFn: () => Promise<OAuth2TokenResponse>): Promise<string> {
     // Check cache
     const cached = await this.getFromCache(env);
-    
+
     if (cached && !this.needsRefresh(cached)) {
       const timeUntilExpiry = cached.expiresAt - Date.now();
       this.logger.debug('Using cached OAuth2 token', {
@@ -135,31 +135,31 @@ export class TokenManager {
       });
       return cached.token;
     }
-    
+
     if (cached && this.needsRefresh(cached)) {
       this.logger.info('OAuth2 token expires soon, refreshing', {
         expiresIn: Math.floor((cached.expiresAt - Date.now()) / 1000),
       });
     }
-    
+
     // Fetch new token
     this.logger.info('Fetching new OAuth2 token from G2A API');
-    
+
     try {
       const tokenResponse = await fetchTokenFn();
-      
+
       const newToken: CachedToken = {
         token: tokenResponse.access_token,
-        expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+        expiresAt: Date.now() + tokenResponse.expires_in * 1000,
       };
-      
+
       await this.storeInCache(env, newToken);
-      
+
       this.logger.info('OAuth2 token obtained successfully', {
         expiresIn: tokenResponse.expires_in,
         tokenType: tokenResponse.token_type,
       });
-      
+
       return newToken.token;
     } catch (error) {
       this.logger.error('Failed to fetch OAuth2 token', error);
@@ -173,7 +173,7 @@ export class TokenManager {
       );
     }
   }
-  
+
   /**
    * Refresh token (force fetch new token)
    */
@@ -183,11 +183,11 @@ export class TokenManager {
   ): Promise<string> {
     // Clear cache
     await this.invalidateToken(env);
-    
+
     // Fetch new token
     return this.getToken(env, fetchTokenFn);
   }
-  
+
   /**
    * Invalidate cached token
    */
@@ -202,12 +202,12 @@ export class TokenManager {
         this.logger.warn('Failed to invalidate token from Redis', error);
       }
     }
-    
+
     // Clear from in-memory cache
     this.inMemoryCache = null;
     this.logger.info('Token invalidated from in-memory cache');
   }
-  
+
   /**
    * Close Redis connection
    */

@@ -91,7 +91,7 @@ export const createPayPalOrder = async (
   cancelUrl: string
 ): Promise<{ orderId: string; approvalUrl: string }> => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
-  
+
   if (!clientId) {
     throw new AppError('PayPal not configured', 500);
   }
@@ -151,7 +151,7 @@ export const capturePayPalOrder = async (
   orderId: string
 ): Promise<{ captureId: string; status: string; amount: number; userId?: string }> => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
-  
+
   if (!clientId) {
     throw new AppError('PayPal not configured', 500);
   }
@@ -193,7 +193,7 @@ export const verifyPayPalWebhook = async (
   body: string
 ): Promise<boolean> => {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-  
+
   if (!webhookId) {
     console.error('[PayPal] Webhook ID not configured');
     return false;
@@ -252,7 +252,9 @@ export const processPayPalWebhook = async (
       // Payment captured successfully
       const customId = resource.custom_id || '';
       const [userId, , amountStr] = customId.split(':');
-      const amount = resource.amount?.value ? parseFloat(resource.amount.value) : parseFloat(amountStr);
+      const amount = resource.amount?.value
+        ? parseFloat(resource.amount.value)
+        : parseFloat(amountStr);
       return {
         success: true,
         userId,
@@ -272,11 +274,9 @@ export const processPayPalWebhook = async (
 /**
  * Get PayPal order details
  */
-export const getPayPalOrder = async (
-  orderId: string
-): Promise<PayPalOrder | null> => {
+export const getPayPalOrder = async (orderId: string): Promise<PayPalOrder | null> => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
-  
+
   if (!clientId) {
     return null;
   }
@@ -301,7 +301,7 @@ export const createPayPalRefund = async (
   currency: string = 'EUR'
 ): Promise<{ refundId: string; status: string }> => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
-  
+
   if (!clientId) {
     throw new AppError('PayPal not configured', 500);
   }
@@ -337,4 +337,3 @@ export const createPayPalRefund = async (
     status: 'COMPLETED',
   };
 };
-

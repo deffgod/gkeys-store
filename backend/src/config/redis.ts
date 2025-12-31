@@ -2,7 +2,8 @@ import { createClient } from 'redis';
 
 // Support both REDIS_URL and REDIS_GKEYS_REDIS_URL for flexibility
 // REDIS_GKEYS_REDIS_URL takes precedence if both are set
-const redisUrl = process.env.REDIS_GKEYS_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6379';
+const redisUrl =
+  process.env.REDIS_GKEYS_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6379';
 
 const redisClient = createClient({
   url: redisUrl,
@@ -22,4 +23,3 @@ if (!redisClient.isOpen) {
 }
 
 export default redisClient;
-

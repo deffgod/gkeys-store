@@ -67,7 +67,7 @@ const getCachedOrFetch = async <T>(
   fetchFn: () => Promise<T>
 ): Promise<T> => {
   const available = await isRedisAvailable();
-  
+
   if (available) {
     try {
       const cached = await redisClient.get(key);
@@ -79,10 +79,10 @@ const getCachedOrFetch = async <T>(
       console.error('[Cache] Error reading cache:', err);
     }
   }
-  
+
   console.log(`[Cache] Miss: ${key}, fetching from DB`);
   const data = await fetchFn();
-  
+
   if (available) {
     try {
       await redisClient.setEx(key, ttl, JSON.stringify(data));
@@ -90,18 +90,18 @@ const getCachedOrFetch = async <T>(
       console.error('[Cache] Error writing cache:', err);
     }
   }
-  
+
   return data;
 };
 
 /**
  * Invalidate cache keys matching pattern
- * 
+ *
  * This function handles Redis unavailability gracefully - if Redis is unavailable,
  * the operation is logged but does not throw errors (graceful degradation).
  * Cache invalidation is non-blocking (fire-and-forget) to prevent cache failures
  * from blocking critical operations.
- * 
+ *
  * @param pattern - Cache key pattern (supports wildcards: *, ?)
  *                  Examples:
  *                  - `game:{id}` - Single game cache
@@ -111,7 +111,7 @@ const getCachedOrFetch = async <T>(
  *                  - `user:{id}:cart` - User cart cache
  *                  - `user:{id}:wishlist` - User wishlist cache
  *                  - `user:{id}:orders` - User orders cache
- * 
+ *
  * @remarks
  * - Cache invalidation is non-blocking (errors are logged but not thrown)
  * - Graceful degradation: operations continue if Redis is unavailable
@@ -124,7 +124,7 @@ export const invalidateCache = async (pattern: string): Promise<void> => {
       console.warn(`[Cache] Redis not available, skipping invalidation for pattern: ${pattern}`);
       return; // Graceful degradation - don't throw
     }
-    
+
     const keys = await redisClient.keys(pattern);
     if (keys.length > 0) {
       await redisClient.del(keys);
@@ -146,16 +146,16 @@ export const invalidateCache = async (pattern: string): Promise<void> => {
  */
 export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
   const key = genre ? `${CACHE_KEYS.BEST_SELLERS}:${genre}` : CACHE_KEYS.BEST_SELLERS;
-  
+
   return getCachedOrFetch(key, CACHE_TTL.BEST_SELLERS, async () => {
     // Get games with most orders in the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const where: Record<string, unknown> = {
       inStock: true,
     };
-    
+
     if (genre) {
       where.genres = {
         some: {
@@ -165,7 +165,7 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
         },
       };
     }
-    
+
     // Get top selling games
     const topGames = await prisma.orderItem.groupBy({
       by: ['gameId'],
@@ -179,9 +179,9 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       orderBy: { _count: { gameId: 'desc' } },
       take: 50,
     });
-    
+
     let gameIds = topGames.map((g: any) => g.gameId);
-    
+
     // If not enough top sellers, add random games
     if (gameIds.length < 20) {
       const additionalGames = await prisma.game.findMany({
@@ -193,9 +193,9 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
         orderBy: { createdAt: 'desc' },
         select: { id: true },
       });
-      gameIds = [...gameIds, ...additionalGames.map(g => g.id)];
+      gameIds = [...gameIds, ...additionalGames.map((g) => g.id)];
     }
-    
+
     // Fetch full game data
     const games = await prisma.game.findMany({
       where: { id: { in: gameIds } },
@@ -217,11 +217,11 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
         },
       },
     });
-    
+
     // Randomly select 8 games
     const shuffled = games.sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 8);
-    
+
     return selected.map(mapGameToCache);
   });
 };
@@ -254,8 +254,8 @@ export const getNewInCatalog = async (): Promise<CachedGame[]> => {
         },
       },
     });
-    
-    return games.map(g => ({
+
+    return games.map((g) => ({
       ...mapGameToCache(g),
       isNew: true,
     }));
@@ -292,7 +292,7 @@ export const getPreorderGames = async (): Promise<CachedGame[]> => {
         },
       },
     });
-    
+
     return games.map(mapGameToCache);
   });
 };
@@ -304,7 +304,7 @@ export const getNewGames = async (): Promise<CachedGame[]> => {
   return getCachedOrFetch(CACHE_KEYS.NEW_GAMES, CACHE_TTL.NEW_IN_CATALOG, async () => {
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    
+
     const games = await prisma.game.findMany({
       where: {
         inStock: true,
@@ -331,8 +331,8 @@ export const getNewGames = async (): Promise<CachedGame[]> => {
         },
       },
     });
-    
-    return games.map(g => ({
+
+    return games.map((g) => ({
       ...mapGameToCache(g),
       isNew: true,
     }));
@@ -365,11 +365,11 @@ export const getRandomGames = async (count: number = 10): Promise<CachedGame[]> 
       },
     },
   });
-  
+
   // Shuffle and take requested count
   const shuffled = games.sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, count);
-  
+
   return selected.map(mapGameToCache);
 };
 
@@ -378,7 +378,7 @@ export const getRandomGames = async (count: number = 10): Promise<CachedGame[]> 
  */
 export const getGamesByGenre = async (genre: string, count: number = 20): Promise<CachedGame[]> => {
   const key = `${CACHE_KEYS.GENRE_PREFIX}${genre.toLowerCase()}`;
-  
+
   return getCachedOrFetch(key, CACHE_TTL.GENRE_GAMES, async () => {
     const games = await prisma.game.findMany({
       where: {
@@ -411,7 +411,7 @@ export const getGamesByGenre = async (genre: string, count: number = 20): Promis
         },
       },
     });
-    
+
     return games.map(mapGameToCache);
   });
 };
@@ -421,7 +421,7 @@ export const getGamesByGenre = async (genre: string, count: number = 20): Promis
  */
 export const getCachedGame = async (slug: string): Promise<CachedGame | null> => {
   const key = `${CACHE_KEYS.GAME_PREFIX}${slug}`;
-  
+
   return getCachedOrFetch(key, CACHE_TTL.GAME_DETAILS, async () => {
     const game = await prisma.game.findUnique({
       where: { slug },
@@ -443,7 +443,7 @@ export const getCachedGame = async (slug: string): Promise<CachedGame | null> =>
         },
       },
     });
-    
+
     return game ? mapGameToCache(game) : null;
   });
 };
@@ -496,11 +496,11 @@ export const getFilterOptions = async (): Promise<{
         _max: { price: true },
       }),
     ]);
-    
+
     return {
-      platforms: platformResults.map(p => p.name).filter(Boolean),
-      genres: genreResults.map(g => g.name).filter(Boolean),
-      publishers: publishers.map(p => p.publisher).filter((p): p is string => p !== null),
+      platforms: platformResults.map((p) => p.name).filter(Boolean),
+      genres: genreResults.map((g) => g.name).filter(Boolean),
+      publishers: publishers.map((p) => p.publisher).filter((p): p is string => p !== null),
       priceRange: {
         min: Number(priceRange._min.price || 0),
         max: Number(priceRange._max.price || 100),
@@ -532,31 +532,28 @@ export const refreshNewInCatalog = async (): Promise<void> => {
  */
 function mapGameToCache(game: any): CachedGame {
   const price = typeof game.price === 'object' ? game.price.toNumber() : Number(game.price);
-  const originalPrice = game.originalPrice 
-    ? (typeof game.originalPrice === 'object' ? game.originalPrice.toNumber() : Number(game.originalPrice))
+  const originalPrice = game.originalPrice
+    ? typeof game.originalPrice === 'object'
+      ? game.originalPrice.toNumber()
+      : Number(game.originalPrice)
     : undefined;
-  
+
   let discount: number | undefined;
   if (originalPrice && originalPrice > price) {
     discount = Math.round((1 - price / originalPrice) * 100);
   }
-  
+
   // Determine if game is new (created within last 2 weeks)
   const twoWeeksAgo = new Date();
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
   const isNew = game.createdAt >= twoWeeksAgo;
-  
+
   // Extract platform and genre from relations
-  const platform = game.platforms && game.platforms.length > 0 
-    ? game.platforms[0].platform?.name || '' 
-    : '';
-  const genre = game.genres && game.genres.length > 0 
-    ? game.genres[0].genre?.name || '' 
-    : '';
-  const tags = game.tags 
-    ? game.tags.map((t: any) => t.tag?.name || '').filter(Boolean)
-    : [];
-  
+  const platform =
+    game.platforms && game.platforms.length > 0 ? game.platforms[0].platform?.name || '' : '';
+  const genre = game.genres && game.genres.length > 0 ? game.genres[0].genre?.name || '' : '';
+  const tags = game.tags ? game.tags.map((t: any) => t.tag?.name || '').filter(Boolean) : [];
+
   return {
     id: game.id,
     title: game.title,
@@ -580,23 +577,29 @@ function mapGameToCache(game: any): CachedGame {
  */
 export const startCacheRefreshScheduler = (): void => {
   // Refresh Best Sellers every 7 days
-  setInterval(async () => {
-    try {
-      await refreshBestSellers();
-    } catch (err) {
-      console.error('[Cache] Error refreshing Best Sellers:', err);
-    }
-  }, 7 * 24 * 60 * 60 * 1000);
-  
+  setInterval(
+    async () => {
+      try {
+        await refreshBestSellers();
+      } catch (err) {
+        console.error('[Cache] Error refreshing Best Sellers:', err);
+      }
+    },
+    7 * 24 * 60 * 60 * 1000
+  );
+
   // Refresh New in Catalog every 24 hours
-  setInterval(async () => {
-    try {
-      await refreshNewInCatalog();
-    } catch (err) {
-      console.error('[Cache] Error refreshing New in Catalog:', err);
-    }
-  }, 24 * 60 * 60 * 1000);
-  
+  setInterval(
+    async () => {
+      try {
+        await refreshNewInCatalog();
+      } catch (err) {
+        console.error('[Cache] Error refreshing New in Catalog:', err);
+      }
+    },
+    24 * 60 * 60 * 1000
+  );
+
   console.log('[Cache] Refresh scheduler started');
 };
 
@@ -611,7 +614,7 @@ export const getCacheStatistics = async (): Promise<{
 }> => {
   try {
     const available = await isRedisAvailable();
-    
+
     if (!available) {
       return {
         totalKeys: 0,
@@ -623,23 +626,16 @@ export const getCacheStatistics = async (): Promise<{
 
     // Get all keys
     const allKeys = await redisClient.keys('*');
-    
+
     // Group keys by pattern
     const keysByPattern: Record<string, number> = {};
-    const patterns = [
-      'home:*',
-      'game:*',
-      'catalog:*',
-      'user:*',
-      'g2a:*',
-      'session:*',
-    ];
-    
+    const patterns = ['home:*', 'game:*', 'catalog:*', 'user:*', 'g2a:*', 'session:*'];
+
     for (const pattern of patterns) {
       const patternKeys = await redisClient.keys(pattern);
       keysByPattern[pattern] = patternKeys.length;
     }
-    
+
     // Get memory usage (if available)
     let memoryUsage = 0;
     try {
@@ -651,7 +647,7 @@ export const getCacheStatistics = async (): Promise<{
     } catch (err) {
       console.warn('[Cache] Could not get memory info:', err);
     }
-    
+
     return {
       totalKeys: allKeys.length,
       memoryUsage,
@@ -678,7 +674,7 @@ export const getCacheKeys = async (pattern: string): Promise<string[]> => {
     if (!available) {
       return [];
     }
-    
+
     const keys = await redisClient.keys(pattern);
     return keys;
   } catch (err) {
@@ -697,17 +693,16 @@ export const clearAllCache = async (): Promise<number> => {
       console.warn('[Cache] Redis not available, cannot clear cache');
       return 0;
     }
-    
+
     const keys = await redisClient.keys('*');
     if (keys.length > 0) {
       await redisClient.del(keys);
       console.log(`[Cache] Cleared ${keys.length} cache keys`);
     }
-    
+
     return keys.length;
   } catch (err) {
     console.error('[Cache] Error clearing all cache:', err);
     throw err;
   }
 };
-

@@ -19,12 +19,12 @@ const PORT = process.env.PORT || 3001;
 // CORS configuration for multiple origins
 const getAllowedOrigins = (): string[] => {
   const origins: string[] = [];
-  
+
   // Production frontend URL
   if (process.env.FRONTEND_URL) {
     origins.push(process.env.FRONTEND_URL);
   }
-  
+
   // Vercel preview URLs pattern
   if (process.env.VERCEL) {
     const vercelUrl = process.env.VERCEL_URL;
@@ -32,40 +32,42 @@ const getAllowedOrigins = (): string[] => {
       origins.push(`https://${vercelUrl}`);
     }
   }
-  
+
   // Explicit allowed origins
   if (process.env.ALLOWED_ORIGINS) {
     origins.push(...process.env.ALLOWED_ORIGINS.split(','));
   }
-  
+
   // Development
   if (process.env.NODE_ENV !== 'production') {
     origins.push('http://localhost:5173', 'http://localhost:3000');
   }
-  
+
   return origins;
 };
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = getAllowedOrigins();
-    
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Check if origin is allowed
-    if (allowedOrigins.some(allowed => origin === allowed || origin.endsWith('.vercel.app'))) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowedOrigins = getAllowedOrigins();
+
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if origin is allowed
+      if (allowedOrigins.some((allowed) => origin === allowed || origin.endsWith('.vercel.app'))) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json());
@@ -96,7 +98,7 @@ async function getHealthStatus() {
       g2a: 'unknown',
     },
   };
-  
+
   try {
     // Check database
     await prisma.$queryRaw`SELECT 1`;
@@ -105,7 +107,7 @@ async function getHealthStatus() {
     health.checks.database = 'error';
     health.status = 'degraded';
   }
-  
+
   try {
     // Check Redis (idempotency store)
     const redis = await import('./config/redis.js');
@@ -120,7 +122,7 @@ async function getHealthStatus() {
     health.checks.redis = 'error';
     health.status = 'degraded';
   }
-  
+
   try {
     // Check G2A connectivity (try to get config - if it throws, G2A is misconfigured)
     const { getG2AConfig } = await import('./config/g2a.js');
@@ -133,7 +135,7 @@ async function getHealthStatus() {
     health.checks.g2a = 'error';
     health.status = 'degraded';
   }
-  
+
   return health;
 }
 
@@ -186,11 +188,11 @@ if (!isVercel && !isServerless) {
   // Running as standalone server (development/production server)
   async function startServer() {
     const dbConnected = await initializeApp();
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-      
+
       // Start scheduled jobs only if database is connected
       if (process.env.NODE_ENV !== 'test' && dbConnected) {
         startG2ASyncJob();
@@ -213,4 +215,3 @@ if (!isVercel && !isServerless) {
 }
 
 export default app;
-

@@ -53,10 +53,10 @@ const extractEmail = (text: string): string | null => {
 const extractAmount = (text: string): { amount: number; currency: string } | null => {
   const match = text.match(AMOUNT_REGEX);
   if (!match) return null;
-  
+
   const amount = parseFloat(match[1].replace(',', '.'));
   const currency = match[2]?.toUpperCase() || 'PLN';
-  
+
   return { amount, currency };
 };
 
@@ -66,7 +66,7 @@ const extractAmount = (text: string): { amount: number; currency: string } | nul
 const extractName = (text: string): { firstName?: string; lastName?: string } => {
   const match = text.match(NAME_REGEX);
   if (!match) return {};
-  
+
   const nameParts = match[1].trim().split(/\s+/);
   if (nameParts.length >= 2) {
     return {
@@ -80,31 +80,34 @@ const extractName = (text: string): { firstName?: string; lastName?: string } =>
 /**
  * Parse a single transaction line (CSV, MT940, etc.)
  */
-export const parseTransactionLine = (line: string, _format: string = 'generic'): ParsedTransaction | null => {
+export const parseTransactionLine = (
+  line: string,
+  _format: string = 'generic'
+): ParsedTransaction | null => {
   try {
     // Remove extra whitespace
     const cleanLine = line.trim().replace(/\s+/g, ' ');
-    
+
     // Extract email (required)
     const email = extractEmail(cleanLine);
     if (!email) {
       console.log('[Terminal] No email found in transaction:', cleanLine.substring(0, 50));
       return null;
     }
-    
+
     // Extract amount (required)
     const amountData = extractAmount(cleanLine);
     if (!amountData || amountData.amount <= 0) {
       console.log('[Terminal] No valid amount found in transaction');
       return null;
     }
-    
+
     // Extract name (optional)
     const nameData = extractName(cleanLine);
-    
+
     // Generate unique transaction ID
     const transactionId = `TRM-${Date.now()}-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-    
+
     return {
       transactionId,
       email,
@@ -136,18 +139,18 @@ export const parseCSVStatement = (
   }
 ): ParsedTransaction[] => {
   const transactions: ParsedTransaction[] = [];
-  const lines = csvContent.split('\n').filter(l => l.trim());
-  
+  const lines = csvContent.split('\n').filter((l) => l.trim());
+
   // Skip header row
   const dataLines = lines.slice(1);
-  
+
   for (const line of dataLines) {
     const parsed = parseTransactionLine(line);
     if (parsed) {
       transactions.push(parsed);
     }
   }
-  
+
   return transactions;
 };
 
@@ -156,23 +159,23 @@ export const parseCSVStatement = (
  */
 export const parseMT940Statement = (mt940Content: string): ParsedTransaction[] => {
   const transactions: ParsedTransaction[] = [];
-  
+
   // MT940 transaction records start with :61:
   const transactionBlocks = mt940Content.split(':61:').slice(1);
-  
+
   for (const block of transactionBlocks) {
     const lines = block.split('\n');
     const transactionLine = lines[0] || '';
-    const descriptionLine = lines.find(l => l.startsWith(':86:'))?.substring(4) || '';
-    
+    const descriptionLine = lines.find((l) => l.startsWith(':86:'))?.substring(4) || '';
+
     const fullText = `${transactionLine} ${descriptionLine}`;
     const parsed = parseTransactionLine(fullText, 'mt940');
-    
+
     if (parsed) {
       transactions.push(parsed);
     }
   }
-  
+
   return transactions;
 };
 
@@ -189,7 +192,7 @@ export const processParsedTransactions = async (
   let processed = 0;
   let skipped = 0;
   const errors: string[] = [];
-  
+
   for (const tx of transactions) {
     try {
       // Check if transaction already processed
@@ -207,13 +210,13 @@ export const processParsedTransactions = async (
           ],
         },
       });
-      
+
       if (existingTx) {
         console.log('[Terminal] Skipping duplicate transaction:', tx.transactionId);
         skipped++;
         continue;
       }
-      
+
       // Process the transaction
       await processTerminalWebhook({
         transactionId: tx.transactionId,
@@ -226,7 +229,7 @@ export const processParsedTransactions = async (
         status: 'completed',
         timestamp: tx.timestamp.toISOString(),
       });
-      
+
       processed++;
       console.log('[Terminal] Processed transaction:', {
         id: tx.transactionId,
@@ -234,14 +237,13 @@ export const processParsedTransactions = async (
         amount: tx.amount,
         currency: tx.currency,
       });
-      
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       errors.push(`${tx.transactionId}: ${errorMsg}`);
       console.error('[Terminal] Error processing transaction:', error);
     }
   }
-  
+
   return { processed, skipped, errors };
 };
 
@@ -258,7 +260,7 @@ export const processBankStatement = async (
   errors: string[];
 }> => {
   let transactions: ParsedTransaction[];
-  
+
   switch (format) {
     case 'csv':
       transactions = parseCSVStatement(content);
@@ -270,12 +272,12 @@ export const processBankStatement = async (
       // Try to parse each line
       transactions = content
         .split('\n')
-        .map(line => parseTransactionLine(line))
+        .map((line) => parseTransactionLine(line))
         .filter((tx): tx is ParsedTransaction => tx !== null);
   }
-  
+
   const result = await processParsedTransactions(transactions);
-  
+
   return {
     total: transactions.length,
     ...result,
@@ -293,9 +295,9 @@ export const validateTerminalHash = (
   // Create hash from data + secret
   const crypto = require('crypto');
   const sortedKeys = Object.keys(data).sort();
-  const stringToHash = sortedKeys.map(k => `${k}=${data[k]}`).join('&') + secretKey;
+  const stringToHash = sortedKeys.map((k) => `${k}=${data[k]}`).join('&') + secretKey;
   const expectedHash = crypto.createHash('sha256').update(stringToHash).digest('hex');
-  
+
   return expectedHash === receivedHash;
 };
 
@@ -311,7 +313,7 @@ export const getTerminalStats = async (): Promise<{
 }> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const [totalData, todayData] = await Promise.all([
     prisma.transaction.aggregate({
       where: { method: 'TERMINAL' },
@@ -327,12 +329,12 @@ export const getTerminalStats = async (): Promise<{
       _sum: { amount: true },
     }),
   ]);
-  
+
   const uniqueUsers = await prisma.transaction.groupBy({
     by: ['userId'],
     where: { method: 'TERMINAL' },
   });
-  
+
   return {
     totalTransactions: totalData._count,
     totalAmount: Number(totalData._sum.amount || 0),
@@ -341,4 +343,3 @@ export const getTerminalStats = async (): Promise<{
     uniqueUsers: uniqueUsers.length,
   };
 };
-

@@ -77,7 +77,7 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
 };
 
 export const login = async (
-  data: LoginRequest, 
+  data: LoginRequest,
   sessionId?: string,
   ipAddress?: string,
   userAgent?: string
@@ -135,14 +135,16 @@ export const login = async (
     try {
       const { migrateSessionCartToUser } = await import('./cart.service.js');
       const { migrateSessionWishlistToUser } = await import('./wishlist.service.js');
-      
+
       // Migrate cart and wishlist in parallel (non-blocking)
       await Promise.allSettled([
         migrateSessionCartToUser(sessionId, user.id),
         migrateSessionWishlistToUser(sessionId, user.id),
       ]);
-      
-      console.log(`[Auth] Cart/wishlist migration triggered for session ${sessionId} to user ${user.id}`);
+
+      console.log(
+        `[Auth] Cart/wishlist migration triggered for session ${sessionId} to user ${user.id}`
+      );
     } catch (migrationError) {
       // Non-blocking - log but don't fail login
       console.warn('Failed to trigger cart/wishlist migration during login:', migrationError);
@@ -165,7 +167,9 @@ export const login = async (
   };
 };
 
-export const refreshToken = async (refreshTokenString: string): Promise<{ token: string; refreshToken: string; expiresIn: number }> => {
+export const refreshToken = async (
+  refreshTokenString: string
+): Promise<{ token: string; refreshToken: string; expiresIn: number }> => {
   if (!prisma) {
     throw new AppError('Database connection not available', 503);
   }
@@ -211,4 +215,3 @@ export const refreshToken = async (refreshTokenString: string): Promise<{ token:
     throw new AppError('Invalid refresh token', 401);
   }
 };
-

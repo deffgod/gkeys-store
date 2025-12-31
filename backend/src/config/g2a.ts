@@ -63,17 +63,24 @@ export const getG2AConfig = (): G2AConfig => {
   const retryMax = Number(process.env.G2A_RETRY_MAX || 2);
 
   if (!apiKey || !apiHash) {
-    throw new AppError('G2A credentials missing: G2A_API_KEY and G2A_API_HASH (or G2A_API_SECRET) are required', 500);
+    throw new AppError(
+      'G2A credentials missing: G2A_API_KEY and G2A_API_HASH (or G2A_API_SECRET) are required',
+      500
+    );
   }
 
   // Warn if using deprecated G2A_API_SECRET
   if (process.env.G2A_API_SECRET && !process.env.G2A_API_HASH) {
-    console.warn('[G2A Config] WARNING: G2A_API_SECRET is deprecated. Please use G2A_API_HASH instead.');
+    console.warn(
+      '[G2A Config] WARNING: G2A_API_SECRET is deprecated. Please use G2A_API_HASH instead.'
+    );
   }
 
   // Warn if G2A_EMAIL is not set and using Export API
   if (!process.env.G2A_EMAIL) {
-    console.warn('[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation.');
+    console.warn(
+      '[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation.'
+    );
   }
 
   const baseUrl = normalizeG2AUrl(rawUrl);

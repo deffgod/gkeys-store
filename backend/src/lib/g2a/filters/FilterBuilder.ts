@@ -7,7 +7,17 @@ import { G2ALogger } from '../utils/logger.js';
 import { ValidationError } from '../utils/validation.js';
 
 export type SortDirection = 'asc' | 'desc';
-export type FilterOperator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'nin' | 'like' | 'between';
+export type FilterOperator =
+  | 'eq'
+  | 'ne'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'in'
+  | 'nin'
+  | 'like'
+  | 'between';
 
 export interface FilterCriterion {
   field: string;
@@ -31,54 +41,54 @@ export class FilterBuilder<TEntity> {
   private paginationOptions: PaginationOptions | null = null;
   private searchQuery: string | null = null;
   private searchFields: string[] = [];
-  
+
   constructor(
     private logger: G2ALogger,
     private entityName: string
   ) {}
-  
+
   /**
    * Add an equality filter
    */
   where(field: keyof TEntity, value: any): this {
     return this.addCriterion(String(field), 'eq', value);
   }
-  
+
   /**
    * Add a not-equal filter
    */
   whereNot(field: keyof TEntity, value: any): this {
     return this.addCriterion(String(field), 'ne', value);
   }
-  
+
   /**
    * Add a greater-than filter
    */
   whereGreaterThan(field: keyof TEntity, value: number | string): this {
     return this.addCriterion(String(field), 'gt', value);
   }
-  
+
   /**
    * Add a greater-than-or-equal filter
    */
   whereGreaterThanOrEqual(field: keyof TEntity, value: number | string): this {
     return this.addCriterion(String(field), 'gte', value);
   }
-  
+
   /**
    * Add a less-than filter
    */
   whereLessThan(field: keyof TEntity, value: number | string): this {
     return this.addCriterion(String(field), 'lt', value);
   }
-  
+
   /**
    * Add a less-than-or-equal filter
    */
   whereLessThanOrEqual(field: keyof TEntity, value: number | string): this {
     return this.addCriterion(String(field), 'lte', value);
   }
-  
+
   /**
    * Add an "in" filter (value in array)
    */
@@ -88,7 +98,7 @@ export class FilterBuilder<TEntity> {
     }
     return this.addCriterion(String(field), 'in', values);
   }
-  
+
   /**
    * Add a "not in" filter (value not in array)
    */
@@ -98,7 +108,7 @@ export class FilterBuilder<TEntity> {
     }
     return this.addCriterion(String(field), 'nin', values);
   }
-  
+
   /**
    * Add a "like" filter (partial string match)
    */
@@ -108,17 +118,21 @@ export class FilterBuilder<TEntity> {
     }
     return this.addCriterion(String(field), 'like', pattern);
   }
-  
+
   /**
    * Add a "between" filter (value between min and max)
    */
   whereBetween(field: keyof TEntity, min: number, max: number): this {
     if (min > max) {
-      throw new ValidationError('whereBetween: min must be less than or equal to max', String(field), { min, max });
+      throw new ValidationError(
+        'whereBetween: min must be less than or equal to max',
+        String(field),
+        { min, max }
+      );
     }
     return this.addCriterion(String(field), 'between', [min, max]);
   }
-  
+
   /**
    * Add a generic criterion
    */
@@ -126,7 +140,7 @@ export class FilterBuilder<TEntity> {
     this.criteria.push({ field, operator, value });
     return this;
   }
-  
+
   /**
    * Add a sort criterion
    */
@@ -137,7 +151,7 @@ export class FilterBuilder<TEntity> {
     });
     return this;
   }
-  
+
   /**
    * Set pagination options
    */
@@ -148,11 +162,11 @@ export class FilterBuilder<TEntity> {
     if (pageSize < 1 || pageSize > 500) {
       throw new ValidationError('Page size must be between 1 and 500', 'pageSize', pageSize);
     }
-    
+
     this.paginationOptions = { page, pageSize };
     return this;
   }
-  
+
   /**
    * Add a full-text search query
    */
@@ -163,12 +177,12 @@ export class FilterBuilder<TEntity> {
     if (!fields || fields.length === 0) {
       throw new ValidationError('Search requires at least one field', 'fields', fields);
     }
-    
+
     this.searchQuery = query.trim();
-    this.searchFields = fields.map(f => String(f));
+    this.searchFields = fields.map((f) => String(f));
     return this;
   }
-  
+
   /**
    * Build the filter object
    */
@@ -184,7 +198,7 @@ export class FilterBuilder<TEntity> {
       hasPagination: !!this.paginationOptions,
       hasSearch: !!this.searchQuery,
     });
-    
+
     return {
       criteria: [...this.criteria],
       sort: [...this.sortCriteria],
@@ -192,7 +206,7 @@ export class FilterBuilder<TEntity> {
       search: this.searchQuery ? { query: this.searchQuery, fields: [...this.searchFields] } : null,
     };
   }
-  
+
   /**
    * Reset the filter builder
    */
@@ -204,7 +218,7 @@ export class FilterBuilder<TEntity> {
     this.searchFields = [];
     return this;
   }
-  
+
   /**
    * Clone the filter builder
    */

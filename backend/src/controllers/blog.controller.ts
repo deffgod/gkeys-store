@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { getArticles, getArticleById, getArticleBySlug, getCategories } from '../services/blog.service.js';
+import {
+  getArticles,
+  getArticleById,
+  getArticleBySlug,
+  getCategories,
+} from '../services/blog.service.js';
 import { ArticleFilters } from '../types/blog.js';
 
-export const getArticlesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getArticlesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters: ArticleFilters = {
       category: req.query.category as string | undefined,
@@ -27,11 +28,7 @@ export const getArticlesController = async (
   }
 };
 
-export const getArticleByIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getArticleByIdController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const article = await getArticleById(id);
@@ -77,11 +74,7 @@ export const getArticleBySlugController = async (
   }
 };
 
-export const getCategoriesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getCategoriesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = await getCategories();
 
@@ -93,4 +86,3 @@ export const getCategoriesController = async (
     next(error);
   }
 };
-

@@ -43,7 +43,7 @@ export const createStripeCheckoutSession = async (
   _cancelUrl: string
 ): Promise<{ sessionId: string; url: string }> => {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  
+
   if (!stripeSecretKey) {
     throw new AppError('Stripe not configured', 500);
   }
@@ -102,7 +102,7 @@ export const createStripePaymentIntent = async (
   currency: string = 'EUR'
 ): Promise<{ clientSecret: string; paymentIntentId: string }> => {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  
+
   if (!stripeSecretKey) {
     throw new AppError('Stripe not configured', 500);
   }
@@ -144,7 +144,7 @@ export const verifyStripeWebhook = (
   _signature: string
 ): StripeWebhookEvent | null => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
   if (!webhookSecret) {
     console.error('[Stripe] Webhook secret not configured');
     return null;
@@ -216,7 +216,7 @@ export const getStripeSession = async (
   sessionId: string
 ): Promise<StripeCheckoutSession | null> => {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  
+
   if (!stripeSecretKey) {
     return null;
   }
@@ -238,7 +238,7 @@ export const createStripeRefund = async (
   amount?: number
 ): Promise<{ refundId: string; status: string }> => {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  
+
   if (!stripeSecretKey) {
     throw new AppError('Stripe not configured', 500);
   }
@@ -262,4 +262,3 @@ export const createStripeRefund = async (
     status: 'succeeded',
   };
 };
-

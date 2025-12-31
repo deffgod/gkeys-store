@@ -19,7 +19,7 @@ interface G2AEnvVars {
 /**
  * Load G2A configuration from environment variables
  * Supports both old and new variable names for backward compatibility
- * 
+ *
  * Variable name mapping:
  * - G2A_API_KEY (new) or G2A_CLIENT_ID (old)
  * - G2A_API_HASH (new) or G2A_CLIENT_SECRET (old)
@@ -35,65 +35,71 @@ export function loadG2AEnvVars(): G2AEnvVars {
   if (!apiKey) {
     throw new Error('G2A_API_KEY or G2A_CLIENT_ID environment variable is required');
   }
-  
+
   // Log if using old variable name
   if (!process.env.G2A_API_KEY && process.env.G2A_CLIENT_ID) {
-    console.warn('[G2A Config] Using legacy variable name G2A_CLIENT_ID. Please migrate to G2A_API_KEY.');
+    console.warn(
+      '[G2A Config] Using legacy variable name G2A_CLIENT_ID. Please migrate to G2A_API_KEY.'
+    );
   }
-  
+
   // API Hash (supports both names)
-  const apiHash = process.env.G2A_API_HASH || process.env.G2A_API_SECRET || process.env.G2A_CLIENT_SECRET;
+  const apiHash =
+    process.env.G2A_API_HASH || process.env.G2A_API_SECRET || process.env.G2A_CLIENT_SECRET;
   if (!apiHash) {
     throw new Error('G2A_API_HASH or G2A_CLIENT_SECRET environment variable is required');
   }
-  
+
   // Log if using old variable name
   if (!process.env.G2A_API_HASH && process.env.G2A_CLIENT_SECRET) {
-    console.warn('[G2A Config] Using legacy variable name G2A_CLIENT_SECRET. Please migrate to G2A_API_HASH.');
+    console.warn(
+      '[G2A Config] Using legacy variable name G2A_CLIENT_SECRET. Please migrate to G2A_API_HASH.'
+    );
   }
-  
+
   // Email (optional, same name in both versions)
   const email = process.env.G2A_EMAIL;
   if (!email) {
-    console.warn('[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation.');
+    console.warn(
+      '[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation.'
+    );
   }
-  
+
   // Base URL (supports both names)
   let baseUrl = process.env.G2A_API_URL || process.env.G2A_API_BASE;
   if (!baseUrl) {
     // Default based on environment
     const env = (process.env.G2A_ENV as G2AEnvironment) || 'sandbox';
-    baseUrl = env === 'sandbox'
-      ? 'https://sandboxapi.g2a.com/v1'
-      : 'https://api.g2a.com/integration-api/v1';
+    baseUrl =
+      env === 'sandbox'
+        ? 'https://sandboxapi.g2a.com/v1'
+        : 'https://api.g2a.com/integration-api/v1';
     console.warn(`[G2A Config] WARNING: G2A_API_URL is not set. Using default "${baseUrl}"`);
   }
-  
+
   // Log if using old variable name
   if (!process.env.G2A_API_URL && process.env.G2A_API_BASE) {
-    console.warn('[G2A Config] Using legacy variable name G2A_API_BASE. Please migrate to G2A_API_URL.');
+    console.warn(
+      '[G2A Config] Using legacy variable name G2A_API_BASE. Please migrate to G2A_API_URL.'
+    );
   }
-  
+
   // Normalize URL
   baseUrl = normalizeG2AUrl(baseUrl);
-  
+
   // Environment
   const envStr = process.env.G2A_ENV || 'sandbox';
   if (!['sandbox', 'live'].includes(envStr)) {
     throw new Error(`Invalid G2A_ENV value: ${envStr}. Must be 'sandbox' or 'live'`);
   }
   const env = envStr as G2AEnvironment;
-  
+
   // Timeout (default: 8000ms)
-  const timeoutMs = process.env.G2A_TIMEOUT_MS 
-    ? parseInt(process.env.G2A_TIMEOUT_MS, 10) 
-    : 8000;
-  
+  const timeoutMs = process.env.G2A_TIMEOUT_MS ? parseInt(process.env.G2A_TIMEOUT_MS, 10) : 8000;
+
   // Retry max (default: 2)
-  const retryMax = process.env.G2A_RETRY_MAX 
-    ? parseInt(process.env.G2A_RETRY_MAX, 10) 
-    : 2;
-  
+  const retryMax = process.env.G2A_RETRY_MAX ? parseInt(process.env.G2A_RETRY_MAX, 10) : 2;
+
   return {
     apiKey,
     apiHash,

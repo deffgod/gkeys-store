@@ -9,14 +9,14 @@ export interface G2AConfig {
   apiKey: string;
   apiHash: string;
   email?: string;
-  
+
   // Environment
   baseUrl: string;
   env: G2AEnvironment;
-  
+
   // HTTP Settings
   timeoutMs: number;
-  
+
   // Retry Configuration
   retry: {
     maxRetries: number;
@@ -25,7 +25,7 @@ export interface G2AConfig {
     backoffMultiplier: number;
     jitter: boolean;
   };
-  
+
   // Circuit Breaker Configuration
   circuitBreaker: {
     enabled: boolean;
@@ -34,7 +34,7 @@ export interface G2AConfig {
     resetTimeoutMs: number;
     halfOpenSuccessThreshold: number;
   };
-  
+
   // Rate Limiting Configuration
   rateLimiting: {
     enabled: boolean;
@@ -47,14 +47,14 @@ export interface G2AConfig {
       };
     };
   };
-  
+
   // Batch Operations Configuration
   batch: {
     maxBatchSize: number;
     maxConcurrentRequests: number;
     productFetchChunkSize: number;
   };
-  
+
   // Connection Pooling
   httpAgent: {
     maxSockets: number;
@@ -62,14 +62,14 @@ export interface G2AConfig {
     keepAlive: boolean;
     keepAliveMsecs: number;
   };
-  
+
   // Logging & Metrics
   logging: {
     enabled: boolean;
     level: 'debug' | 'info' | 'warn' | 'error';
     maskSecrets: boolean;
   };
-  
+
   metrics: {
     enabled: boolean;
   };

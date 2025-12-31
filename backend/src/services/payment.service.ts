@@ -1,5 +1,10 @@
 import prisma from '../config/database.js';
-import { BalanceTopUpRequest, PaymentIntent, PaymentWebhook, TerminalWebhook } from '../types/payment.js';
+import {
+  BalanceTopUpRequest,
+  PaymentIntent,
+  PaymentWebhook,
+  TerminalWebhook,
+} from '../types/payment.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendBalanceTopUpEmail } from './email.service.js';
 import { createStripeRefund } from './stripe.service.js';
@@ -42,7 +47,7 @@ export const createBalanceTopUpIntent = async (
     if (promo?.active && promo.usedCount < (promo.maxUses ?? Infinity)) {
       const now = new Date();
       if (now >= promo.validFrom && now <= promo.validUntil) {
-        discount = Number((amount * Number(promo.discount) / 100).toFixed(2));
+        discount = Number(((amount * Number(promo.discount)) / 100).toFixed(2));
       }
     }
   }
@@ -379,7 +384,10 @@ export const refundTransaction = async (
         amount: refundAmount,
         currency: transaction.currency,
         method: transaction.method,
-        status: refundResult.status === 'succeeded' || refundResult.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING',
+        status:
+          refundResult.status === 'succeeded' || refundResult.status === 'COMPLETED'
+            ? 'COMPLETED'
+            : 'PENDING',
         description: reason || `Refund for transaction ${transactionId}`,
         transactionHash: refundResult.refundId,
         gatewayResponse: refundResult as unknown as Record<string, unknown>,
@@ -471,9 +479,9 @@ const refundTerminalTransaction = async (
   // Terminal payments are typically bank transfers and may not support refunds
   // This is a placeholder implementation - verify business requirements
   // For now, we'll create a manual refund record without calling an external API
-  
+
   const refundId = `TERM-REF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-  
+
   console.log('[Terminal] Created manual refund:', {
     refundId,
     transactionId,
@@ -487,4 +495,3 @@ const refundTerminalTransaction = async (
     message: 'Terminal refund processed manually (no gateway API available)',
   };
 };
-

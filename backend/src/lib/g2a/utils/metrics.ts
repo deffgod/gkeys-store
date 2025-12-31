@@ -11,14 +11,14 @@ interface MetricData {
 class G2AMetrics {
   private metrics: Map<string, MetricData> = new Map();
   private enabled: boolean;
-  
+
   constructor(enabled: boolean = true) {
     this.enabled = enabled;
   }
-  
+
   increment(metric: string, value: number = 1): void {
     if (!this.enabled) return;
-    
+
     const existing = this.metrics.get(metric);
     if (existing) {
       existing.count += value;
@@ -30,10 +30,10 @@ class G2AMetrics {
       });
     }
   }
-  
+
   set(metric: string, value: number): void {
     if (!this.enabled) return;
-    
+
     const existing = this.metrics.get(metric);
     if (existing) {
       existing.lastValue = value;
@@ -46,11 +46,11 @@ class G2AMetrics {
       });
     }
   }
-  
+
   get(metric: string): MetricData | undefined {
     return this.metrics.get(metric);
   }
-  
+
   getAll(): Record<string, MetricData> {
     const result: Record<string, MetricData> = {};
     this.metrics.forEach((data, key) => {
@@ -58,7 +58,7 @@ class G2AMetrics {
     });
     return result;
   }
-  
+
   reset(metric?: string): void {
     if (metric) {
       this.metrics.delete(metric);

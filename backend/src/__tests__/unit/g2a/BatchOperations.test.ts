@@ -65,8 +65,9 @@ describe('BatchOperations', () => {
         return item;
       });
 
-      await expect(batchOperations.executeStrict(items, processor, 'test'))
-        .rejects.toThrow('Batch operation partially failed');
+      await expect(batchOperations.executeStrict(items, processor, 'test')).rejects.toThrow(
+        'Batch operation partially failed'
+      );
     });
 
     it('should return results if all succeed', async () => {

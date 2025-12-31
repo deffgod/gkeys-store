@@ -5,11 +5,7 @@ export interface AuthRequest extends Request {
   user?: TokenPayload;
 }
 
-export const authenticate = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -33,11 +29,7 @@ export const authenticate = (
   }
 };
 
-export const requireAdmin = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== 'ADMIN') {
     return res.status(403).json({
       success: false,
@@ -46,4 +38,3 @@ export const requireAdmin = (
   }
   next();
 };
-

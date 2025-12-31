@@ -32,17 +32,13 @@ export const createBalanceTopUpController = async (
   }
 };
 
-export const paymentWebhookController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const paymentWebhookController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = req.body as unknown as PaymentWebhook;
-    
+
     // Verify webhook signature in production
     // For now, we'll process it directly
-    
+
     await processPaymentWebhook(data);
 
     res.status(200).json({
@@ -61,10 +57,10 @@ export const terminalWebhookController = async (
 ) => {
   try {
     const data = req.body as unknown as TerminalWebhook;
-    
+
     // Verify webhook signature in production
     // For now, we'll process it directly
-    
+
     await processTerminalWebhook(data);
 
     res.status(200).json({
@@ -75,4 +71,3 @@ export const terminalWebhookController = async (
     next(error);
   }
 };
-

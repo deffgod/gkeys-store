@@ -14,4 +14,3 @@ router.get('/articles/:id', getArticleByIdController);
 router.get('/categories', getCategoriesController);
 
 export default router;
-

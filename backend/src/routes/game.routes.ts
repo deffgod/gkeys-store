@@ -38,4 +38,3 @@ router.get('/slug/:slug', getGameBySlugController);
 router.get('/:id', getGameByIdController);
 
 export default router;
-

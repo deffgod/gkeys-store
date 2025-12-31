@@ -9,21 +9,21 @@ function createPrismaClient(): PrismaClient {
   const isProduction = process.env.NODE_ENV === 'production';
   const hasDirectUrl = !!process.env.DIRECT_URL;
   const hasPrismaAccelerate = process.env.DATABASE_URL?.includes('prisma.io');
-  
+
   // Use direct connection if:
   // 1. We're on Vercel (serverless)
   // 2. We're in production
   // 3. DIRECT_URL is explicitly provided
   // 4. DATABASE_URL points to Prisma Accelerate (which can be unreliable)
-  const useDirectConnection = 
-    isVercel || 
-    isProduction || 
-    hasDirectUrl || 
+  const useDirectConnection =
+    isVercel ||
+    isProduction ||
+    hasDirectUrl ||
     hasPrismaAccelerate ||
     process.env.FORCE_DIRECT_DB === 'true';
 
   const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+
   if (!dbUrl) {
     console.error('❌ DATABASE_URL or DIRECT_URL must be set');
     throw new Error('Database connection URL is required');
@@ -32,7 +32,7 @@ function createPrismaClient(): PrismaClient {
   if (useDirectConnection) {
     // Use direct connection (bypass Accelerate)
     console.log(`🔗 Using direct database connection${isVercel ? ' (Vercel/serverless)' : ''}`);
-    
+
     return new PrismaClient({
       datasources: {
         db: {
@@ -63,10 +63,10 @@ export async function initializeDatabase(): Promise<boolean> {
     if (!prisma) {
       prisma = createPrismaClient();
     }
-    
+
     // Test connection with a simple query
     await prisma.$queryRaw`SELECT 1`;
-    
+
     console.log('✅ Database connection established');
     return true;
   } catch (error) {

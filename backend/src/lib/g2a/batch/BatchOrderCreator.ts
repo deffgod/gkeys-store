@@ -18,7 +18,7 @@ export interface BatchOrderResponse extends G2AOrderResponse {
 
 export class BatchOrderCreator {
   private batchOperations: BatchOperations;
-  
+
   constructor(
     private ordersAPI: OrdersAPI,
     private logger: G2ALogger,
@@ -31,15 +31,13 @@ export class BatchOrderCreator {
       continueOnError: true,
     });
   }
-  
+
   /**
    * Create multiple orders
    */
-  async createOrders(
-    orders: BatchOrderRequest[]
-  ): Promise<BatchResult<BatchOrderResponse>> {
+  async createOrders(orders: BatchOrderRequest[]): Promise<BatchResult<BatchOrderResponse>> {
     this.logger.info('Batch creating orders', { count: orders.length });
-    
+
     return this.batchOperations.execute(
       orders,
       async (orderRequest, index) => {
@@ -48,13 +46,13 @@ export class BatchOrderCreator {
           clientOrderId: orderRequest.clientOrderId,
           productId: orderRequest.product_id,
         });
-        
+
         const response = await this.ordersAPI.create({
           product_id: orderRequest.product_id,
           currency: orderRequest.currency,
           max_price: orderRequest.max_price,
         });
-        
+
         return {
           ...response,
           clientOrderId: orderRequest.clientOrderId,
@@ -63,7 +61,7 @@ export class BatchOrderCreator {
       'BatchOrderCreator.createOrders'
     );
   }
-  
+
   /**
    * Create orders and pay for them in batch
    */
@@ -71,16 +69,16 @@ export class BatchOrderCreator {
     orders: BatchOrderRequest[]
   ): Promise<BatchResult<{ order: BatchOrderResponse; paid: boolean; transactionId?: string }>> {
     this.logger.info('Batch creating and paying for orders', { count: orders.length });
-    
+
     // Step 1: Create all orders
     const createResult = await this.createOrders(orders);
-    
+
     if (createResult.failureCount > 0) {
       this.logger.warn('Some orders failed to create', {
         failureCount: createResult.failureCount,
       });
     }
-    
+
     // Step 2: Pay for successfully created orders
     return this.batchOperations.execute(
       createResult.success,
@@ -90,7 +88,7 @@ export class BatchOrderCreator {
           orderId: order.order_id,
           clientOrderId: order.clientOrderId,
         });
-        
+
         try {
           const paymentResponse = await this.ordersAPI.pay(order.order_id);
           return {
@@ -110,7 +108,7 @@ export class BatchOrderCreator {
       'BatchOrderCreator.payOrders'
     );
   }
-  
+
   /**
    * Create orders with automatic retry on specific errors
    */
@@ -120,7 +118,7 @@ export class BatchOrderCreator {
   ): Promise<BatchResult<BatchOrderResponse>> {
     const result = await this.createOrders(orders);
     let retryCount = 0;
-    
+
     // Retry failed orders
     while (result.failureCount > 0 && retryCount < maxRetries) {
       retryCount++;
@@ -128,22 +126,22 @@ export class BatchOrderCreator {
         retryCount,
         failureCount: result.failureCount,
       });
-      
+
       // Extract failed order requests
-      const failedOrders = result.failures.map(f => orders[f.index]);
-      
+      const failedOrders = result.failures.map((f) => orders[f.index]);
+
       // Retry failed orders
       const retryResult = await this.createOrders(failedOrders);
-      
+
       // Merge results
       result.success.push(...retryResult.success);
       result.successCount += retryResult.successCount;
-      
+
       // Update failures (only keep still-failing orders)
       result.failures = retryResult.failures;
       result.failureCount = retryResult.failureCount;
     }
-    
+
     return result;
   }
 }

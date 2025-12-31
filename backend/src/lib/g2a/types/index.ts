@@ -8,7 +8,14 @@ export * from './orders.js';
 // Offer types (from existing services)
 export type OfferType = 'dropshipping' | 'promo' | 'steamgift' | 'game' | 'preorder';
 export type OfferVisibility = 'retail' | 'business' | 'both';
-export type OfferStatus = 'New' | 'Accepted' | 'Active' | 'Rejected' | 'Cancelled' | 'Finished' | 'Banned';
+export type OfferStatus =
+  | 'New'
+  | 'Accepted'
+  | 'Active'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'Finished'
+  | 'Banned';
 
 export interface G2AOffer {
   id: string;

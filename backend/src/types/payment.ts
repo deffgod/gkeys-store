@@ -53,4 +53,3 @@ export interface TransactionResponse {
   transactionHash?: string;
   createdAt: string;
 }
-

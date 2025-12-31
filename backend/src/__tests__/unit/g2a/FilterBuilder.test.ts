@@ -64,10 +64,8 @@ describe('FilterBuilder', () => {
     });
 
     it('should allow multiple sort criteria', () => {
-      filterBuilder
-        .sortBy('category', 'asc')
-        .sortBy('price', 'desc');
-      
+      filterBuilder.sortBy('category', 'asc').sortBy('price', 'desc');
+
       const built = filterBuilder.build();
       expect(built.sort).toHaveLength(2);
     });
@@ -85,13 +83,11 @@ describe('FilterBuilder', () => {
     });
 
     it('should validate page number', () => {
-      expect(() => filterBuilder.paginate(0, 50))
-        .toThrow('Page number must be >= 1');
+      expect(() => filterBuilder.paginate(0, 50)).toThrow('Page number must be >= 1');
     });
 
     it('should validate page size', () => {
-      expect(() => filterBuilder.paginate(1, 1000))
-        .toThrow('Page size must be between 1 and 500');
+      expect(() => filterBuilder.paginate(1, 1000)).toThrow('Page size must be between 1 and 500');
     });
   });
 
@@ -107,13 +103,11 @@ describe('FilterBuilder', () => {
     });
 
     it('should validate search query', () => {
-      expect(() => filterBuilder.search('', ['name']))
-        .toThrow('Search query cannot be empty');
+      expect(() => filterBuilder.search('', ['name'])).toThrow('Search query cannot be empty');
     });
 
     it('should validate search fields', () => {
-      expect(() => filterBuilder.search('test', []))
-        .toThrow('Search requires at least one field');
+      expect(() => filterBuilder.search('test', [])).toThrow('Search requires at least one field');
     });
   });
 
@@ -133,9 +127,9 @@ describe('FilterBuilder', () => {
     it('should create independent copy', () => {
       filterBuilder.where('status', 'active');
       const cloned = filterBuilder.clone();
-      
+
       cloned.where('type', 'premium');
-      
+
       expect(filterBuilder.build().criteria).toHaveLength(1);
       expect(cloned.build().criteria).toHaveLength(2);
     });

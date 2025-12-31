@@ -11,7 +11,10 @@ const { baseUrl: G2A_API_URL } = getG2AConfig();
 const logger = {
   info: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.log(`[G2A Offer] [${timestamp}] [INFO] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.log(
+      `[G2A Offer] [${timestamp}] [INFO] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   error: (message: string, error?: unknown) => {
     const timestamp = new Date().toISOString();
@@ -19,12 +22,18 @@ const logger = {
   },
   warn: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.warn(`[G2A Offer] [${timestamp}] [WARN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.warn(
+      `[G2A Offer] [${timestamp}] [WARN] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   debug: (message: string, data?: Record<string, unknown>) => {
     if (process.env.NODE_ENV === 'development') {
       const timestamp = new Date().toISOString();
-      console.log(`[G2A Offer] [${timestamp}] [DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+      console.log(
+        `[G2A Offer] [${timestamp}] [DEBUG] ${message}`,
+        data ? JSON.stringify(data, null, 2) : ''
+      );
     }
   },
 };
@@ -42,7 +51,14 @@ export type OfferVisibility = 'retail' | 'business' | 'both';
 /**
  * Offer Status
  */
-export type OfferStatus = 'New' | 'Accepted' | 'Active' | 'Rejected' | 'Cancelled' | 'Finished' | 'Banned';
+export type OfferStatus =
+  | 'New'
+  | 'Accepted'
+  | 'Active'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'Finished'
+  | 'Banned';
 
 /**
  * Create Offer Request interface
@@ -149,10 +165,11 @@ const handleG2AOfferError = (error: unknown, operation: string): G2AError => {
     const axiosError = error as AxiosError;
     const status = axiosError.response?.status;
     const data = axiosError.response?.data;
-    
-    const errorMessage = typeof data === 'object' && data !== null && 'message' in data
-      ? String(data.message)
-      : axiosError.message;
+
+    const errorMessage =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? String(data.message)
+        : axiosError.message;
 
     return new G2AError(
       G2AErrorCode.G2A_API_ERROR,
@@ -179,10 +196,10 @@ const handleG2AOfferError = (error: unknown, operation: string): G2AError => {
 export const createOffer = async (data: CreateOfferRequest): Promise<CreateOfferResponse> => {
   try {
     logger.info('Creating offer', { offerType: data.offerType, productId: data.productId });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const response = await client.post<CreateOfferResponse>('/offers', data);
 
     logger.info('Offer creation initiated', {
@@ -207,10 +224,10 @@ export const createOffer = async (data: CreateOfferRequest): Promise<CreateOffer
 export const getOffer = async (offerId: string): Promise<G2AOffer> => {
   try {
     logger.debug('Getting offer details', { offerId });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const response = await client.get<G2AOffer>(`/offers/${offerId}`);
 
     logger.debug('Offer details obtained', {
@@ -222,15 +239,14 @@ export const getOffer = async (offerId: string): Promise<G2AOffer> => {
     return response.data;
   } catch (error) {
     const g2aError = handleG2AOfferError(error, 'getOffer');
-    
+
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      throw new G2AError(
-        G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-        `Offer not found: ${offerId}`,
-        { offerId, originalError: g2aError }
-      );
+      throw new G2AError(G2AErrorCode.G2A_PRODUCT_NOT_FOUND, `Offer not found: ${offerId}`, {
+        offerId,
+        originalError: g2aError,
+      });
     }
-    
+
     logger.error('Error getting offer', g2aError);
     throw g2aError;
   }
@@ -245,10 +261,10 @@ export const getOffer = async (offerId: string): Promise<G2AOffer> => {
 export const getOffers = async (filters?: OfferFilters): Promise<G2AOffersResponse> => {
   try {
     logger.info('Getting offers list', { filters });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const params: Record<string, string | number | boolean> = {};
     if (filters?.productId) {
       params.productId = filters.productId;
@@ -268,7 +284,7 @@ export const getOffers = async (filters?: OfferFilters): Promise<G2AOffersRespon
     if (filters?.perPage) {
       params.perPage = filters.perPage;
     }
-    
+
     const response = await client.get<G2AOffersResponse>('/offers', {
       params,
     });
@@ -314,10 +330,10 @@ export const updateOfferPartial = async (
 ): Promise<G2AOffer> => {
   try {
     logger.info('Updating offer', { offerId, updates: Object.keys(data) });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const response = await client.patch<G2AOffer>(`/offers/${offerId}`, data);
 
     logger.info('Offer updated successfully', {
@@ -328,15 +344,14 @@ export const updateOfferPartial = async (
     return response.data;
   } catch (error) {
     const g2AError = handleG2AOfferError(error, 'updateOfferPartial');
-    
+
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      throw new G2AError(
-        G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-        `Offer not found: ${offerId}`,
-        { offerId, originalError: g2AError }
-      );
+      throw new G2AError(G2AErrorCode.G2A_PRODUCT_NOT_FOUND, `Offer not found: ${offerId}`, {
+        offerId,
+        originalError: g2AError,
+      });
     }
-    
+
     logger.error('Error updating offer', g2AError);
     throw g2AError;
   }
@@ -361,13 +376,13 @@ export const addOfferInventory = async (
       keysCount: keys.length,
       isFileKeys: keys.length > 0 && keys[0] instanceof File,
     });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     // Prepare form data if files are provided, otherwise JSON
     let requestData: FormData | { keys: string[] };
-    
+
     if (keys.length > 0 && keys[0] instanceof File) {
       const formData = new FormData();
       (keys as File[]).forEach((file, index) => {
@@ -377,7 +392,7 @@ export const addOfferInventory = async (
     } else {
       requestData = { keys: keys as string[] };
     }
-    
+
     const response = await client.post<AddOfferInventoryResponse>(
       `/offers/${offerId}/inventory`,
       requestData,
@@ -402,4 +417,3 @@ export const addOfferInventory = async (
     throw g2aError;
   }
 };
-

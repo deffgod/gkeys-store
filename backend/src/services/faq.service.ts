@@ -22,7 +22,10 @@ export const getFAQs = async (filters?: FAQFilters): Promise<FAQItem[]> => {
   const where: {
     category?: string;
     active?: boolean;
-    OR?: Array<{ question?: { contains: string; mode: string }; answer?: { contains: string; mode: string } }>;
+    OR?: Array<{
+      question?: { contains: string; mode: string };
+      answer?: { contains: string; mode: string };
+    }>;
   } = {};
 
   if (filters?.category) {
@@ -45,10 +48,7 @@ export const getFAQs = async (filters?: FAQFilters): Promise<FAQItem[]> => {
 
   const faqs = await prisma.fAQ.findMany({
     where: where as Prisma.FAQWhereInput,
-    orderBy: [
-      { category: 'asc' },
-      { order: 'asc' },
-    ],
+    orderBy: [{ category: 'asc' }, { order: 'asc' }],
   });
 
   return faqs.map((faq) => ({
@@ -62,14 +62,16 @@ export const getFAQs = async (filters?: FAQFilters): Promise<FAQItem[]> => {
   }));
 };
 
-export const getFAQCategories = async (): Promise<Array<{ name: string; slug: string; count: number }>> => {
+export const getFAQCategories = async (): Promise<
+  Array<{ name: string; slug: string; count: number }>
+> => {
   const faqs = await prisma.fAQ.findMany({
     where: { active: true },
     select: { category: true },
   });
 
   const categoryMap = new Map<string, number>();
-  
+
   for (const faq of faqs) {
     const count = categoryMap.get(faq.category) || 0;
     categoryMap.set(faq.category, count + 1);

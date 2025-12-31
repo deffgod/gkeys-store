@@ -51,8 +51,9 @@ describe('CircuitBreaker', () => {
       }
 
       // Should now reject without calling function
-      await expect(circuitBreaker.execute(vi.fn(), 'testOp'))
-        .rejects.toThrow('Circuit breaker is open');
+      await expect(circuitBreaker.execute(vi.fn(), 'testOp')).rejects.toThrow(
+        'Circuit breaker is open'
+      );
     });
 
     it('should transition to HALF_OPEN after reset timeout', async () => {
@@ -68,7 +69,7 @@ describe('CircuitBreaker', () => {
       }
 
       // Wait for reset timeout
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       expect(circuitBreaker.getState()).toBe(CircuitState.HALF_OPEN);
     });
@@ -87,7 +88,7 @@ describe('CircuitBreaker', () => {
       }
 
       // Wait for reset timeout
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       // Successful request should close circuit
       await circuitBreaker.execute(successFn, 'testOp');

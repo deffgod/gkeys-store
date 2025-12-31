@@ -1,14 +1,14 @@
 import prisma from '../config/database.js';
-import { 
-  AdminDashboardStats, 
-  UserSearchFilters, 
-  TransactionFilters, 
+import {
+  AdminDashboardStats,
+  UserSearchFilters,
+  TransactionFilters,
   UserDetailsResponse,
   GameCreateInput,
   GameUpdateInput,
   BlogPostCreateInput,
   BlogPostUpdateInput,
-  RefundResult
+  RefundResult,
 } from '../types/admin.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { Prisma } from '@prisma/client';
@@ -19,25 +19,34 @@ import { Prisma } from '@prisma/client';
 const adminLogger = {
   info: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.log(`[Admin] [${timestamp}] [INFO] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.log(
+      `[Admin] [${timestamp}] [INFO] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   error: (message: string, error?: unknown, context?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
     const errorData = {
       message,
       timestamp,
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      } : error,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+            }
+          : error,
       context,
     };
     console.error(`[Admin] [${timestamp}] [ERROR] ${JSON.stringify(errorData, null, 2)}`);
   },
   warn: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.warn(`[Admin] [${timestamp}] [WARN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.warn(
+      `[Admin] [${timestamp}] [WARN] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   /**
    * Audit log for admin actions
@@ -143,19 +152,25 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
   });
 
   const topGamesWithDetails = await Promise.all(
-    topSellingGames.map(async (item: { gameId: string; _count: { gameId: number }; _sum: { price: number | null } }) => {
-      const game = await prisma.game.findUnique({
-        where: { id: item.gameId },
-        select: { id: true, title: true, slug: true },
-      });
-      return {
-        id: item.gameId,
-        title: game?.title || 'Unknown',
-        slug: game?.slug || '',
-        salesCount: item._count?.gameId || 0,
-        revenue: Number(item._sum?.price || 0),
-      };
-    })
+    topSellingGames.map(
+      async (item: {
+        gameId: string;
+        _count: { gameId: number };
+        _sum: { price: number | null };
+      }) => {
+        const game = await prisma.game.findUnique({
+          where: { id: item.gameId },
+          select: { id: true, title: true, slug: true },
+        });
+        return {
+          id: item.gameId,
+          title: game?.title || 'Unknown',
+          slug: game?.slug || '',
+          salesCount: item._count?.gameId || 0,
+          revenue: Number(item._sum?.price || 0),
+        };
+      }
+    )
   );
 
   // Get recent orders
@@ -371,7 +386,12 @@ export const getTransactions = async (filters?: TransactionFilters) => {
   }
 
   if (filters?.status) {
-    where.status = filters.status as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    where.status = filters.status as
+      | 'PENDING'
+      | 'PROCESSING'
+      | 'COMPLETED'
+      | 'FAILED'
+      | 'CANCELLED';
   }
 
   if (filters?.transactionHash) {
@@ -423,10 +443,12 @@ export const getTransactions = async (filters?: TransactionFilters) => {
         nickname: t.user.nickname || 'Newbie Guy',
       },
       orderId: t.orderId || undefined,
-      order: t.order ? {
-        id: t.order.id,
-        status: t.order.status,
-      } : undefined,
+      order: t.order
+        ? {
+            id: t.order.id,
+            status: t.order.status,
+          }
+        : undefined,
       type: t.type,
       amount: Number(t.amount),
       currency: t.currency,
@@ -570,75 +592,78 @@ export const createGame = async (data: GameCreateInput, adminUserId?: string) =>
       });
     }
 
-  // Find or create genre
-  let genre = await prisma.genre.findUnique({
-    where: { slug: data.genre.toLowerCase().replace(/\s+/g, '-') },
-  });
-  if (!genre) {
-    genre = await prisma.genre.create({
+    // Find or create genre
+    let genre = await prisma.genre.findUnique({
+      where: { slug: data.genre.toLowerCase().replace(/\s+/g, '-') },
+    });
+    if (!genre) {
+      genre = await prisma.genre.create({
+        data: {
+          name: data.genre,
+          slug: data.genre.toLowerCase().replace(/\s+/g, '-'),
+        },
+      });
+    }
+
+    // Create or find tags
+    const tagConnections = await Promise.all(
+      data.tags.map(async (tagName) => {
+        let tag = await prisma.tag.findUnique({
+          where: { slug: tagName.toLowerCase().replace(/\s+/g, '-') },
+        });
+        if (!tag) {
+          tag = await prisma.tag.create({
+            data: {
+              name: tagName,
+              slug: tagName.toLowerCase().replace(/\s+/g, '-'),
+            },
+          });
+        }
+        return { tagId: tag.id };
+      })
+    );
+
+    const game = await prisma.game.create({
       data: {
-        name: data.genre,
-        slug: data.genre.toLowerCase().replace(/\s+/g, '-'),
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        price: data.price,
+        originalPrice: data.originalPrice,
+        image: data.imageUrl,
+        publisher: data.publisher,
+        releaseDate: data.releaseDate ? new Date(data.releaseDate) : new Date(),
+        isPreorder: data.isPreorder || false,
+        inStock: data.inStock !== false,
+        g2aProductId: data.g2aProductId,
+        g2aStock: data.g2aStock !== undefined ? data.g2aStock : false,
+        platforms: {
+          create: {
+            platformId: platform.id,
+          },
+        },
+        genres: {
+          create: {
+            genreId: genre.id,
+          },
+        },
+        tags: {
+          create: tagConnections,
+        },
       },
     });
-  }
 
-  // Create or find tags
-  const tagConnections = await Promise.all(
-    data.tags.map(async (tagName) => {
-      let tag = await prisma.tag.findUnique({
-        where: { slug: tagName.toLowerCase().replace(/\s+/g, '-') },
-      });
-      if (!tag) {
-        tag = await prisma.tag.create({
-          data: {
-            name: tagName,
-            slug: tagName.toLowerCase().replace(/\s+/g, '-'),
-          },
-        });
-      }
-      return { tagId: tag.id };
-    })
-  );
-
-  const game = await prisma.game.create({
-    data: {
-      title: data.title,
-      slug: data.slug,
-      description: data.description,
-      price: data.price,
-      originalPrice: data.originalPrice,
-      image: data.imageUrl,
-      publisher: data.publisher,
-      releaseDate: data.releaseDate ? new Date(data.releaseDate) : new Date(),
-      isPreorder: data.isPreorder || false,
-      inStock: data.inStock !== false,
-      g2aProductId: data.g2aProductId,
-      g2aStock: data.g2aStock !== undefined ? data.g2aStock : false,
-      platforms: {
-        create: {
-          platformId: platform.id,
-        },
-      },
-      genres: {
-        create: {
-          genreId: genre.id,
-        },
-      },
-      tags: {
-        create: tagConnections,
-      },
-    },
-  });
-
-  // Invalidate cache after game creation
-  try {
-    const { invalidateCache } = await import('./cache.service.js');
-    await invalidateCache('home:*');
-    await invalidateCache('game:*');
-    await invalidateCache('catalog:*');
+    // Invalidate cache after game creation
+    try {
+      const { invalidateCache } = await import('./cache.service.js');
+      await invalidateCache('home:*');
+      await invalidateCache('game:*');
+      await invalidateCache('catalog:*');
     } catch (cacheError) {
-      adminLogger.warn('Failed to invalidate cache after game creation', { gameId: game.id, error: cacheError });
+      adminLogger.warn('Failed to invalidate cache after game creation', {
+        gameId: game.id,
+        error: cacheError,
+      });
       // Don't fail creation if cache invalidation fails
     }
 
@@ -651,8 +676,8 @@ export const createGame = async (data: GameCreateInput, adminUserId?: string) =>
       createdAt: game.createdAt.toISOString(),
     };
   } catch (error) {
-    adminLogger.error('Failed to create game', error, { 
-      title: data.title, 
+    adminLogger.error('Failed to create game', error, {
+      title: data.title,
       slug: data.slug,
       adminUserId: adminUserId || 'unknown',
     });
@@ -669,130 +694,132 @@ export const updateGame = async (id: string, data: GameUpdateInput, adminUserId?
 
     const updateData: Prisma.GameUpdateInput = {};
 
-  if (data.title !== undefined) updateData.title = data.title;
-  if (data.slug !== undefined) updateData.slug = data.slug;
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.price !== undefined) updateData.price = data.price;
-  if (data.originalPrice !== undefined) updateData.originalPrice = data.originalPrice;
-  if (data.imageUrl !== undefined) updateData.image = data.imageUrl;
-  if (data.publisher !== undefined) updateData.publisher = data.publisher;
-  if (data.releaseDate !== undefined) updateData.releaseDate = data.releaseDate ? new Date(data.releaseDate) : new Date();
-  if (data.isPreorder !== undefined) updateData.isPreorder = data.isPreorder;
-  if (data.inStock !== undefined) updateData.inStock = data.inStock;
-  // G2A fields
-  if (data.g2aProductId !== undefined) updateData.g2aProductId = data.g2aProductId;
-  if (data.g2aStock !== undefined) updateData.g2aStock = data.g2aStock;
-  if (data.g2aLastSync !== undefined) updateData.g2aLastSync = data.g2aLastSync ? new Date(data.g2aLastSync) : null;
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.slug !== undefined) updateData.slug = data.slug;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.originalPrice !== undefined) updateData.originalPrice = data.originalPrice;
+    if (data.imageUrl !== undefined) updateData.image = data.imageUrl;
+    if (data.publisher !== undefined) updateData.publisher = data.publisher;
+    if (data.releaseDate !== undefined)
+      updateData.releaseDate = data.releaseDate ? new Date(data.releaseDate) : new Date();
+    if (data.isPreorder !== undefined) updateData.isPreorder = data.isPreorder;
+    if (data.inStock !== undefined) updateData.inStock = data.inStock;
+    // G2A fields
+    if (data.g2aProductId !== undefined) updateData.g2aProductId = data.g2aProductId;
+    if (data.g2aStock !== undefined) updateData.g2aStock = data.g2aStock;
+    if (data.g2aLastSync !== undefined)
+      updateData.g2aLastSync = data.g2aLastSync ? new Date(data.g2aLastSync) : null;
 
-  // Handle platform update - do this before the main update
-  if (data.platform !== undefined) {
-    let platform = await prisma.platform.findUnique({
-      where: { slug: data.platform.toLowerCase().replace(/\s+/g, '-') },
-    });
-    if (!platform) {
-      platform = await prisma.platform.create({
+    // Handle platform update - do this before the main update
+    if (data.platform !== undefined) {
+      let platform = await prisma.platform.findUnique({
+        where: { slug: data.platform.toLowerCase().replace(/\s+/g, '-') },
+      });
+      if (!platform) {
+        platform = await prisma.platform.create({
+          data: {
+            name: data.platform,
+            slug: data.platform.toLowerCase().replace(/\s+/g, '-'),
+          },
+        });
+      }
+      // Delete old platform connections
+      await prisma.gamePlatform.deleteMany({ where: { gameId: id } });
+      // Create new connection
+      await prisma.gamePlatform.create({
         data: {
-          name: data.platform,
-          slug: data.platform.toLowerCase().replace(/\s+/g, '-'),
+          gameId: id,
+          platformId: platform.id,
         },
       });
     }
-    // Delete old platform connections
-    await prisma.gamePlatform.deleteMany({ where: { gameId: id } });
-    // Create new connection
-    await prisma.gamePlatform.create({
-      data: {
-        gameId: id,
-        platformId: platform.id,
-      },
-    });
-  }
 
-  // Handle genre update - do this before the main update
-  if (data.genre !== undefined) {
-    let genre = await prisma.genre.findUnique({
-      where: { slug: data.genre.toLowerCase().replace(/\s+/g, '-') },
-    });
-    if (!genre) {
-      genre = await prisma.genre.create({
+    // Handle genre update - do this before the main update
+    if (data.genre !== undefined) {
+      let genre = await prisma.genre.findUnique({
+        where: { slug: data.genre.toLowerCase().replace(/\s+/g, '-') },
+      });
+      if (!genre) {
+        genre = await prisma.genre.create({
+          data: {
+            name: data.genre,
+            slug: data.genre.toLowerCase().replace(/\s+/g, '-'),
+          },
+        });
+      }
+      // Delete old genre connections
+      await prisma.gameGenre.deleteMany({ where: { gameId: id } });
+      // Create new connection
+      await prisma.gameGenre.create({
         data: {
-          name: data.genre,
-          slug: data.genre.toLowerCase().replace(/\s+/g, '-'),
+          gameId: id,
+          genreId: genre.id,
         },
       });
     }
-    // Delete old genre connections
-    await prisma.gameGenre.deleteMany({ where: { gameId: id } });
-    // Create new connection
-    await prisma.gameGenre.create({
-      data: {
-        gameId: id,
-        genreId: genre.id,
-      },
+
+    // Handle categories update - do this before the main update
+    if (data.categories !== undefined) {
+      const categoryConnections = await Promise.all(
+        data.categories.map(async (categoryName) => {
+          let category = await prisma.category.findUnique({
+            where: { slug: categoryName.toLowerCase().replace(/\s+/g, '-') },
+          });
+          if (!category) {
+            category = await prisma.category.create({
+              data: {
+                name: categoryName,
+                slug: categoryName.toLowerCase().replace(/\s+/g, '-'),
+              },
+            });
+          }
+          return { gameId: id, categoryId: category.id };
+        })
+      );
+      // Delete old category connections
+      await prisma.gameCategory.deleteMany({ where: { gameId: id } });
+      // Create new connections
+      if (categoryConnections.length > 0) {
+        await prisma.gameCategory.createMany({
+          data: categoryConnections,
+        });
+      }
+    }
+
+    // Handle tags update - do this before the main update
+    if (data.tags !== undefined) {
+      const tagConnections = await Promise.all(
+        data.tags.map(async (tagName) => {
+          let tag = await prisma.tag.findUnique({
+            where: { slug: tagName.toLowerCase().replace(/\s+/g, '-') },
+          });
+          if (!tag) {
+            tag = await prisma.tag.create({
+              data: {
+                name: tagName,
+                slug: tagName.toLowerCase().replace(/\s+/g, '-'),
+              },
+            });
+          }
+          return { gameId: id, tagId: tag.id };
+        })
+      );
+      // Delete old tag connections
+      await prisma.gameTag.deleteMany({ where: { gameId: id } });
+      // Create new connections
+      if (tagConnections.length > 0) {
+        await prisma.gameTag.createMany({
+          data: tagConnections,
+        });
+      }
+    }
+
+    // Update the game itself
+    const game = await prisma.game.update({
+      where: { id },
+      data: updateData,
     });
-  }
-
-  // Handle categories update - do this before the main update
-  if (data.categories !== undefined) {
-    const categoryConnections = await Promise.all(
-      data.categories.map(async (categoryName) => {
-        let category = await prisma.category.findUnique({
-          where: { slug: categoryName.toLowerCase().replace(/\s+/g, '-') },
-        });
-        if (!category) {
-          category = await prisma.category.create({
-            data: {
-              name: categoryName,
-              slug: categoryName.toLowerCase().replace(/\s+/g, '-'),
-            },
-          });
-        }
-        return { gameId: id, categoryId: category.id };
-      })
-    );
-    // Delete old category connections
-    await prisma.gameCategory.deleteMany({ where: { gameId: id } });
-    // Create new connections
-    if (categoryConnections.length > 0) {
-      await prisma.gameCategory.createMany({
-        data: categoryConnections,
-      });
-    }
-  }
-
-  // Handle tags update - do this before the main update
-  if (data.tags !== undefined) {
-    const tagConnections = await Promise.all(
-      data.tags.map(async (tagName) => {
-        let tag = await prisma.tag.findUnique({
-          where: { slug: tagName.toLowerCase().replace(/\s+/g, '-') },
-        });
-        if (!tag) {
-          tag = await prisma.tag.create({
-            data: {
-              name: tagName,
-              slug: tagName.toLowerCase().replace(/\s+/g, '-'),
-            },
-          });
-        }
-        return { gameId: id, tagId: tag.id };
-      })
-    );
-    // Delete old tag connections
-    await prisma.gameTag.deleteMany({ where: { gameId: id } });
-    // Create new connections
-    if (tagConnections.length > 0) {
-      await prisma.gameTag.createMany({
-        data: tagConnections,
-      });
-    }
-  }
-
-  // Update the game itself
-  const game = await prisma.game.update({
-    where: { id },
-    data: updateData,
-  });
 
     // Invalidate cache after game update
     try {
@@ -801,7 +828,10 @@ export const updateGame = async (id: string, data: GameUpdateInput, adminUserId?
       await invalidateCache('game:*');
       await invalidateCache('catalog:*');
     } catch (cacheError) {
-      adminLogger.warn('Failed to invalidate cache after game update', { gameId: id, error: cacheError });
+      adminLogger.warn('Failed to invalidate cache after game update', {
+        gameId: id,
+        error: cacheError,
+      });
       // Don't fail update if cache invalidation fails
     }
 
@@ -814,7 +844,7 @@ export const updateGame = async (id: string, data: GameUpdateInput, adminUserId?
       updatedAt: game.updatedAt.toISOString(),
     };
   } catch (error) {
-    adminLogger.error('Failed to update game', error, { 
+    adminLogger.error('Failed to update game', error, {
       gameId: id,
       adminUserId: adminUserId || 'unknown',
     });
@@ -851,14 +881,17 @@ export const deleteGame = async (id: string, adminUserId?: string) => {
       await invalidateCache('game:*');
       await invalidateCache('catalog:*');
     } catch (cacheError) {
-      adminLogger.warn('Failed to invalidate cache after game deletion', { gameId: id, error: cacheError });
+      adminLogger.warn('Failed to invalidate cache after game deletion', {
+        gameId: id,
+        error: cacheError,
+      });
       // Don't fail deletion if cache invalidation fails
     }
 
     adminLogger.info('Game deleted successfully', { gameId: id, title: game.title });
     return { success: true };
   } catch (error) {
-    adminLogger.error('Failed to delete game', error, { 
+    adminLogger.error('Failed to delete game', error, {
       gameId: id,
       adminUserId: adminUserId || 'unknown',
     });
@@ -869,8 +902,11 @@ export const deleteGame = async (id: string, adminUserId?: string) => {
 // Helper function to calculate read time from content
 const calculateReadTime = (content: string): number => {
   // Remove HTML tags and count words
-  const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+  const text = content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const wordCount = text.split(/\s+/).filter((word) => word.length > 0).length;
   // Average reading speed: 200 words per minute
   return Math.ceil(wordCount / 200);
 };
@@ -945,12 +981,12 @@ export const getBlogPostById = async (id: string) => {
 export const createBlogPost = async (data: BlogPostCreateInput, authorEmail: string) => {
   // Generate slug from title if not provided
   let slug = data.slug || generateSlug(data.title);
-  
+
   // Check slug uniqueness
   const existingPost = await prisma.article.findUnique({
     where: { slug },
   });
-  
+
   if (existingPost) {
     // Append timestamp to make it unique
     slug = `${slug}-${Date.now()}`;
@@ -1156,9 +1192,7 @@ export const getAllOrders = async (page = 1, pageSize = 20, status?: string) => 
   return {
     orders: orders.map((o) => {
       // Map keys to items by gameId
-      const keysByGameId = new Map(
-        o.keys.map((k) => [k.gameId, k.key])
-      );
+      const keysByGameId = new Map(o.keys.map((k) => [k.gameId, k.key]));
 
       return {
         id: o.id,
@@ -1238,9 +1272,7 @@ export const getOrderDetails = async (id: string) => {
   }
 
   // Map keys to items by gameId
-  const keysByGameId = new Map(
-    order.keys.map((k) => [k.gameId, k])
-  );
+  const keysByGameId = new Map(order.keys.map((k) => [k.gameId, k]));
 
   return {
     id: order.id,
@@ -1272,17 +1304,19 @@ export const getOrderDetails = async (id: string) => {
       key: keysByGameId.get(item.gameId)?.key || undefined,
       keyActivated: keysByGameId.get(item.gameId)?.activated || false,
     })),
-    transaction: order.transaction ? {
-      id: order.transaction.id,
-      type: order.transaction.type,
-      amount: Number(order.transaction.amount),
-      currency: order.transaction.currency,
-      method: order.transaction.method || undefined,
-      status: order.transaction.status,
-      description: order.transaction.description || undefined,
-      transactionHash: order.transaction.transactionHash || undefined,
-      createdAt: order.transaction.createdAt.toISOString(),
-    } : undefined,
+    transaction: order.transaction
+      ? {
+          id: order.transaction.id,
+          type: order.transaction.type,
+          amount: Number(order.transaction.amount),
+          currency: order.transaction.currency,
+          method: order.transaction.method || undefined,
+          status: order.transaction.status,
+          description: order.transaction.description || undefined,
+          transactionHash: order.transaction.transactionHash || undefined,
+          createdAt: order.transaction.createdAt.toISOString(),
+        }
+      : undefined,
   };
 };
 
@@ -1363,7 +1397,9 @@ export const updateOrder = async (id: string, data: OrderUpdateInput) => {
 
 // Keep updateOrderStatus for backward compatibility
 export const updateOrderStatus = async (id: string, status: string) => {
-  return updateOrder(id, { status: status as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' });
+  return updateOrder(id, {
+    status: status as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED',
+  });
 };
 
 export const cancelOrder = async (id: string, reason?: string): Promise<void> => {
@@ -1385,7 +1421,15 @@ export const cancelOrder = async (id: string, reason?: string): Promise<void> =>
         select: { id: true, gameId: true, key: true },
       },
       transaction: {
-        select: { id: true, type: true, amount: true, currency: true, method: true, status: true, transactionHash: true },
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          currency: true,
+          method: true,
+          status: true,
+          transactionHash: true,
+        },
       },
     },
   });
@@ -1414,7 +1458,11 @@ export const cancelOrder = async (id: string, reason?: string): Promise<void> =>
     });
 
     // 2. Refund payment if order was paid
-    if (order.transaction && order.transaction.status === 'COMPLETED' && order.transaction.type === 'PURCHASE') {
+    if (
+      order.transaction &&
+      order.transaction.status === 'COMPLETED' &&
+      order.transaction.type === 'PURCHASE'
+    ) {
       // Check if already refunded
       const existingRefund = await tx.transaction.findFirst({
         where: {
@@ -1428,10 +1476,17 @@ export const cancelOrder = async (id: string, reason?: string): Promise<void> =>
         // Refund through payment service
         try {
           const { refundTransaction } = await import('./payment.service.js');
-          await refundTransaction(order.transaction.id, undefined, reason || `Order ${id} cancelled by admin`);
+          await refundTransaction(
+            order.transaction.id,
+            undefined,
+            reason || `Order ${id} cancelled by admin`
+          );
         } catch (refundError) {
           // If refund fails, still cancel the order but log the error
-          console.error(`[Order Cancel] Failed to refund transaction ${order.transaction.id}:`, refundError);
+          console.error(
+            `[Order Cancel] Failed to refund transaction ${order.transaction.id}:`,
+            refundError
+          );
           // Create a manual refund transaction record
           await tx.transaction.create({
             data: {
@@ -1503,7 +1558,10 @@ export const cancelOrder = async (id: string, reason?: string): Promise<void> =>
   }
 };
 
-export const generateFakeDataForUser = async (userId: string, webhookData: Record<string, unknown>): Promise<void> => {
+export const generateFakeDataForUser = async (
+  userId: string,
+  webhookData: Record<string, unknown>
+): Promise<void> => {
   console.log(`Generating fake data for user ${userId}`);
 };
 
@@ -1518,17 +1576,19 @@ export const exportUserReport = async (userId: string): Promise<Buffer> => {
 /**
  * Get all payment methods with status and configuration
  */
-export const getPaymentMethods = async (): Promise<Array<{
-  id: string;
-  name: string;
-  type: 'stripe' | 'paypal' | 'mollie' | 'terminal';
-  icon?: string;
-  available: boolean;
-  order: number;
-  config?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}>> => {
+export const getPaymentMethods = async (): Promise<
+  Array<{
+    id: string;
+    name: string;
+    type: 'stripe' | 'paypal' | 'mollie' | 'terminal';
+    icon?: string;
+    available: boolean;
+    order: number;
+    config?: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+  }>
+> => {
   const methods = await prisma.paymentMethod.findMany({
     orderBy: { order: 'asc' },
   });
@@ -1638,10 +1698,12 @@ export const getPaymentTransactions = async (
         nickname: t.user.nickname || 'Newbie Guy',
       },
       orderId: t.orderId || undefined,
-      order: t.order ? {
-        id: t.order.id,
-        status: t.order.status,
-      } : undefined,
+      order: t.order
+        ? {
+            id: t.order.id,
+            status: t.order.status,
+          }
+        : undefined,
       type: t.type,
       amount: Number(t.amount),
       currency: t.currency,
@@ -1745,9 +1807,7 @@ export interface WishlistStatistics {
 /**
  * Search user carts with filters
  */
-export const searchUserCarts = async (
-  filters: CartSearchFilters
-): Promise<CartSearchResult> => {
+export const searchUserCarts = async (filters: CartSearchFilters): Promise<CartSearchResult> => {
   const page = filters.page || 1;
   const pageSize = filters.pageSize || 20;
   const skip = (page - 1) * pageSize;
@@ -1793,16 +1853,14 @@ export const searchUserCarts = async (
 
   // Calculate totals and last updated
   const carts = filteredUsers.map((user) => {
-    const total = user.cart.reduce(
-      (sum, item) => sum + Number(item.game.price) * item.quantity,
-      0
-    );
-    const lastUpdated = user.cart.length > 0
-      ? user.cart.reduce((latest, item) => 
-          item.addedAt > latest ? item.addedAt : latest,
-          user.cart[0].addedAt
-        )
-      : user.updatedAt;
+    const total = user.cart.reduce((sum, item) => sum + Number(item.game.price) * item.quantity, 0);
+    const lastUpdated =
+      user.cart.length > 0
+        ? user.cart.reduce(
+            (latest, item) => (item.addedAt > latest ? item.addedAt : latest),
+            user.cart[0].addedAt
+          )
+        : user.updatedAt;
 
     return {
       userId: user.id,
@@ -1819,9 +1877,7 @@ export const searchUserCarts = async (
 
   // Get total count
   const totalUsers = await prisma.user.count({ where });
-  const total = filters.hasItems !== undefined
-    ? filteredUsers.length
-    : totalUsers;
+  const total = filters.hasItems !== undefined ? filteredUsers.length : totalUsers;
 
   return {
     carts,
@@ -1874,12 +1930,13 @@ export const searchUserWishlists = async (
 
   // Calculate last updated
   const wishlists = filteredUsers.map((user) => {
-    const lastUpdated = user.wishlist.length > 0
-      ? user.wishlist.reduce((latest, item) => 
-          item.addedAt > latest ? item.addedAt : latest,
-          user.wishlist[0].addedAt
-        )
-      : user.updatedAt;
+    const lastUpdated =
+      user.wishlist.length > 0
+        ? user.wishlist.reduce(
+            (latest, item) => (item.addedAt > latest ? item.addedAt : latest),
+            user.wishlist[0].addedAt
+          )
+        : user.updatedAt;
 
     return {
       userId: user.id,
@@ -1895,9 +1952,7 @@ export const searchUserWishlists = async (
 
   // Get total count
   const totalUsers = await prisma.user.count({ where });
-  const total = filters.hasItems !== undefined
-    ? filteredUsers.length
-    : totalUsers;
+  const total = filters.hasItems !== undefined ? filteredUsers.length : totalUsers;
 
   return {
     wishlists,
@@ -1932,12 +1987,11 @@ export const getWishlistStatistics = async (): Promise<WishlistStatistics> => {
   const uniqueUsers = new Set(allWishlists.map((w) => w.userId));
   const totalWishlists = uniqueUsers.size;
   const totalItems = allWishlists.length;
-  const averageItemsPerWishlist = totalWishlists > 0
-    ? Number((totalItems / totalWishlists).toFixed(2))
-    : 0;
+  const averageItemsPerWishlist =
+    totalWishlists > 0 ? Number((totalItems / totalWishlists).toFixed(2)) : 0;
 
   // Most wished games
-  const gameCounts = new Map<string, { game: typeof allWishlists[0]['game']; count: number }>();
+  const gameCounts = new Map<string, { game: (typeof allWishlists)[0]['game']; count: number }>();
   for (const wishlist of allWishlists) {
     const gameId = wishlist.gameId;
     const existing = gameCounts.get(gameId);
@@ -2029,9 +2083,7 @@ export interface FAQAdminResult {
 /**
  * Get all FAQs for admin with pagination and filters
  */
-export const getAllFAQsForAdmin = async (
-  filters: FAQAdminFilters
-): Promise<FAQAdminResult> => {
+export const getAllFAQsForAdmin = async (filters: FAQAdminFilters): Promise<FAQAdminResult> => {
   const page = filters.page || 1;
   const pageSize = filters.pageSize || 20;
   const skip = (page - 1) * pageSize;
@@ -2058,10 +2110,7 @@ export const getAllFAQsForAdmin = async (
       where,
       skip,
       take: pageSize,
-      orderBy: [
-        { category: 'asc' },
-        { order: 'asc' },
-      ],
+      orderBy: [{ category: 'asc' }, { order: 'asc' }],
     }),
     prisma.fAQ.count({ where }),
   ]);
@@ -2085,16 +2134,14 @@ export const getAllFAQsForAdmin = async (
 
 // G2A Management Functions (wrappers for existing services)
 
-export const getAllG2AOffersForAdmin = async (
-  filters: {
-    productId?: string;
-    status?: string;
-    offerType?: string;
-    active?: boolean;
-    page?: number;
-    perPage?: number;
-  }
-): Promise<{
+export const getAllG2AOffersForAdmin = async (filters: {
+  productId?: string;
+  status?: string;
+  offerType?: string;
+  active?: boolean;
+  page?: number;
+  perPage?: number;
+}): Promise<{
   data: Array<{
     id: string;
     type: string;
@@ -2133,7 +2180,9 @@ export const getAllG2AOffersForAdmin = async (
   return getAllOffersForAdmin(typedFilters);
 };
 
-export const getG2AOfferByIdForAdmin = async (offerId: string): Promise<{
+export const getG2AOfferByIdForAdmin = async (
+  offerId: string
+): Promise<{
   id: string;
   type: string;
   productId: string;
@@ -2155,14 +2204,12 @@ export const getG2AOfferByIdForAdmin = async (offerId: string): Promise<{
   return getOfferByIdForAdmin(offerId);
 };
 
-export const getAllG2AReservationsForAdmin = async (
-  filters: {
-    orderId?: string;
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }
-): Promise<{
+export const getAllG2AReservationsForAdmin = async (filters: {
+  orderId?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
   reservations: Array<{
     reservationId: string;
     orderId: string;
@@ -2215,25 +2262,27 @@ export const getCacheStatisticsForAdmin = async (): Promise<{
   return getCacheStatistics();
 };
 
-export const invalidateCacheForAdmin = async (pattern: string): Promise<{
+export const invalidateCacheForAdmin = async (
+  pattern: string
+): Promise<{
   keysInvalidated: number;
   pattern: string;
   message: string;
 }> => {
   const { invalidateCache, getCacheKeys } = await import('./cache.service.js');
-  
+
   // Get keys before invalidation to count them
   const keysBefore = await getCacheKeys(pattern);
   const countBefore = keysBefore.length;
-  
+
   // Invalidate cache
   await invalidateCache(pattern);
-  
+
   // Get keys after invalidation to verify
   const keysAfter = await getCacheKeys(pattern);
   const countAfter = keysAfter.length;
   const keysInvalidated = countBefore - countAfter;
-  
+
   return {
     keysInvalidated,
     pattern,
@@ -2248,7 +2297,7 @@ export const clearAllCacheForAdmin = async (): Promise<{
 }> => {
   const { clearAllCache } = await import('./cache.service.js');
   const keysInvalidated = await clearAllCache();
-  
+
   return {
     keysInvalidated,
     pattern: '*',
@@ -2498,8 +2547,11 @@ export const getAllCategories = async () => {
 };
 
 export const createCategory = async (data: { name: string; description?: string }) => {
-  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  
+  const slug = data.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
   // Check if category with same slug already exists
   const existing = await prisma.category.findUnique({
     where: { slug },
@@ -2539,9 +2591,12 @@ export const createCategory = async (data: { name: string; description?: string 
 
 export const updateCategory = async (id: string, data: { name?: string; description?: string }) => {
   const updateData: Prisma.CategoryUpdateInput = {};
-  
+
   if (data.name !== undefined) {
-    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = data.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
     // Check if another category with same slug exists
     const existing = await prisma.category.findUnique({
       where: { slug },
@@ -2552,7 +2607,7 @@ export const updateCategory = async (id: string, data: { name?: string; descript
     updateData.name = data.name;
     updateData.slug = slug;
   }
-  
+
   if (data.description !== undefined) {
     updateData.description = data.description;
   }
@@ -2631,8 +2686,11 @@ export const getAllGenres = async () => {
 };
 
 export const createGenre = async (data: { name: string; description?: string }) => {
-  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  
+  const slug = data.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
   // Check if genre with same slug already exists
   const existing = await prisma.genre.findUnique({
     where: { slug },
@@ -2672,9 +2730,12 @@ export const createGenre = async (data: { name: string; description?: string }) 
 
 export const updateGenre = async (id: string, data: { name?: string; description?: string }) => {
   const updateData: Prisma.GenreUpdateInput = {};
-  
+
   if (data.name !== undefined) {
-    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = data.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
     // Check if another genre with same slug exists
     const existing = await prisma.genre.findUnique({
       where: { slug },
@@ -2685,7 +2746,7 @@ export const updateGenre = async (id: string, data: { name?: string; description
     updateData.name = data.name;
     updateData.slug = slug;
   }
-  
+
   if (data.description !== undefined) {
     updateData.description = data.description;
   }
@@ -2764,8 +2825,11 @@ export const getAllPlatforms = async () => {
 };
 
 export const createPlatform = async (data: { name: string; description?: string }) => {
-  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  
+  const slug = data.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
   // Check if platform with same slug already exists
   const existing = await prisma.platform.findUnique({
     where: { slug },
@@ -2805,9 +2869,12 @@ export const createPlatform = async (data: { name: string; description?: string 
 
 export const updatePlatform = async (id: string, data: { name?: string; description?: string }) => {
   const updateData: Prisma.PlatformUpdateInput = {};
-  
+
   if (data.name !== undefined) {
-    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = data.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
     // Check if another platform with same slug exists
     const existing = await prisma.platform.findUnique({
       where: { slug },
@@ -2818,7 +2885,7 @@ export const updatePlatform = async (id: string, data: { name?: string; descript
     updateData.name = data.name;
     updateData.slug = slug;
   }
-  
+
   if (data.description !== undefined) {
     updateData.description = data.description;
   }
@@ -2896,8 +2963,11 @@ export const getAllTags = async () => {
 };
 
 export const createTag = async (data: { name: string }) => {
-  const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  
+  const slug = data.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
   // Check if tag with same slug already exists
   const existing = await prisma.tag.findUnique({
     where: { slug },
@@ -2935,9 +3005,12 @@ export const createTag = async (data: { name: string }) => {
 
 export const updateTag = async (id: string, data: { name?: string }) => {
   const updateData: Prisma.TagUpdateInput = {};
-  
+
   if (data.name !== undefined) {
-    const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = data.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
     // Check if another tag with same slug exists
     const existing = await prisma.tag.findUnique({
       where: { slug },
@@ -3046,10 +3119,14 @@ export const getUserActivityForAdmin = async (
     const existingWhereDate = where.createdAt as { gte?: Date } | undefined;
     const existingOrderDate = orderWhere.createdAt as { gte?: Date } | undefined;
     const existingTransactionDate = transactionWhere.createdAt as { gte?: Date } | undefined;
-    
+
     where.createdAt = existingWhereDate ? { ...existingWhereDate, lte: endDate } : { lte: endDate };
-    orderWhere.createdAt = existingOrderDate ? { ...existingOrderDate, lte: endDate } : { lte: endDate };
-    transactionWhere.createdAt = existingTransactionDate ? { ...existingTransactionDate, lte: endDate } : { lte: endDate };
+    orderWhere.createdAt = existingOrderDate
+      ? { ...existingOrderDate, lte: endDate }
+      : { lte: endDate };
+    transactionWhere.createdAt = existingTransactionDate
+      ? { ...existingTransactionDate, lte: endDate }
+      : { lte: endDate };
   }
 
   const [loginHistory, orders, transactions] = await Promise.all([

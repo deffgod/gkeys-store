@@ -10,11 +10,7 @@ export interface SessionRequest extends Request {
  * Session middleware for guest cart/wishlist support
  * Creates or retrieves session ID for guest users
  */
-export const sessionMiddleware = async (
-  req: SessionRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const sessionMiddleware = async (req: SessionRequest, res: Response, next: NextFunction) => {
   try {
     // Always try to get/create session for guest users
     // Even authenticated users might need session for cart/wishlist migration
@@ -32,7 +28,7 @@ export const sessionMiddleware = async (
     const cookieSessionId = req.cookies?.sessionId;
     if (cookieSessionId) {
       sessionId = cookieSessionId;
-      
+
       try {
         // Verify session exists and is not expired
         const session = await prisma.session.findUnique({
@@ -45,7 +41,10 @@ export const sessionMiddleware = async (
         }
       } catch (dbError) {
         // Database error - continue without session
-        console.warn('⚠️  Database error in session middleware, continuing without session:', dbError);
+        console.warn(
+          '⚠️  Database error in session middleware, continuing without session:',
+          dbError
+        );
         return next();
       }
     }
@@ -53,7 +52,7 @@ export const sessionMiddleware = async (
     // Create new session if none exists or expired
     if (!sessionId) {
       sessionId = randomUUID();
-      
+
       try {
         // Create session in database (expires in 24 hours)
         const expiresAt = new Date();
@@ -68,7 +67,10 @@ export const sessionMiddleware = async (
         });
       } catch (dbError) {
         // Database error - continue without session
-        console.warn('⚠️  Failed to create session in database, continuing without session:', dbError);
+        console.warn(
+          '⚠️  Failed to create session in database, continuing without session:',
+          dbError
+        );
         return next();
       }
 

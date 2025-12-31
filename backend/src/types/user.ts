@@ -67,4 +67,3 @@ export interface WishlistResponse {
   };
   addedAt: string;
 }
-

@@ -4,11 +4,7 @@ import {
   loginController,
   refreshTokenController,
 } from '../controllers/auth.controller.js';
-import {
-  registerValidator,
-  loginValidator,
-  refreshTokenValidator,
-} from '../validators/auth.js';
+import { registerValidator, loginValidator, refreshTokenValidator } from '../validators/auth.js';
 
 const router = Router();
 
@@ -17,4 +13,3 @@ router.post('/login', loginValidator, loginController);
 router.post('/refresh', refreshTokenValidator, refreshTokenController);
 
 export default router;
-

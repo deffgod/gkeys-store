@@ -20,16 +20,25 @@ const transporter = nodemailer.createTransport({
 });
 
 // Load email templates
-const loadTemplate = async (templateName: string, variables: Record<string, string>): Promise<string> => {
+const loadTemplate = async (
+  templateName: string,
+  variables: Record<string, string>
+): Promise<string> => {
   try {
-    const templatePath = path.join(process.cwd(), 'src', 'templates', 'emails', `${templateName}.html`);
+    const templatePath = path.join(
+      process.cwd(),
+      'src',
+      'templates',
+      'emails',
+      `${templateName}.html`
+    );
     let template = await fs.readFile(templatePath, 'utf-8');
-    
+
     // Replace variables
     Object.entries(variables).forEach(([key, value]) => {
       template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
-    
+
     return template;
   } catch (error) {
     console.error(`Failed to load template ${templateName}:`, error);
@@ -45,7 +54,10 @@ const loadTemplate = async (templateName: string, variables: Record<string, stri
   }
 };
 
-export const sendRegistrationEmail = async (email: string, data: { username: string }): Promise<void> => {
+export const sendRegistrationEmail = async (
+  email: string,
+  data: { username: string }
+): Promise<void> => {
   const html = await loadTemplate('registration', {
     username: data.username,
   });
@@ -127,4 +139,3 @@ export const sendEmailVerificationEmail = async (
     html,
   });
 };
-

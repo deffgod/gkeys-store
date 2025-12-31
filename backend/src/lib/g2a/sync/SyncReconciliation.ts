@@ -21,27 +21,29 @@ export interface ReconciliationResult {
 
 export class SyncReconciliation {
   constructor(private logger: G2ALogger) {}
-  
+
   /**
    * Generate checksum for a set of products
    */
   generateChecksum(products: G2AProduct[]): string {
     const sortedProducts = [...products].sort((a, b) => a.id.localeCompare(b.id));
-    
+
     const hash = crypto.createHash('sha256');
-    sortedProducts.forEach(product => {
-      hash.update(JSON.stringify({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        qty: product.qty,
-        updatedAt: product.updatedAt,
-      }));
+    sortedProducts.forEach((product) => {
+      hash.update(
+        JSON.stringify({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          qty: product.qty,
+          updatedAt: product.updatedAt,
+        })
+      );
     });
-    
+
     return hash.digest('hex');
   }
-  
+
   /**
    * Verify sync integrity
    */
@@ -53,27 +55,27 @@ export class SyncReconciliation {
       sourceCount: sourceProducts.length,
       destinationCount: destinationProducts.length,
     });
-    
+
     const errors: string[] = [];
     const mismatches: Array<{ field: string; expected: any; actual: any }> = [];
-    
+
     // Check counts
     if (sourceProducts.length !== destinationProducts.length) {
       errors.push(
         `Product count mismatch: expected ${sourceProducts.length}, got ${destinationProducts.length}`
       );
     }
-    
+
     // Generate checksums
     const sourceChecksum = this.generateChecksum(sourceProducts);
     const destChecksum = this.generateChecksum(destinationProducts);
-    
+
     if (sourceChecksum !== destChecksum) {
       errors.push('Checksum mismatch detected');
-      
+
       // Find specific mismatches
-      const sourceMap = new Map(sourceProducts.map(p => [p.id, p]));
-      destinationProducts.forEach(destProduct => {
+      const sourceMap = new Map(sourceProducts.map((p) => [p.id, p]));
+      destinationProducts.forEach((destProduct) => {
         const sourceProduct = sourceMap.get(destProduct.id);
         if (sourceProduct) {
           const productMismatches = this.compareProducts(sourceProduct, destProduct);
@@ -81,15 +83,15 @@ export class SyncReconciliation {
         }
       });
     }
-    
+
     const valid = errors.length === 0 && mismatches.length === 0;
-    
+
     this.logger.info('Sync reconciliation completed', {
       valid,
       errorCount: errors.length,
       mismatchCount: mismatches.length,
     });
-    
+
     return {
       valid,
       totalRecords: sourceProducts.length,
@@ -98,7 +100,7 @@ export class SyncReconciliation {
       errors,
     };
   }
-  
+
   /**
    * Compare two products and find mismatches
    */
@@ -107,10 +109,10 @@ export class SyncReconciliation {
     destination: G2AProduct
   ): Array<{ field: string; expected: any; actual: any }> {
     const mismatches: Array<{ field: string; expected: any; actual: any }> = [];
-    
+
     const fieldsToCheck: (keyof G2AProduct)[] = ['name', 'price', 'qty', 'currency'];
-    
-    fieldsToCheck.forEach(field => {
+
+    fieldsToCheck.forEach((field) => {
       if (source[field] !== destination[field]) {
         mismatches.push({
           field: `${source.id}.${field}`,
@@ -119,7 +121,7 @@ export class SyncReconciliation {
         });
       }
     });
-    
+
     return mismatches;
   }
 }

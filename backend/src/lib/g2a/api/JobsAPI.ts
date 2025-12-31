@@ -12,32 +12,36 @@ export class JobsAPI {
   constructor(
     private httpClient: AxiosInstance,
     private logger: G2ALogger,
-    private executeRequest: <T>(endpoint: string, operation: string, requestFn: () => Promise<T>) => Promise<T>
+    private executeRequest: <T>(
+      endpoint: string,
+      operation: string,
+      requestFn: () => Promise<T>
+    ) => Promise<T>
   ) {}
-  
+
   /**
    * Get job status by ID
    */
   async get(jobId: string): Promise<G2AJob> {
     return this.executeRequest(`/jobs/${jobId}`, 'JobsAPI.get', async () => {
       this.logger.debug('Fetching job status', { jobId });
-      
+
       const response = await this.httpClient.get<G2AJob>(`/jobs/${jobId}`);
-      
+
       if (response.status !== 200) {
         throw new Error(`Failed to fetch job status: ${response.status}`);
       }
-      
+
       this.logger.debug('Job status fetched', {
         jobId,
         status: response.data.status,
         resourceId: response.data.resourceId,
       });
-      
+
       return response.data;
     });
   }
-  
+
   /**
    * Wait for job completion
    */
@@ -47,12 +51,12 @@ export class JobsAPI {
     pollIntervalMs: number = 2000 // 2 seconds default
   ): Promise<G2AJob> {
     const startTime = Date.now();
-    
+
     this.logger.info('Waiting for job completion', { jobId, maxWaitTimeMs, pollIntervalMs });
-    
+
     while (true) {
       const elapsed = Date.now() - startTime;
-      
+
       if (elapsed > maxWaitTimeMs) {
         throw new G2AError(
           G2AErrorCode.G2A_TIMEOUT,
@@ -63,9 +67,9 @@ export class JobsAPI {
           }
         );
       }
-      
+
       const job = await this.get(jobId);
-      
+
       if (job.status === 'completed') {
         this.logger.info('Job completed successfully', {
           jobId,
@@ -74,7 +78,7 @@ export class JobsAPI {
         });
         return job;
       }
-      
+
       if (job.status === 'failed' || job.status === 'cancelled') {
         throw new G2AError(
           G2AErrorCode.G2A_API_ERROR,
@@ -85,10 +89,10 @@ export class JobsAPI {
           }
         );
       }
-      
+
       this.logger.debug('Job still processing', { jobId, status: job.status, elapsed });
-      
-      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
   }
 }

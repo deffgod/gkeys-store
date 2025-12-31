@@ -5,9 +5,15 @@ import { AppError } from '../middleware/errorHandler.js';
 import { G2AError, G2AErrorCode } from '../types/g2a.js';
 import redisClient from '../config/redis.js';
 import { getG2AConfig } from '../config/g2a.js';
-import { invalidateCache } from './cache.service.js';
+import { invalidateCache } from '../services/cache.service.js';
 
-const { apiHash: G2A_API_HASH, apiKey: G2A_API_KEY, baseUrl: G2A_API_URL, timeoutMs: G2A_TIMEOUT_MS, retryMax: G2A_RETRY_MAX } = getG2AConfig();
+const {
+  apiHash: G2A_API_HASH,
+  apiKey: G2A_API_KEY,
+  baseUrl: G2A_API_URL,
+  timeoutMs: G2A_TIMEOUT_MS,
+  retryMax: G2A_RETRY_MAX,
+} = getG2AConfig();
 const G2A_API_URL_RAW = process.env.G2A_API_URL || 'https://api.g2a.com/integration-api/v1';
 
 const MARKUP_PERCENTAGE = 2; // 2% markup on G2A prices
@@ -44,7 +50,7 @@ interface OAuth2TokenResponse {
 /**
  * Generate API Key for G2A Export API (Developers API)
  * Formula: sha256(ClientId + Email + ClientSecret)
- * 
+ *
  * @param clientId - G2A Client ID (defaults to G2A_API_KEY from config)
  * @param email - Email address associated with G2A account (defaults to G2A_EMAIL from env)
  * @param clientSecret - G2A Client Secret (defaults to G2A_API_HASH from config)
@@ -89,12 +95,12 @@ const getOAuth2Token = async (): Promise<string> => {
       if (redisClient.isOpen) {
         const cachedToken = await redisClient.get(OAUTH2_TOKEN_KEY);
         const cachedExpiry = await redisClient.get(OAUTH2_TOKEN_EXPIRY_KEY);
-        
+
         if (cachedToken && cachedExpiry) {
           const expiryTime = Number(cachedExpiry);
           const now = Date.now();
           const timeUntilExpiry = expiryTime - now;
-          
+
           // If token expires in more than 5 minutes, use cached token
           if (timeUntilExpiry > 5 * 60 * 1000) {
             logger.debug('Using cached OAuth2 token', {
@@ -102,7 +108,7 @@ const getOAuth2Token = async (): Promise<string> => {
             });
             return cachedToken;
           }
-          
+
           // Token expires soon, will refresh below
           logger.debug('OAuth2 token expires soon, refreshing', {
             expiresIn: Math.floor(timeUntilExpiry / 1000),
@@ -113,22 +119,24 @@ const getOAuth2Token = async (): Promise<string> => {
       logger.warn('Redis unavailable for OAuth2 token cache, fetching new token', redisError);
       // Fallback to fetching new token
     }
-    
+
     // Get new token from G2A API
     logger.info('Fetching new OAuth2 token from G2A API');
-    
+
     // Use hash-based auth for token endpoint (as per documentation)
     const isSandbox = G2A_API_URL.includes('sandboxapi.g2a.com');
     const timestamp = isSandbox ? undefined : Math.floor(Date.now() / 1000).toString();
-    const hash = isSandbox ? undefined : crypto
-      .createHash('sha256')
-      .update(G2A_API_HASH + G2A_API_KEY + timestamp!)
-      .digest('hex');
-    
+    const hash = isSandbox
+      ? undefined
+      : crypto
+          .createHash('sha256')
+          .update(G2A_API_HASH + G2A_API_KEY + timestamp!)
+          .digest('hex');
+
     const tokenHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
+
     if (isSandbox) {
       tokenHeaders.Authorization = `${G2A_API_HASH}, ${G2A_API_KEY}`;
     } else {
@@ -137,28 +145,28 @@ const getOAuth2Token = async (): Promise<string> => {
       tokenHeaders['X-G2A-Timestamp'] = timestamp!;
       tokenHeaders['X-G2A-Hash'] = hash!;
     }
-    
+
     const tokenClient = axios.create({
       baseURL: G2A_API_URL,
       headers: tokenHeaders,
       timeout: G2A_TIMEOUT_MS,
     });
-    
+
     const response = await tokenClient.get<OAuth2TokenResponse>('/token');
     const { access_token, expires_in } = response.data;
-    
+
     // Cache token in Redis
     if (redisClient.isOpen) {
-      const expiryTime = Date.now() + (expires_in * 1000);
+      const expiryTime = Date.now() + expires_in * 1000;
       await redisClient.setEx(OAUTH2_TOKEN_KEY, expires_in, access_token);
       await redisClient.setEx(OAUTH2_TOKEN_EXPIRY_KEY, expires_in, expiryTime.toString());
     }
-    
+
     logger.info('OAuth2 token obtained successfully', {
       expiresIn: expires_in,
       tokenType: response.data.token_type,
     });
-    
+
     return access_token;
   } catch (error) {
     const g2aError = handleG2AError(error, 'getOAuth2Token');
@@ -249,39 +257,46 @@ const retryWithBackoff = async <T>(
   initialDelay: number = 1000
 ): Promise<T> => {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      
+
       if (attempt < maxRetries - 1) {
         const delay = initialDelay * Math.pow(2, attempt);
-        logger.warn(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`, { error: lastError.message });
-        
+        logger.warn(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`, {
+          error: lastError.message,
+        });
+
         // Record retry metric (async, don't await)
-        import('./g2a-metrics.service.js').then(m => m.incrementMetric('requests_retry')).catch(() => {});
-        
-        await new Promise(resolve => setTimeout(resolve, delay));
+        import('./g2a-metrics.service.js')
+          .then((m) => m.incrementMetric('requests_retry'))
+          .catch(() => {});
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
+
   throw lastError || new Error('Max retries exceeded');
 };
 
 /**
  * Detect if game data has changed compared to database
  */
-const hasGameDataChanged = async (gameId: string, newData: {
-  price: number;
-  originalPrice: number | null;
-  inStock: boolean;
-  g2aStock: boolean;
-  description: string;
-  images: string[];
-}): Promise<boolean> => {
+const hasGameDataChanged = async (
+  gameId: string,
+  newData: {
+    price: number;
+    originalPrice: number | null;
+    inStock: boolean;
+    g2aStock: boolean;
+    description: string;
+    images: string[];
+  }
+): Promise<boolean> => {
   try {
     const existing = await prisma.game.findUnique({
       where: { id: gameId },
@@ -294,13 +309,14 @@ const hasGameDataChanged = async (gameId: string, newData: {
         images: true,
       },
     });
-    
+
     if (!existing) return true; // New game
-    
+
     // Compare critical fields
     return (
       existing.price.toString() !== newData.price.toString() ||
-      (existing.originalPrice?.toString() || null) !== (newData.originalPrice?.toString() || null) ||
+      (existing.originalPrice?.toString() || null) !==
+        (newData.originalPrice?.toString() || null) ||
       existing.inStock !== newData.inStock ||
       existing.g2aStock !== newData.g2aStock ||
       existing.description !== newData.description ||
@@ -318,7 +334,10 @@ const hasGameDataChanged = async (gameId: string, newData: {
 const logger = {
   info: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.log(`[G2A] [${timestamp}] [INFO] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.log(
+      `[G2A] [${timestamp}] [INFO] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   error: (message: string, error?: unknown) => {
     const timestamp = new Date().toISOString();
@@ -326,18 +345,28 @@ const logger = {
   },
   warn: (message: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
-    console.warn(`[G2A] [${timestamp}] [WARN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    console.warn(
+      `[G2A] [${timestamp}] [WARN] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
   },
   debug: (message: string, data?: Record<string, unknown>) => {
     if (process.env.NODE_ENV === 'development') {
       const timestamp = new Date().toISOString();
-      console.log(`[G2A] [${timestamp}] [DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+      console.log(
+        `[G2A] [${timestamp}] [DEBUG] ${message}`,
+        data ? JSON.stringify(data, null, 2) : ''
+      );
     }
   },
   /**
    * Audit log for G2A API requests and responses
    */
-  audit: (operation: string, request: Record<string, unknown>, response?: Record<string, unknown>) => {
+  audit: (
+    operation: string,
+    request: Record<string, unknown>,
+    response?: Record<string, unknown>
+  ) => {
     const timestamp = new Date().toISOString();
     const auditData = {
       timestamp,
@@ -384,10 +413,11 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
     const axiosError = error as AxiosError;
     const status = axiosError.response?.status;
     const data = axiosError.response?.data;
-    
+
     // Check if response is HTML (indicates endpoint not found or wrong URL)
     const isHtmlResponse = typeof data === 'string' && data.trim().startsWith('<!DOCTYPE html>');
-    const dataObj = typeof data === 'object' && data !== null ? data as Record<string, unknown> : undefined;
+    const dataObj =
+      typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : undefined;
 
     logger.error(`G2A API error in ${operation}`, {
       status,
@@ -418,26 +448,27 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
       }
       return new G2AError(
         G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-        `Product not found: ${(dataObj && 'message' in dataObj && typeof dataObj.message === 'string') ? dataObj.message : axiosError.message}`,
+        `Product not found: ${dataObj && 'message' in dataObj && typeof dataObj.message === 'string' ? dataObj.message : axiosError.message}`,
         { status, operation }
       );
     }
 
     if (status === 429) {
-      const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
-        ? data.message 
-        : axiosError.message;
-      return new G2AError(
-        G2AErrorCode.G2A_RATE_LIMIT,
-        `Rate limit exceeded: ${errorMessage}`,
-        { status, operation }
-      );
+      const errorMessage =
+        data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+          ? data.message
+          : axiosError.message;
+      return new G2AError(G2AErrorCode.G2A_RATE_LIMIT, `Rate limit exceeded: ${errorMessage}`, {
+        status,
+        operation,
+      });
     }
 
     if (status === 402) {
-      const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
-        ? data.message 
-        : axiosError.message;
+      const errorMessage =
+        data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+          ? data.message
+          : axiosError.message;
       return new G2AError(
         G2AErrorCode.G2A_OUT_OF_STOCK,
         `Product unavailable or insufficient funds: ${errorMessage}`,
@@ -446,29 +477,26 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
     }
 
     if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-      return new G2AError(
-        G2AErrorCode.G2A_TIMEOUT,
-        `Request timeout: ${axiosError.message}`,
-        { operation }
-      );
+      return new G2AError(G2AErrorCode.G2A_TIMEOUT, `Request timeout: ${axiosError.message}`, {
+        operation,
+      });
     }
 
     if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
-      return new G2AError(
-        G2AErrorCode.G2A_NETWORK_ERROR,
-        `Network error: ${axiosError.message}`,
-        { operation }
-      );
+      return new G2AError(G2AErrorCode.G2A_NETWORK_ERROR, `Network error: ${axiosError.message}`, {
+        operation,
+      });
     }
 
-    const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') 
-      ? data.message 
-      : axiosError.message;
-    return new G2AError(
-      G2AErrorCode.G2A_API_ERROR,
-      `G2A API error: ${errorMessage}`,
-      { status, operation, data }
-    );
+    const errorMessage =
+      data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+        ? data.message
+        : axiosError.message;
+    return new G2AError(G2AErrorCode.G2A_API_ERROR, `G2A API error: ${errorMessage}`, {
+      status,
+      operation,
+      data,
+    });
   }
 
   if (error instanceof G2AError) {
@@ -477,11 +505,10 @@ const handleG2AError = (error: unknown, operation: string): G2AError => {
 
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
   logger.error(`Unexpected error in ${operation}`, error);
-  return new G2AError(
-    G2AErrorCode.G2A_API_ERROR,
-    `Unexpected error: ${errorMessage}`,
-    { operation, error }
-  );
+  return new G2AError(G2AErrorCode.G2A_API_ERROR, `Unexpected error: ${errorMessage}`, {
+    operation,
+    error,
+  });
 };
 
 export interface G2AProduct {
@@ -512,11 +539,13 @@ export interface G2AProduct {
   };
   retailMinBasePrice?: number; // Minimal product price for retail users in EUR without fees (v1.6.0)
   coverImage?: string; // URL to cover image (v1.4.0)
-  categoryDetails?: Array<{ // Categories with id and name (v1.3.0)
+  categoryDetails?: Array<{
+    // Categories with id and name (v1.3.0)
     id: string | number;
     name: string;
   }>;
-  restrictions?: { // PEGI restrictions
+  restrictions?: {
+    // PEGI restrictions
     pegi_violence?: boolean;
     pegi_profanity?: boolean;
     pegi_discrimination?: boolean;
@@ -526,7 +555,8 @@ export interface G2AProduct {
     pegi_online?: boolean;
     pegi_sex?: boolean;
   };
-  requirements?: { // System requirements (v1.1.0)
+  requirements?: {
+    // System requirements (v1.1.0)
     minimal?: {
       reqprocessor?: string;
       reqgraphics?: string;
@@ -544,7 +574,8 @@ export interface G2AProduct {
       reqother?: string;
     };
   };
-  videos?: Array<{ // Videos (v1.1.0)
+  videos?: Array<{
+    // Videos (v1.1.0)
     type: string; // e.g., "YOUTUBE"
     url: string;
   }>;
@@ -582,7 +613,9 @@ interface G2APaginatedResponse<T> {
  * @throws {G2AError} If credentials are missing
  * @returns {Promise<AxiosInstance>} Configured axios instance with G2A authentication
  */
-export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): Promise<AxiosInstance> => {
+export const createG2AClient = async (
+  apiType: 'import' | 'export' = 'export'
+): Promise<AxiosInstance> => {
   // Validate credentials before creating client
   validateG2ACredentials();
 
@@ -590,9 +623,9 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   let authMethod: string;
-  
+
   // Determine authentication method based on API type
   if (apiType === 'import') {
     // Import API uses OAuth2 token authentication
@@ -621,7 +654,7 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
     apiType,
     authMethod,
   };
-  
+
   logger.debug('Creating G2A API client', logData);
 
   const client = axios.create({
@@ -634,8 +667,10 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
   client.interceptors.request.use(
     (config) => {
       // Store start time for latency measurement
-      (config as AxiosRequestConfig & { metadata?: { startTime: number } }).metadata = { startTime: Date.now() };
-      
+      (config as AxiosRequestConfig & { metadata?: { startTime: number } }).metadata = {
+        startTime: Date.now(),
+      };
+
       logger.audit('G2A_API_REQUEST', {
         method: config.method?.toUpperCase(),
         url: config.url,
@@ -643,10 +678,12 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
         params: config.params,
         data: config.data,
       });
-      
+
       // Increment total requests metric (async, don't await)
-      import('./g2a-metrics.service.js').then(m => m.incrementMetric('requests_total')).catch(() => {});
-      
+      import('./g2a-metrics.service.js')
+        .then((m) => m.incrementMetric('requests_total'))
+        .catch(() => {});
+
       return config;
     },
     (error) => {
@@ -658,30 +695,38 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
   // Add response interceptor for audit logging, rate limit detection, and metrics
   client.interceptors.response.use(
     (response) => {
-      const startTime = (response.config as AxiosRequestConfig & { metadata?: { startTime: number } }).metadata?.startTime;
+      const startTime = (
+        response.config as AxiosRequestConfig & { metadata?: { startTime: number } }
+      ).metadata?.startTime;
       const latency = startTime ? Date.now() - startTime : 0;
-      
-      logger.audit('G2A_API_RESPONSE', {
-        method: response.config.method?.toUpperCase(),
-        url: response.config.url,
-        status: response.status,
-        statusText: response.statusText,
-        latency,
-      }, {
-        status: response.status,
-        dataKeys: response.data ? Object.keys(response.data) : [],
-      });
+
+      logger.audit(
+        'G2A_API_RESPONSE',
+        {
+          method: response.config.method?.toUpperCase(),
+          url: response.config.url,
+          status: response.status,
+          statusText: response.statusText,
+          latency,
+        },
+        {
+          status: response.status,
+          dataKeys: response.data ? Object.keys(response.data) : [],
+        }
+      );
 
       // Record metrics (async, don't await)
-      import('./g2a-metrics.service.js').then(m => {
-        m.incrementMetric('requests_success');
-        if (latency > 0) m.recordLatency(latency);
-      }).catch(() => {});
+      import('./g2a-metrics.service.js')
+        .then((m) => {
+          m.incrementMetric('requests_success');
+          if (latency > 0) m.recordLatency(latency);
+        })
+        .catch(() => {});
 
       // Check for rate limit headers (if G2A API provides them)
       const rateLimitRemaining = response.headers['x-ratelimit-remaining'];
       const rateLimitReset = response.headers['x-ratelimit-reset'];
-      
+
       if (rateLimitRemaining && Number(rateLimitRemaining) < 10) {
         logger.warn('G2A API rate limit approaching', {
           remaining: rateLimitRemaining,
@@ -692,28 +737,35 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
       return response;
     },
     (error) => {
-      const startTime = (error.config as AxiosRequestConfig & { metadata?: { startTime: number } })?.metadata?.startTime;
+      const startTime = (error.config as AxiosRequestConfig & { metadata?: { startTime: number } })
+        ?.metadata?.startTime;
       const latency = startTime ? Date.now() - startTime : 0;
-      
+
       // Log error response for audit
       if (axios.isAxiosError(error)) {
-        logger.audit('G2A_API_ERROR', {
-          method: error.config?.method?.toUpperCase(),
-          url: error.config?.url,
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          latency,
-        }, {
-          status: error.response?.status,
-          message: error.message,
-          data: error.response?.data,
-        });
+        logger.audit(
+          'G2A_API_ERROR',
+          {
+            method: error.config?.method?.toUpperCase(),
+            url: error.config?.url,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            latency,
+          },
+          {
+            status: error.response?.status,
+            message: error.message,
+            data: error.response?.data,
+          }
+        );
 
         // Record error metric (async, don't await)
-        import('./g2a-metrics.service.js').then(m => {
-          m.incrementMetric('requests_error');
-          if (latency > 0) m.recordLatency(latency);
-        }).catch(() => {});
+        import('./g2a-metrics.service.js')
+          .then((m) => {
+            m.incrementMetric('requests_error');
+            if (latency > 0) m.recordLatency(latency);
+          })
+          .catch(() => {});
 
         // Detect rate limiting (429 status)
         if (error.response?.status === 429) {
@@ -759,13 +811,15 @@ const generateSlug = (name: string): string => {
  */
 const normalizePlatformName = (platform: string): string => {
   const lowerPlatform = platform.toLowerCase();
-  if (lowerPlatform.includes('steam') || 
-      lowerPlatform.includes('origin') || 
-      lowerPlatform.includes('ea') || 
-      lowerPlatform.includes('uplay') || 
-      lowerPlatform.includes('ubisoft') || 
-      lowerPlatform.includes('gog') || 
-      lowerPlatform.includes('epic')) {
+  if (
+    lowerPlatform.includes('steam') ||
+    lowerPlatform.includes('origin') ||
+    lowerPlatform.includes('ea') ||
+    lowerPlatform.includes('uplay') ||
+    lowerPlatform.includes('ubisoft') ||
+    lowerPlatform.includes('gog') ||
+    lowerPlatform.includes('epic')
+  ) {
     return 'PC';
   }
   if (lowerPlatform.includes('playstation') || lowerPlatform.includes('psn')) {
@@ -789,7 +843,7 @@ const extractPlatform = (product: Record<string, unknown>): string[] => {
   const platforms = product.platforms as string[] | undefined;
   if (platforms && platforms.length > 0) {
     const normalizedPlatforms = platforms
-      .map(p => normalizePlatformName(String(p)))
+      .map((p) => normalizePlatformName(String(p)))
       .filter((p, index, arr) => arr.indexOf(p) === index); // Remove duplicates
     return normalizedPlatforms.length > 0 ? normalizedPlatforms : ['PC'];
   }
@@ -803,32 +857,32 @@ const extractPlatform = (product: Record<string, unknown>): string[] => {
  */
 const normalizeGenreName = (genre: string): string => {
   const genreMap: Record<string, string> = {
-    'action': 'Action',
-    'adventure': 'Adventure',
-    'rpg': 'RPG',
-    'shooter': 'Shooter',
-    'strategy': 'Strategy',
-    'simulation': 'Simulation',
-    'sports': 'Sports',
-    'racing': 'Racing',
-    'puzzle': 'Puzzle',
-    'horror': 'Horror',
-    'indie': 'Indie',
-    'mmo': 'MMO',
-    'multiplayer': 'Multiplayer',
+    action: 'Action',
+    adventure: 'Adventure',
+    rpg: 'RPG',
+    shooter: 'Shooter',
+    strategy: 'Strategy',
+    simulation: 'Simulation',
+    sports: 'Sports',
+    racing: 'Racing',
+    puzzle: 'Puzzle',
+    horror: 'Horror',
+    indie: 'Indie',
+    mmo: 'MMO',
+    multiplayer: 'Multiplayer',
   };
-  
+
   const lowerGenre = genre.toLowerCase();
   for (const [key, value] of Object.entries(genreMap)) {
     if (lowerGenre.includes(key)) {
       return value;
     }
   }
-  
+
   // If no match, capitalize first letter of each word
   return genre
     .split(/\s+/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
 
@@ -840,14 +894,14 @@ const normalizeGenreName = (genre: string): string => {
 const extractGenre = (product: Record<string, unknown>): string[] => {
   const tags = product.tags as string[] | undefined;
   const explicitGenre = product.genre as string | undefined;
-  
+
   const genres: string[] = [];
-  
+
   // Add explicit genre if present
   if (explicitGenre) {
     genres.push(normalizeGenreName(explicitGenre));
   }
-  
+
   // Extract genres from tags
   if (tags && tags.length > 0) {
     for (const tag of tags) {
@@ -857,7 +911,7 @@ const extractGenre = (product: Record<string, unknown>): string[] => {
       }
     }
   }
-  
+
   return genres.length > 0 ? genres : ['Action']; // Default fallback
 };
 
@@ -883,22 +937,22 @@ const extractCategories = (product: Record<string, unknown>): string[] => {
  */
 const findOrCreateCategory = async (categoryName: string): Promise<string> => {
   const slug = generateSlug(categoryName);
-  
+
   const existing = await prisma.category.findUnique({
     where: { slug },
   });
-  
+
   if (existing) {
     return existing.id;
   }
-  
+
   const created = await prisma.category.create({
     data: {
       name: categoryName,
       slug,
     },
   });
-  
+
   logger.debug(`Created category: ${categoryName}`, { id: created.id });
   return created.id;
 };
@@ -911,22 +965,22 @@ const findOrCreateCategory = async (categoryName: string): Promise<string> => {
 const findOrCreateGenre = async (genreName: string): Promise<string> => {
   const normalizedName = normalizeGenreName(genreName);
   const slug = generateSlug(normalizedName);
-  
+
   const existing = await prisma.genre.findUnique({
     where: { slug },
   });
-  
+
   if (existing) {
     return existing.id;
   }
-  
+
   const created = await prisma.genre.create({
     data: {
       name: normalizedName,
       slug,
     },
   });
-  
+
   logger.debug(`Created genre: ${normalizedName}`, { id: created.id });
   return created.id;
 };
@@ -939,22 +993,22 @@ const findOrCreateGenre = async (genreName: string): Promise<string> => {
 const findOrCreatePlatform = async (platformName: string): Promise<string> => {
   const normalizedName = normalizePlatformName(platformName);
   const slug = generateSlug(normalizedName);
-  
+
   const existing = await prisma.platform.findUnique({
     where: { slug },
   });
-  
+
   if (existing) {
     return existing.id;
   }
-  
+
   const created = await prisma.platform.create({
     data: {
       name: normalizedName,
       slug,
     },
   });
-  
+
   logger.debug(`Created platform: ${normalizedName}`, { id: created.id });
   return created.id;
 };
@@ -993,18 +1047,23 @@ export const fetchG2AProducts = async (
   }
 
   try {
-    logger.info(`Fetching G2A products`, { page, perPage, category: category || 'games', filters: filters || {} });
+    logger.info(`Fetching G2A products`, {
+      page,
+      perPage,
+      category: category || 'games',
+      filters: filters || {},
+    });
     const client = await createG2AClient('export'); // Export API for products
 
     const params: Record<string, string | number | boolean> = {
       page,
       perPage,
     };
-    
+
     if (category) {
       params.category = category;
     }
-    
+
     // Add optional filters from G2A Developers API
     if (filters) {
       if (filters.minQty !== undefined) {
@@ -1060,11 +1119,11 @@ export const fetchG2AProducts = async (
 const mapG2AProduct = (g2aProduct: Record<string, unknown>): G2AProduct => {
   const rawPrice = Number(g2aProduct.minPrice || g2aProduct.price || 0);
   const originalPrice = Number(g2aProduct.retailPrice || g2aProduct.originalPrice || rawPrice);
-  
+
   const platforms = extractPlatform(g2aProduct);
   const genres = extractGenre(g2aProduct);
   const categories = extractCategories(g2aProduct);
-  
+
   // Extract images array - can be array or single values
   let images: string[] = [];
   if (Array.isArray(g2aProduct.images)) {
@@ -1082,53 +1141,65 @@ const mapG2AProduct = (g2aProduct: Record<string, unknown>): G2AProduct => {
     if (g2aProduct.smallImage) images.push(String(g2aProduct.smallImage));
     if (g2aProduct.coverImage) images.push(String(g2aProduct.coverImage));
   }
-  
+
   // Extract categoryDetails if available (new format with id and name)
-  const categoryDetails = Array.isArray(g2aProduct.categories) 
-    ? (g2aProduct.categories as Array<{ id?: string | number; name?: string }>).map(cat => ({
+  const categoryDetails = Array.isArray(g2aProduct.categories)
+    ? (g2aProduct.categories as Array<{ id?: string | number; name?: string }>).map((cat) => ({
         id: cat.id ?? String(cat),
         name: cat.name ?? String(cat),
       }))
     : undefined;
-  
+
   // Extract priceLimit if available
-  const priceLimit = g2aProduct.priceLimit && typeof g2aProduct.priceLimit === 'object'
-    ? {
-        min: (g2aProduct.priceLimit as { min?: number | null }).min ?? null,
-        max: (g2aProduct.priceLimit as { max?: number | null }).max ?? null,
-      }
-    : undefined;
-  
+  const priceLimit =
+    g2aProduct.priceLimit && typeof g2aProduct.priceLimit === 'object'
+      ? {
+          min: (g2aProduct.priceLimit as { min?: number | null }).min ?? null,
+          max: (g2aProduct.priceLimit as { max?: number | null }).max ?? null,
+        }
+      : undefined;
+
   // Extract restrictions if available
-  const restrictions = g2aProduct.restrictions && typeof g2aProduct.restrictions === 'object'
-    ? {
-        pegi_violence: Boolean((g2aProduct.restrictions as { pegi_violence?: boolean }).pegi_violence),
-        pegi_profanity: Boolean((g2aProduct.restrictions as { pegi_profanity?: boolean }).pegi_profanity),
-        pegi_discrimination: Boolean((g2aProduct.restrictions as { pegi_discrimination?: boolean }).pegi_discrimination),
-        pegi_drugs: Boolean((g2aProduct.restrictions as { pegi_drugs?: boolean }).pegi_drugs),
-        pegi_fear: Boolean((g2aProduct.restrictions as { pegi_fear?: boolean }).pegi_fear),
-        pegi_gambling: Boolean((g2aProduct.restrictions as { pegi_gambling?: boolean }).pegi_gambling),
-        pegi_online: Boolean((g2aProduct.restrictions as { pegi_online?: boolean }).pegi_online),
-        pegi_sex: Boolean((g2aProduct.restrictions as { pegi_sex?: boolean }).pegi_sex),
-      }
-    : undefined;
-  
+  const restrictions =
+    g2aProduct.restrictions && typeof g2aProduct.restrictions === 'object'
+      ? {
+          pegi_violence: Boolean(
+            (g2aProduct.restrictions as { pegi_violence?: boolean }).pegi_violence
+          ),
+          pegi_profanity: Boolean(
+            (g2aProduct.restrictions as { pegi_profanity?: boolean }).pegi_profanity
+          ),
+          pegi_discrimination: Boolean(
+            (g2aProduct.restrictions as { pegi_discrimination?: boolean }).pegi_discrimination
+          ),
+          pegi_drugs: Boolean((g2aProduct.restrictions as { pegi_drugs?: boolean }).pegi_drugs),
+          pegi_fear: Boolean((g2aProduct.restrictions as { pegi_fear?: boolean }).pegi_fear),
+          pegi_gambling: Boolean(
+            (g2aProduct.restrictions as { pegi_gambling?: boolean }).pegi_gambling
+          ),
+          pegi_online: Boolean((g2aProduct.restrictions as { pegi_online?: boolean }).pegi_online),
+          pegi_sex: Boolean((g2aProduct.restrictions as { pegi_sex?: boolean }).pegi_sex),
+        }
+      : undefined;
+
   // Extract requirements if available
-  const requirements = g2aProduct.requirements && typeof g2aProduct.requirements === 'object'
-    ? {
-        minimal: (g2aProduct.requirements as { minimal?: Record<string, string> }).minimal,
-        recommended: (g2aProduct.requirements as { recommended?: Record<string, string> }).recommended,
-      }
-    : undefined;
-  
+  const requirements =
+    g2aProduct.requirements && typeof g2aProduct.requirements === 'object'
+      ? {
+          minimal: (g2aProduct.requirements as { minimal?: Record<string, string> }).minimal,
+          recommended: (g2aProduct.requirements as { recommended?: Record<string, string> })
+            .recommended,
+        }
+      : undefined;
+
   // Extract videos if available
   const videos = Array.isArray(g2aProduct.videos)
-    ? (g2aProduct.videos as Array<{ type?: string; url?: string }>).map(video => ({
+    ? (g2aProduct.videos as Array<{ type?: string; url?: string }>).map((video) => ({
         type: String(video.type || 'YOUTUBE'),
         url: String(video.url || ''),
       }))
     : undefined;
-  
+
   return {
     id: String(g2aProduct.id || g2aProduct.productId),
     name: String(g2aProduct.name || g2aProduct.title || 'Unknown Game'),
@@ -1150,9 +1221,13 @@ const mapG2AProduct = (g2aProduct: Record<string, unknown>): G2AProduct => {
     releaseDate: g2aProduct.releaseDate as string | undefined,
     tags: (g2aProduct.tags as string[]) || [],
     // New fields from G2A Developers API
-    availableToBuy: g2aProduct.availableToBuy !== undefined ? Boolean(g2aProduct.availableToBuy) : undefined,
+    availableToBuy:
+      g2aProduct.availableToBuy !== undefined ? Boolean(g2aProduct.availableToBuy) : undefined,
     priceLimit: priceLimit,
-    retailMinBasePrice: g2aProduct.retailMinBasePrice !== undefined ? Number(g2aProduct.retailMinBasePrice) : undefined,
+    retailMinBasePrice:
+      g2aProduct.retailMinBasePrice !== undefined
+        ? Number(g2aProduct.retailMinBasePrice)
+        : undefined,
     coverImage: g2aProduct.coverImage ? String(g2aProduct.coverImage) : undefined,
     categoryDetails: categoryDetails,
     restrictions: restrictions,
@@ -1168,7 +1243,7 @@ const mapG2AProduct = (g2aProduct: Record<string, unknown>): G2AProduct => {
 const transformG2AProductToGame = (product: G2AProduct) => {
   const now = new Date();
   const releaseDate = product.releaseDate ? new Date(product.releaseDate) : now;
-  
+
   return {
     g2aProductId: product.id,
     title: product.name,
@@ -1225,7 +1300,7 @@ export const syncG2ACatalog = async (options?: {
   errors: Array<{ productId: string; error: string }>;
 }> => {
   const { fullSync = false, productIds, categories, includeRelationships = false } = options || {};
-  
+
   // Check sync lock
   const lockAcquired = await acquireSyncLock();
   if (!lockAcquired) {
@@ -1234,16 +1309,16 @@ export const syncG2ACatalog = async (options?: {
       'Another sync operation is already in progress. Please wait for it to complete.'
     );
   }
-  
+
   const startedAt = new Date().toISOString();
-  
-  logger.info('Starting catalog sync...', { 
-    fullSync, 
+
+  logger.info('Starting catalog sync...', {
+    fullSync,
     productIdsCount: productIds?.length || 0,
     categories: categories || ['games'],
-    includeRelationships 
+    includeRelationships,
   });
-  
+
   // Initialize progress tracking
   await updateSyncProgress({
     inProgress: true,
@@ -1258,7 +1333,7 @@ export const syncG2ACatalog = async (options?: {
     startedAt,
     estimatedCompletion: null,
   });
-  
+
   let added = 0;
   let updated = 0;
   let removed = 0;
@@ -1266,10 +1341,10 @@ export const syncG2ACatalog = async (options?: {
   let genresCreated = 0;
   let platformsCreated = 0;
   const errors: Array<{ productId: string; error: string }> = [];
-  
+
   try {
     const allProducts: G2AProduct[] = [];
-    
+
     if (productIds && productIds.length > 0) {
       // Sync specific products
       logger.info(`Syncing ${productIds.length} specific products`);
@@ -1287,18 +1362,18 @@ export const syncG2ACatalog = async (options?: {
           logger.error(`Error fetching product ${productId}`, err);
         }
         // Rate limiting between requests
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     } else {
       // Determine categories to sync
       const categoriesToSync = categories && categories.length > 0 ? categories : ['games'];
-      
+
       // Fetch products from each category
       for (const category of categoriesToSync) {
         logger.info(`Fetching products from category: ${category}`);
         let page = 1;
         const hasMore = true;
-        
+
         // Get total pages for this category first (estimate)
         let totalPagesForCategory = 0;
         try {
@@ -1306,12 +1381,12 @@ export const syncG2ACatalog = async (options?: {
           totalPagesForCategory = firstPageResponse.meta.lastPage;
           allProducts.push(...firstPageResponse.data);
           page = 2; // Start from page 2 since we already fetched page 1
-          
+
           // Calculate estimated completion time
           const avgTimePerPage = 2; // seconds (rough estimate)
           const estimatedSeconds = totalPagesForCategory * avgTimePerPage;
           const estimatedCompletion = new Date(Date.now() + estimatedSeconds * 1000).toISOString();
-          
+
           // Update progress
           await updateSyncProgress({
             currentPage: 1,
@@ -1322,7 +1397,7 @@ export const syncG2ACatalog = async (options?: {
         } catch (err) {
           logger.warn(`Error fetching first page for category ${category}`, err);
         }
-        
+
         while (page <= totalPagesForCategory) {
           try {
             const response = await retryWithBackoff(
@@ -1331,213 +1406,219 @@ export const syncG2ACatalog = async (options?: {
               1000
             );
             allProducts.push(...response.data);
-            
+
             // Update progress
             await updateSyncProgress({
               currentPage: page,
               productsProcessed: allProducts.length,
             });
-            
+
             logger.debug(`Fetched page ${page} from category ${category}`, {
               products: response.data.length,
               totalPages: response.meta.lastPage,
             });
-            
+
             page++;
-            
+
             // Rate limiting - wait between requests
             if (page <= totalPagesForCategory) {
-              await new Promise(resolve => setTimeout(resolve, 200));
+              await new Promise((resolve) => setTimeout(resolve, 200));
             }
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : 'Unknown error';
-            logger.error(`Error fetching page ${page} from category ${category} after retries`, err);
+            logger.error(
+              `Error fetching page ${page} from category ${category} after retries`,
+              err
+            );
             errors.push({ productId: `category-${category}-page-${page}`, error: errMsg });
             // Continue with next page on error instead of stopping
             page++;
           }
         }
-        
+
         // Rate limiting between categories
         if (categoriesToSync.indexOf(category) < categoriesToSync.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
         }
       }
     }
-    
+
     logger.info(`Fetched ${allProducts.length} products from G2A API`);
-    
+
     // Update total products count
     await updateSyncProgress({
       productsTotal: allProducts.length,
     });
-    
+
     // Get existing G2A products from database
     const existingGames = await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true, g2aProductId: true, g2aLastSync: true },
     });
-    const existingG2AIds = new Set(existingGames.map(g => g.g2aProductId));
-    const fetchedG2AIds = new Set(allProducts.map(p => p.id));
-    
+    const existingG2AIds = new Set(existingGames.map((g) => g.g2aProductId));
+    const fetchedG2AIds = new Set(allProducts.map((p) => p.id));
+
     // Process products in batches for better performance using transactions
     const BATCH_SIZE = 50;
     let processedCount = 0;
-    
+
     for (let i = 0; i < allProducts.length; i += BATCH_SIZE) {
       const batch = allProducts.slice(i, i + BATCH_SIZE);
-      
+
       // Process batch in transaction for better performance
-      await prisma.$transaction(async (tx) => {
-        for (const product of batch) {
-          try {
-            const existingGame = existingGames.find(g => g.g2aProductId === product.id);
-            const gameData = transformG2AProductToGame(product);
-            
-            let gameId: string;
-            
-            if (existingGame) {
-              // Check if data has changed (for incremental sync optimization)
-              if (!fullSync) {
-                const hasChanged = await hasGameDataChanged(existingGame.id, {
-                  price: gameData.price,
-                  originalPrice: gameData.originalPrice,
-                  inStock: gameData.inStock,
-                  g2aStock: gameData.g2aStock,
-                  description: gameData.description,
-                  images: gameData.images,
+      await prisma.$transaction(
+        async (tx) => {
+          for (const product of batch) {
+            try {
+              const existingGame = existingGames.find((g) => g.g2aProductId === product.id);
+              const gameData = transformG2AProductToGame(product);
+
+              let gameId: string;
+
+              if (existingGame) {
+                // Check if data has changed (for incremental sync optimization)
+                if (!fullSync) {
+                  const hasChanged = await hasGameDataChanged(existingGame.id, {
+                    price: gameData.price,
+                    originalPrice: gameData.originalPrice,
+                    inStock: gameData.inStock,
+                    g2aStock: gameData.g2aStock,
+                    description: gameData.description,
+                    images: gameData.images,
+                  });
+
+                  if (!hasChanged) {
+                    // Skip update if nothing changed
+                    gameId = existingGame.id;
+                    continue; // Skip to next product
+                  }
+                }
+
+                // Update existing game - use upsert logic
+                await tx.game.update({
+                  where: { id: existingGame.id },
+                  data: {
+                    ...gameData,
+                    // Ensure all fields are updated
+                    price: gameData.price,
+                    originalPrice: gameData.originalPrice,
+                    inStock: gameData.inStock,
+                    g2aStock: gameData.g2aStock,
+                    g2aLastSync: gameData.g2aLastSync,
+                  },
                 });
-                
-                if (!hasChanged) {
-                  // Skip update if nothing changed
-                  gameId = existingGame.id;
-                  continue; // Skip to next product
+                gameId = existingGame.id;
+                updated++;
+              } else {
+                // Create new game
+                const newGame = await tx.game.create({
+                  data: {
+                    ...gameData,
+                    isPreorder: false,
+                    isBestSeller: false,
+                    isNew: false,
+                  },
+                });
+                gameId = newGame.id;
+                added++;
+              }
+
+              // Create and link relationships if requested
+              if (includeRelationships) {
+                try {
+                  // Extract categories, genres, platforms from product
+                  // product is G2AProduct which already has these fields from mapG2AProduct
+                  const categories = product.categories || ['Games'];
+                  const genres = product.genres || (product.genre ? [product.genre] : []);
+                  const platforms = product.platform || [];
+
+                  // Create and link categories
+                  for (const categoryName of categories) {
+                    try {
+                      const categoryId = await findOrCreateCategory(categoryName);
+                      const existingLink = await tx.gameCategory.findUnique({
+                        where: { gameId_categoryId: { gameId, categoryId } },
+                      });
+                      if (!existingLink) {
+                        await tx.gameCategory.create({
+                          data: { gameId, categoryId },
+                        });
+                        if (!existingGame) {
+                          categoriesCreated++;
+                        }
+                      }
+                    } catch (err) {
+                      logger.warn(`Error linking category ${categoryName} to game ${gameId}`, err);
+                    }
+                  }
+
+                  // Create and link genres
+                  for (const genreName of genres) {
+                    try {
+                      const genreId = await findOrCreateGenre(genreName);
+                      const existingLink = await tx.gameGenre.findUnique({
+                        where: { gameId_genreId: { gameId, genreId } },
+                      });
+                      if (!existingLink) {
+                        await tx.gameGenre.create({
+                          data: { gameId, genreId },
+                        });
+                        if (!existingGame) {
+                          genresCreated++;
+                        }
+                      }
+                    } catch (err) {
+                      logger.warn(`Error linking genre ${genreName} to game ${gameId}`, err);
+                    }
+                  }
+
+                  // Create and link platforms
+                  for (const platformName of platforms) {
+                    try {
+                      const platformId = await findOrCreatePlatform(platformName);
+                      const existingLink = await tx.gamePlatform.findUnique({
+                        where: { gameId_platformId: { gameId, platformId } },
+                      });
+                      if (!existingLink) {
+                        await tx.gamePlatform.create({
+                          data: { gameId, platformId },
+                        });
+                        if (!existingGame) {
+                          platformsCreated++;
+                        }
+                      }
+                    } catch (err) {
+                      logger.warn(`Error linking platform ${platformName} to game ${gameId}`, err);
+                    }
+                  }
+                } catch (err) {
+                  logger.warn(`Error creating relationships for game ${gameId}`, err);
+                  // Don't fail the entire sync if relationship creation fails
                 }
               }
-              
-              // Update existing game - use upsert logic
-              await tx.game.update({
-                where: { id: existingGame.id },
-                data: {
-                  ...gameData,
-                  // Ensure all fields are updated
-                  price: gameData.price,
-                  originalPrice: gameData.originalPrice,
-                  inStock: gameData.inStock,
-                  g2aStock: gameData.g2aStock,
-                  g2aLastSync: gameData.g2aLastSync,
-                },
-              });
-              gameId = existingGame.id;
-              updated++;
-            } else {
-              // Create new game
-              const newGame = await tx.game.create({
-                data: {
-                  ...gameData,
-                  isPreorder: false,
-                  isBestSeller: false,
-                  isNew: false,
-                },
-              });
-              gameId = newGame.id;
-              added++;
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : 'Unknown error';
+              errors.push({ productId: product.id, error: errMsg });
+              logger.error(`Error processing product ${product.id}`, err);
+              // Continue processing other products on error
             }
-        
-            // Create and link relationships if requested
-            if (includeRelationships) {
-              try {
-                // Extract categories, genres, platforms from product
-                // product is G2AProduct which already has these fields from mapG2AProduct
-                const categories = product.categories || ['Games'];
-                const genres = product.genres || (product.genre ? [product.genre] : []);
-                const platforms = product.platform || [];
-                
-                // Create and link categories
-                for (const categoryName of categories) {
-                  try {
-                    const categoryId = await findOrCreateCategory(categoryName);
-                    const existingLink = await tx.gameCategory.findUnique({
-                      where: { gameId_categoryId: { gameId, categoryId } },
-                    });
-                    if (!existingLink) {
-                      await tx.gameCategory.create({
-                        data: { gameId, categoryId },
-                      });
-                      if (!existingGame) {
-                        categoriesCreated++;
-                      }
-                    }
-                  } catch (err) {
-                    logger.warn(`Error linking category ${categoryName} to game ${gameId}`, err);
-                  }
-                }
-                
-                // Create and link genres
-                for (const genreName of genres) {
-                  try {
-                    const genreId = await findOrCreateGenre(genreName);
-                    const existingLink = await tx.gameGenre.findUnique({
-                      where: { gameId_genreId: { gameId, genreId } },
-                    });
-                    if (!existingLink) {
-                      await tx.gameGenre.create({
-                        data: { gameId, genreId },
-                      });
-                      if (!existingGame) {
-                        genresCreated++;
-                      }
-                    }
-                  } catch (err) {
-                    logger.warn(`Error linking genre ${genreName} to game ${gameId}`, err);
-                  }
-                }
-                
-                // Create and link platforms
-                for (const platformName of platforms) {
-                  try {
-                    const platformId = await findOrCreatePlatform(platformName);
-                    const existingLink = await tx.gamePlatform.findUnique({
-                      where: { gameId_platformId: { gameId, platformId } },
-                    });
-                    if (!existingLink) {
-                      await tx.gamePlatform.create({
-                        data: { gameId, platformId },
-                      });
-                      if (!existingGame) {
-                        platformsCreated++;
-                      }
-                    }
-                  } catch (err) {
-                    logger.warn(`Error linking platform ${platformName} to game ${gameId}`, err);
-                  }
-                }
-              } catch (err) {
-                logger.warn(`Error creating relationships for game ${gameId}`, err);
-                // Don't fail the entire sync if relationship creation fails
-              }
+
+            processedCount++;
+
+            // Update progress after each product
+            if (processedCount % 10 === 0) {
+              await updateSyncProgress({
+                productsProcessed: processedCount,
+              });
             }
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : 'Unknown error';
-            errors.push({ productId: product.id, error: errMsg });
-            logger.error(`Error processing product ${product.id}`, err);
-            // Continue processing other products on error
           }
-          
-          processedCount++;
-          
-          // Update progress after each product
-          if (processedCount % 10 === 0) {
-            await updateSyncProgress({
-              productsProcessed: processedCount,
-            });
-          }
+        },
+        {
+          timeout: 30000, // 30 second timeout per batch
         }
-      }, {
-        timeout: 30000, // 30 second timeout per batch
-      });
+      );
     }
-    
+
     // Mark removed products as out of stock (only if fullSync)
     if (fullSync) {
       for (const game of existingGames) {
@@ -1560,17 +1641,17 @@ export const syncG2ACatalog = async (options?: {
         }
       }
     }
-    
-    logger.info(`Sync completed`, { 
-      added, 
-      updated, 
-      removed, 
+
+    logger.info(`Sync completed`, {
+      added,
+      updated,
+      removed,
       categoriesCreated,
       genresCreated,
       platformsCreated,
-      errors: errors.length 
+      errors: errors.length,
     });
-    
+
     // Invalidate cache after successful sync
     try {
       const { invalidateCache } = await import('./cache.service.js');
@@ -1583,19 +1664,18 @@ export const syncG2ACatalog = async (options?: {
       logger.warn('Failed to invalidate cache after sync', cacheError);
       // Don't fail sync if cache invalidation fails
     }
-    
+
     // Clear progress tracking
     await updateSyncProgress({
       inProgress: false,
       productsProcessed: added + updated,
     });
-    
   } catch (error) {
     const g2aError = handleG2AError(error, 'syncG2ACatalog');
     const errMsg = g2aError.message;
     errors.push({ productId: 'sync-operation', error: errMsg });
     logger.error('Catalog sync failed', g2aError);
-    
+
     // Clear progress on error
     await updateSyncProgress({
       inProgress: false,
@@ -1604,15 +1684,15 @@ export const syncG2ACatalog = async (options?: {
     // Always release lock
     await releaseSyncLock();
   }
-  
-  return { 
-    added, 
-    updated, 
-    removed, 
+
+  return {
+    added,
+    updated,
+    removed,
     categoriesCreated,
     genresCreated,
     platformsCreated,
-    errors 
+    errors,
   };
 };
 
@@ -1639,7 +1719,7 @@ export const linkGameRelationships = async (
   let categoriesLinked = 0;
   let genresLinked = 0;
   let platformsLinked = 0;
-  
+
   try {
     // Get existing links
     const existingCategories = await prisma.gameCategory.findMany({
@@ -1654,11 +1734,11 @@ export const linkGameRelationships = async (
       where: { gameId },
       select: { platformId: true },
     });
-    
-    const existingCategoryIds = new Set(existingCategories.map(c => c.categoryId));
-    const existingGenreIds = new Set(existingGenres.map(g => g.genreId));
-    const existingPlatformIds = new Set(existingPlatforms.map(p => p.platformId));
-    
+
+    const existingCategoryIds = new Set(existingCategories.map((c) => c.categoryId));
+    const existingGenreIds = new Set(existingGenres.map((g) => g.genreId));
+    const existingPlatformIds = new Set(existingPlatforms.map((p) => p.platformId));
+
     // Link categories
     for (const categoryName of categoryNames) {
       try {
@@ -1675,7 +1755,7 @@ export const linkGameRelationships = async (
         logger.error(`Error linking category ${categoryName}`, err);
       }
     }
-    
+
     // Remove old category links that no longer apply
     for (const existing of existingCategories) {
       const category = await prisma.category.findUnique({
@@ -1687,7 +1767,7 @@ export const linkGameRelationships = async (
         });
       }
     }
-    
+
     // Link genres
     for (const genreName of genreNames) {
       try {
@@ -1704,7 +1784,7 @@ export const linkGameRelationships = async (
         logger.error(`Error linking genre ${genreName}`, err);
       }
     }
-    
+
     // Remove old genre links that no longer apply
     for (const existing of existingGenres) {
       const genre = await prisma.genre.findUnique({
@@ -1716,7 +1796,7 @@ export const linkGameRelationships = async (
         });
       }
     }
-    
+
     // Link platforms
     for (const platformName of platformNames) {
       try {
@@ -1733,7 +1813,7 @@ export const linkGameRelationships = async (
         logger.error(`Error linking platform ${platformName}`, err);
       }
     }
-    
+
     // Remove old platform links that no longer apply
     for (const existing of existingPlatforms) {
       const platform = await prisma.platform.findUnique({
@@ -1750,7 +1830,7 @@ export const linkGameRelationships = async (
     errors.push(`General error: ${errMsg}`);
     logger.error(`Error linking relationships for game ${gameId}`, err);
   }
-  
+
   return { categoriesLinked, genresLinked, platformsLinked, errors };
 };
 
@@ -1766,12 +1846,12 @@ export const syncG2ACategories = async (): Promise<{
 }> => {
   const errors: string[] = [];
   const categoriesMap = new Map<string, string>(); // name -> slug
-  
+
   try {
     // Try to discover categories by fetching products from different categories
     // Common G2A categories: 'games', 'dlc', 'software', 'hardware'
     const knownCategories = ['games', 'dlc', 'software', 'hardware'];
-    
+
     for (const category of knownCategories) {
       try {
         // Try to fetch one page to see if category exists
@@ -1782,20 +1862,20 @@ export const syncG2ACategories = async (): Promise<{
           categoriesMap.set(normalizedName, slug);
         }
         // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (err) {
         // Category might not exist, continue
         logger.debug(`Category ${category} not available or error occurred`, err);
       }
     }
-    
+
     // Also extract categories from existing synced products
     const gamesWithCategories = await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
       take: 100, // Sample
     });
-    
+
     // Create categories in database
     let created = 0;
     for (const [categoryName, slug] of categoriesMap.entries()) {
@@ -1813,12 +1893,12 @@ export const syncG2ACategories = async (): Promise<{
         logger.error(`Error creating category ${categoryName}`, err);
       }
     }
-    
+
     // Get all categories from database
     const allCategories = await prisma.category.findMany({
       select: { name: true, slug: true },
     });
-    
+
     return {
       categories: allCategories,
       created,
@@ -1848,32 +1928,32 @@ export const syncG2AGenres = async (): Promise<{
 }> => {
   const errors: string[] = [];
   const genresSet = new Set<string>();
-  
+
   try {
     // Get all games with G2A product IDs
     const games = await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
     });
-    
+
     // For each game, get its tags from G2A (we'd need to fetch from API or store in DB)
     // For now, we'll extract from existing game-genre relationships if any
     // Or we can re-fetch product info to get tags
-    
+
     // Alternative: Extract from all existing GameGenre links
     const existingGenres = await prisma.genre.findMany({
       select: { name: true },
     });
-    
+
     // Also try to discover genres by fetching sample products
     try {
       const sampleResponse = await fetchG2AProducts(1, 50);
       for (const product of sampleResponse.data) {
         if (product.genres && product.genres.length > 0) {
-          product.genres.forEach(genre => genresSet.add(normalizeGenreName(genre)));
+          product.genres.forEach((genre) => genresSet.add(normalizeGenreName(genre)));
         }
         if (product.tags && product.tags.length > 0) {
-          product.tags.forEach(tag => {
+          product.tags.forEach((tag) => {
             const normalized = normalizeGenreName(String(tag));
             if (normalized) genresSet.add(normalized);
           });
@@ -1882,7 +1962,7 @@ export const syncG2AGenres = async (): Promise<{
     } catch (err) {
       logger.warn('Error fetching sample products for genre discovery', err);
     }
-    
+
     // Create genres in database
     let created = 0;
     for (const genreName of genresSet) {
@@ -1901,12 +1981,12 @@ export const syncG2AGenres = async (): Promise<{
         logger.error(`Error creating genre ${genreName}`, err);
       }
     }
-    
+
     // Get all genres from database
     const allGenres = await prisma.genre.findMany({
       select: { name: true, slug: true },
     });
-    
+
     return {
       genres: allGenres,
       created,
@@ -1936,20 +2016,20 @@ export const syncG2APlatforms = async (): Promise<{
 }> => {
   const errors: string[] = [];
   const platformsSet = new Set<string>();
-  
+
   try {
     // Get all games with G2A product IDs
     const games = await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
     });
-    
+
     // Try to discover platforms by fetching sample products
     try {
       const sampleResponse = await fetchG2AProducts(1, 50);
       for (const product of sampleResponse.data) {
         if (product.platform && product.platform.length > 0) {
-          product.platform.forEach(platform => {
+          product.platform.forEach((platform) => {
             const normalized = normalizePlatformName(platform);
             if (normalized) platformsSet.add(normalized);
           });
@@ -1958,13 +2038,13 @@ export const syncG2APlatforms = async (): Promise<{
     } catch (err) {
       logger.warn('Error fetching sample products for platform discovery', err);
     }
-    
+
     // Also get platforms from existing GamePlatform links
     const existingPlatforms = await prisma.platform.findMany({
       select: { name: true },
     });
-    existingPlatforms.forEach(p => platformsSet.add(p.name));
-    
+    existingPlatforms.forEach((p) => platformsSet.add(p.name));
+
     // Create platforms in database
     let created = 0;
     for (const platformName of platformsSet) {
@@ -1983,12 +2063,12 @@ export const syncG2APlatforms = async (): Promise<{
         logger.error(`Error creating platform ${platformName}`, err);
       }
     }
-    
+
     // Get all platforms from database
     const allPlatforms = await prisma.platform.findMany({
       select: { name: true, slug: true },
     });
-    
+
     return {
       platforms: allPlatforms,
       created,
@@ -2021,7 +2101,7 @@ export const getG2ASyncProgress = async (): Promise<SyncProgress> => {
   } catch (err) {
     logger.warn('Error reading sync progress from Redis', err);
   }
-  
+
   // Default/fallback progress
   return {
     inProgress: false,
@@ -2062,7 +2142,7 @@ export const getG2ASyncMetadata = async (): Promise<{
   syncStatus: 'in_progress' | 'completed' | 'failed';
 }> => {
   const METADATA_KEY = 'g2a:sync:metadata';
-  
+
   try {
     // Try to get from cache first
     if (redisClient.isOpen) {
@@ -2074,11 +2154,11 @@ export const getG2ASyncMetadata = async (): Promise<{
   } catch (err) {
     logger.warn('Error reading sync metadata from Redis', err);
   }
-  
+
   // Fallback to database query
   const status = await getG2ASyncStatus();
   const progress = await getG2ASyncProgress();
-  
+
   const metadata = {
     lastSync: status.lastSync,
     totalProducts: status.totalProducts,
@@ -2086,9 +2166,11 @@ export const getG2ASyncMetadata = async (): Promise<{
     outOfStock: status.outOfStock,
     syncInProgress: status.syncInProgress,
     productsSynced: progress.productsProcessed,
-    syncStatus: progress.inProgress ? 'in_progress' : (progress.errors > 0 ? 'failed' : 'completed') as 'in_progress' | 'completed' | 'failed',
+    syncStatus: progress.inProgress
+      ? 'in_progress'
+      : ((progress.errors > 0 ? 'failed' : 'completed') as 'in_progress' | 'completed' | 'failed'),
   };
-  
+
   // Cache for 1 hour
   try {
     if (redisClient.isOpen) {
@@ -2097,7 +2179,7 @@ export const getG2ASyncMetadata = async (): Promise<{
   } catch (err) {
     logger.warn('Error caching sync metadata in Redis', err);
   }
-  
+
   return metadata;
 };
 
@@ -2112,7 +2194,7 @@ export const getG2ASyncStatus = async (): Promise<{
     // Check if sync is in progress
     const progress = await getG2ASyncProgress();
     const isSyncInProgress = progress.inProgress;
-    
+
     // Get the most recent sync timestamp
     const mostRecentSync = await prisma.game.findFirst({
       where: { g2aLastSync: { not: null } },
@@ -2170,17 +2252,19 @@ export const purchaseGameKey = async (
 ): Promise<G2AKeyResponse[]> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
     logger.warn('API credentials not configured, generating mock keys');
-    return Array(quantity).fill(null).map(() => ({
-      key: generateMockKey(),
-      productId: g2aProductId,
-      orderId: `mock-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
-      purchaseDate: new Date().toISOString(),
-    }));
+    return Array(quantity)
+      .fill(null)
+      .map(() => ({
+        key: generateMockKey(),
+        productId: g2aProductId,
+        orderId: `mock-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
+        purchaseDate: new Date().toISOString(),
+      }));
   }
 
   try {
     logger.info(`Purchasing game key`, { g2aProductId, quantity });
-    
+
     // Validate stock before purchase
     const stockResult = await validateGameStock(g2aProductId);
     if (!stockResult.available || stockResult.stock < quantity) {
@@ -2192,7 +2276,7 @@ export const purchaseGameKey = async (
       logger.error('Stock validation failed before purchase', error);
       throw error;
     }
-    
+
     const client = await createG2AClient('export'); // Export API for orders
 
     // G2A Developers API expects product_id (not productId) and returns order_id, price, currency
@@ -2221,7 +2305,7 @@ export const purchaseGameKey = async (
     if (error instanceof G2AError) {
       throw error;
     }
-    
+
     const g2aError = handleG2AError(error, 'purchaseGameKey');
     logger.error('Error purchasing key', g2aError);
     throw g2aError; // Don't fallback to mock keys - let caller handle the error
@@ -2253,17 +2337,14 @@ export interface G2AOrderDetailsResponse {
  */
 export const getOrderDetails = async (orderId: string): Promise<G2AOrderDetailsResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.info('Getting order details', { orderId });
-    
+
     const client = await createG2AClient('export'); // Export API for orders
-    
+
     const response = await client.get<{
       status: string;
       price: number;
@@ -2283,16 +2364,15 @@ export const getOrderDetails = async (orderId: string): Promise<G2AOrderDetailsR
     };
   } catch (error) {
     const g2aError = handleG2AError(error, 'getOrderDetails');
-    
+
     // Handle specific error codes from documentation
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      throw new G2AError(
-        G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-        `Order not found: ${orderId}`,
-        { orderId, originalError: g2aError }
-      );
+      throw new G2AError(G2AErrorCode.G2A_PRODUCT_NOT_FOUND, `Order not found: ${orderId}`, {
+        orderId,
+        originalError: g2aError,
+      });
     }
-    
+
     logger.error('Error getting order details', g2aError);
     throw g2aError;
   }
@@ -2317,17 +2397,14 @@ export interface G2AOrderKeyResponse {
  */
 export const getOrderKey = async (orderId: string): Promise<G2AOrderKeyResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.info('Getting order key', { orderId });
-    
+
     const client = await createG2AClient('export'); // Export API for orders
-    
+
     const response = await client.get<G2AOrderKeyResponse>(`/order/key/${orderId}`);
 
     logger.info('Order key obtained successfully', {
@@ -2338,20 +2415,19 @@ export const getOrderKey = async (orderId: string): Promise<G2AOrderKeyResponse>
     return response.data;
   } catch (error) {
     const g2aError = handleG2AError(error, 'getOrderKey');
-    
+
     // Handle specific error codes from documentation
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
       const errorData = error.response?.data as { code?: string; message?: string } | undefined;
-      
+
       if (status === 404) {
-        throw new G2AError(
-          G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-          `Order not found: ${orderId}`,
-          { orderId, originalError: g2aError }
-        );
+        throw new G2AError(G2AErrorCode.G2A_PRODUCT_NOT_FOUND, `Order not found: ${orderId}`, {
+          orderId,
+          originalError: g2aError,
+        });
       }
-      
+
       // ORD004: Order key has been downloaded already
       if (errorData?.code === 'ORD004' || errorData?.message?.includes('downloaded already')) {
         throw new G2AError(
@@ -2361,7 +2437,7 @@ export const getOrderKey = async (orderId: string): Promise<G2AOrderKeyResponse>
         );
       }
     }
-    
+
     logger.error('Error getting order key', g2aError);
     throw g2aError;
   }
@@ -2392,23 +2468,24 @@ export const payOrder = async (
   paymentMethod?: string
 ): Promise<G2APayOrderResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.info('Paying for order', { orderId, paymentMethod: paymentMethod || 'balance' });
-    
+
     const client = await createG2AClient('export'); // Export API for orders
-    
+
     // G2A Developers API uses PUT method with empty body (Content-Length: 0)
-    const response = await client.put<G2APayOrderResponse>(`/order/pay/${orderId}`, {}, {
-      headers: {
-        'Content-Length': '0',
-      },
-    });
+    const response = await client.put<G2APayOrderResponse>(
+      `/order/pay/${orderId}`,
+      {},
+      {
+        headers: {
+          'Content-Length': '0',
+        },
+      }
+    );
 
     logger.info('Order payment successful', {
       orderId,
@@ -2419,20 +2496,19 @@ export const payOrder = async (
     return response.data;
   } catch (error) {
     const g2aError = handleG2AError(error, 'payOrder');
-    
+
     // Handle specific error codes from documentation
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
       const errorData = error.response?.data as { code?: string; message?: string } | undefined;
-      
+
       if (status === 404) {
-        throw new G2AError(
-          G2AErrorCode.G2A_PRODUCT_NOT_FOUND,
-          `Order not found: ${orderId}`,
-          { orderId, originalError: g2aError }
-        );
+        throw new G2AError(G2AErrorCode.G2A_PRODUCT_NOT_FOUND, `Order not found: ${orderId}`, {
+          orderId,
+          originalError: g2aError,
+        });
       }
-      
+
       // ORD112: Not enough funds
       if (errorData?.code === 'ORD112' || errorData?.message?.includes('enough funds')) {
         throw new G2AError(
@@ -2441,7 +2517,7 @@ export const payOrder = async (
           { orderId, code: 'ORD112', originalError: g2aError }
         );
       }
-      
+
       // ORD114: Payment is too late
       if (errorData?.code === 'ORD114' || errorData?.message?.includes('too late')) {
         throw new G2AError(
@@ -2450,7 +2526,7 @@ export const payOrder = async (
           { orderId, code: 'ORD114', originalError: g2aError }
         );
       }
-      
+
       // ORD03: Payment not ready yet
       if (errorData?.code === 'ORD03' || errorData?.message?.includes('not ready yet')) {
         throw new G2AError(
@@ -2460,7 +2536,7 @@ export const payOrder = async (
         );
       }
     }
-    
+
     logger.error('Error paying for order', g2aError);
     throw g2aError;
   }
@@ -2488,18 +2564,15 @@ export interface G2AJobStatusResponse {
  */
 export const getJobStatus = async (jobId: string): Promise<G2AJobStatusResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.debug('Getting job status', { jobId });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const response = await client.get<G2AJobStatusResponse>(`/jobs/${jobId}`);
 
     logger.debug('Job status obtained', {
@@ -2530,12 +2603,12 @@ export const waitForJobCompletion = async (
   pollInterval: number = 2000 // 2 seconds default
 ): Promise<G2AJobStatusResponse> => {
   const startTime = Date.now();
-  
+
   logger.info('Starting job polling', { jobId, maxWaitTime, pollInterval });
-  
+
   while (true) {
     const elapsed = Date.now() - startTime;
-    
+
     if (elapsed > maxWaitTime) {
       throw new G2AError(
         G2AErrorCode.G2A_TIMEOUT,
@@ -2543,9 +2616,9 @@ export const waitForJobCompletion = async (
         { jobId, maxWaitTime, elapsed }
       );
     }
-    
+
     const status = await getJobStatus(jobId);
-    
+
     if (status.status === 'completed') {
       logger.info('Job completed successfully', {
         jobId,
@@ -2554,7 +2627,7 @@ export const waitForJobCompletion = async (
       });
       return status;
     }
-    
+
     if (status.status === 'failed' || status.status === 'cancelled') {
       throw new G2AError(
         G2AErrorCode.G2A_API_ERROR,
@@ -2562,15 +2635,15 @@ export const waitForJobCompletion = async (
         { jobId, status, code: status.code }
       );
     }
-    
+
     // Job is still pending or processing, wait and poll again
     logger.debug('Job still in progress', {
       jobId,
       status: status.status,
       elapsed,
     });
-    
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 };
 
@@ -2618,20 +2691,19 @@ export interface G2ABestsellersResponse {
  * @returns {Promise<G2ABestsellersResponse>} Bestsellers list
  * @throws {G2AError} If API call fails
  */
-export const getBestsellers = async (filters?: BestsellerFilters): Promise<G2ABestsellersResponse> => {
+export const getBestsellers = async (
+  filters?: BestsellerFilters
+): Promise<G2ABestsellersResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.info('Getting bestsellers', { filters });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const params: Record<string, string | number> = {};
     if (filters?.category) {
       params.category = filters.category;
@@ -2645,7 +2717,7 @@ export const getBestsellers = async (filters?: BestsellerFilters): Promise<G2ABe
     if (filters?.perPage) {
       params.perPage = filters.perPage;
     }
-    
+
     const response = await client.get<G2ABestsellersResponse>('/bestsellers', {
       params,
     });
@@ -2673,7 +2745,9 @@ export const getBestsellers = async (filters?: BestsellerFilters): Promise<G2ABe
  * @returns {string} returns.productId - G2A product ID that was checked
  * @throws {G2AError} If API call fails (falls back to mock in development)
  */
-export const validateGameStock = async (g2aProductId: string): Promise<{
+export const validateGameStock = async (
+  g2aProductId: string
+): Promise<{
   available: boolean;
   stock: number;
   productId: string;
@@ -2696,19 +2770,15 @@ export const validateGameStock = async (g2aProductId: string): Promise<{
     // Endpoint /products/{id}/stock doesn't exist (returns 404)
     const response = await client.get(`/products/${g2aProductId}`);
     const productData = response.data;
-    
+
     // Extract stock from product data (can be qty, stock, quantity, or available)
     const stock = Number(
-      productData.qty || 
-      productData.stock || 
-      productData.quantity || 
-      productData.available || 
-      0
+      productData.qty || productData.stock || productData.quantity || productData.available || 0
     );
     const available = stock > 0;
-    
+
     logger.debug(`Stock check result`, { g2aProductId, available, stock });
-    
+
     return {
       available,
       stock,
@@ -2784,7 +2854,7 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
   // Request queuing: Process batches sequentially with delays to respect rate limits
   const BATCH_SIZE = 100;
   const batches: string[][] = [];
-  
+
   for (let i = 0; i < g2aProductIds.length; i += BATCH_SIZE) {
     batches.push(g2aProductIds.slice(i, i + BATCH_SIZE));
   }
@@ -2797,13 +2867,13 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     let batchSuccessCount = 0;
-    
+
     // Fetch each product individually to get price
     for (const productId of batch) {
       let retries = 0;
       const MAX_RETRIES = 3;
       let success = false;
-      
+
       while (retries < MAX_RETRIES && !success) {
         try {
           const client = await createG2AClient('export'); // Export API for prices
@@ -2813,12 +2883,14 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
 
           // Check for rate limit response
           if (response.status === 429) {
-            const retryAfter = response.headers['retry-after'] 
-              ? Number(response.headers['retry-after']) * 1000 
+            const retryAfter = response.headers['retry-after']
+              ? Number(response.headers['retry-after']) * 1000
               : (retries + 1) * 1000; // Exponential backoff
-            
-            logger.warn(`Rate limit hit for product ${productId}, waiting ${retryAfter}ms before retry`);
-            await new Promise(resolve => setTimeout(resolve, retryAfter));
+
+            logger.warn(
+              `Rate limit hit for product ${productId}, waiting ${retryAfter}ms before retry`
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryAfter));
             retries++;
             continue;
           }
@@ -2826,12 +2898,9 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
           // Extract price from product data (can be minPrice, price, or retailPrice)
           const productData = response.data;
           const rawPrice = Number(
-            productData.minPrice || 
-            productData.price || 
-            productData.retailPrice || 
-            0
+            productData.minPrice || productData.price || productData.retailPrice || 0
           );
-          
+
           if (rawPrice > 0) {
             prices.set(productId, applyMarkup(rawPrice));
             batchSuccessCount++;
@@ -2842,19 +2911,19 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
           }
 
           // Rate limiting - small delay between individual requests
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
           const g2aError = handleG2AError(error, 'getG2APrices');
-          
+
           // Handle rate limiting specifically
           if (g2aError.code === G2AErrorCode.G2A_RATE_LIMIT && retries < MAX_RETRIES) {
             const delay = (retries + 1) * 1000; // Exponential backoff
             logger.warn(`Rate limit error for product ${productId}, retrying after ${delay}ms`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
             retries++;
             continue;
           }
-          
+
           // For 404 or other errors, use fallback price for this product
           logger.warn(`Error fetching price for product ${productId}, using fallback`, {
             error: g2aError.message,
@@ -2867,19 +2936,19 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
       }
     }
 
-    logger.debug(`Fetched prices for batch ${i + 1}/${batches.length}`, { 
-      success: batchSuccessCount, 
-      total: batch.length 
+    logger.debug(`Fetched prices for batch ${i + 1}/${batches.length}`, {
+      success: batchSuccessCount,
+      total: batch.length,
     });
-    
+
     // Rate limiting - wait between batches (even on success)
     if (i < batches.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
 
   logger.debug(`Successfully fetched prices`, { count: prices.size, total: g2aProductIds.length });
-  
+
   return prices;
 };
 
@@ -2888,7 +2957,11 @@ export const getG2APrices = async (g2aProductIds: string[]): Promise<Map<string,
  * Makes a simple API call to verify authentication works
  * @returns {Promise<boolean>} True if connection successful, false otherwise
  */
-export const testConnection = async (): Promise<{ success: boolean; message: string; details?: Record<string, unknown> }> => {
+export const testConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+  details?: Record<string, unknown>;
+}> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
     return {
       success: false,
@@ -2899,9 +2972,9 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
   try {
     logger.info('Testing G2A API connection...');
     validateG2ACredentials();
-    
+
     const client = await createG2AClient('export'); // Export API for connection test
-    
+
     // Make a simple API call to test connection (fetch first page with 1 product)
     const response = await client.get('/products', {
       params: {
@@ -2927,7 +3000,7 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
   } catch (error) {
     const g2aError = handleG2AError(error, 'testConnection');
     logger.error('G2A API connection test failed', g2aError);
-    
+
     return {
       success: false,
       message: g2aError.message,
@@ -2968,27 +3041,24 @@ export const getPriceSimulation = async (
   country?: string
 ): Promise<PriceSimulationResponse> => {
   if (!G2A_API_KEY || !G2A_API_HASH) {
-    throw new G2AError(
-      G2AErrorCode.G2A_AUTH_FAILED,
-      'G2A API credentials not configured'
-    );
+    throw new G2AError(G2AErrorCode.G2A_AUTH_FAILED, 'G2A API credentials not configured');
   }
 
   try {
     logger.info('Getting price simulation', { productId, price, country });
-    
+
     // Import API uses OAuth2 token authentication
     const client = await createG2AClient('import');
-    
+
     const params: Record<string, string | number> = {
       productId,
       price: price.toString(),
     };
-    
+
     if (country) {
       params.country = country;
     }
-    
+
     const response = await client.get<PriceSimulationResponse>('/prices/simulations', {
       params,
     });

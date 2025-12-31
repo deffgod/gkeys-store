@@ -30,4 +30,3 @@ export interface PaginatedArticleResponse {
   pageSize: number;
   totalPages: number;
 }
-

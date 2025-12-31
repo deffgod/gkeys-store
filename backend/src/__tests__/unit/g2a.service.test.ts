@@ -42,4 +42,3 @@ describe('G2A Service', () => {
     });
   });
 });
-

@@ -90,10 +90,7 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     },
   });
 
-  const total = cartItems.reduce(
-    (sum, item) => sum + Number(item.game.price) * item.quantity,
-    0
-  );
+  const total = cartItems.reduce((sum, item) => sum + Number(item.game.price) * item.quantity, 0);
 
   const result: CartResponse = {
     items: cartItems.map((item) => ({
@@ -152,7 +149,7 @@ export const addToCart = async (
   }
 
   // Check both inStock and g2aStock if g2aProductId exists
-  const isAvailable = game.inStock && (game.g2aStock !== false);
+  const isAvailable = game.inStock && game.g2aStock !== false;
   if (!isAvailable) {
     throw new AppError('Game is out of stock', 400);
   }
@@ -457,7 +454,7 @@ export const updateUserCartForAdmin = async (
         continue;
       }
 
-      const isAvailable = game.inStock && (game.g2aStock !== false);
+      const isAvailable = game.inStock && game.g2aStock !== false;
       if (!isAvailable) {
         console.warn(`[Admin Cart Update] Game ${item.gameId} out of stock, skipping`);
         continue;

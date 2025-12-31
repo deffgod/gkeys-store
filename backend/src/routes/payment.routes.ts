@@ -16,4 +16,3 @@ router.post('/webhook', paymentWebhookController as any);
 router.post('/terminal-webhook', terminalWebhookController as any);
 
 export default router;
-

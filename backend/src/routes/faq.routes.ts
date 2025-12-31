@@ -1,8 +1,5 @@
 import { Router } from 'express';
-import {
-  getFAQsController,
-  getFAQCategoriesController,
-} from '../controllers/faq.controller.js';
+import { getFAQsController, getFAQCategoriesController } from '../controllers/faq.controller.js';
 
 const router = Router();
 

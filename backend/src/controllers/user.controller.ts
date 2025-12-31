@@ -13,11 +13,7 @@ import {
 } from '../services/user.service.js';
 import { UpdateProfileRequest, ChangePasswordRequest } from '../types/user.js';
 
-export const getProfileController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getProfileController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -62,11 +58,7 @@ export const updateProfileController = async (
   }
 };
 
-export const getBalanceController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getBalanceController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -198,7 +190,7 @@ export const changePasswordController = async (
     }
 
     const data: ChangePasswordRequest = req.body;
-    
+
     if (!data.currentPassword || !data.newPassword) {
       return res.status(400).json({
         success: false,
@@ -253,4 +245,3 @@ export const getUserStatsController = async (
     next(error);
   }
 };
-

@@ -26,7 +26,7 @@ import { BatchProductFetcher } from './batch/BatchProductFetcher.js';
 
 export class G2AIntegrationClient {
   private static instance: G2AIntegrationClient | null = null;
-  
+
   private config: G2AConfig;
   private exportHttpClient: AxiosInstance;
   private importHttpClient: AxiosInstance;
@@ -37,7 +37,7 @@ export class G2AIntegrationClient {
   private retryStrategy: RetryStrategy;
   private circuitBreakers: Map<string, CircuitBreaker> = new Map();
   private initialized: boolean = false;
-  
+
   // API modules
   public readonly products: ProductsAPI;
   public readonly orders: OrdersAPI;
@@ -46,7 +46,7 @@ export class G2AIntegrationClient {
   public readonly jobs: JobsAPI;
   public readonly bestsellers: BestsellersAPI;
   public readonly priceSimulations: PriceSimulationsAPI;
-  
+
   private constructor(userConfig: PartialG2AConfig) {
     // Merge user config with defaults
     const defaults = getDefaultConfig(userConfig.env || 'sandbox');
@@ -86,7 +86,7 @@ export class G2AIntegrationClient {
         ...userConfig.metrics,
       },
     };
-    
+
     // Initialize utilities
     this.logger = createLogger(this.config.logging.level, this.config.logging.maskSecrets);
     this.metrics = createMetrics(this.config.metrics.enabled);
@@ -96,7 +96,7 @@ export class G2AIntegrationClient {
       this.config.rateLimiting.burstSize,
       this.config.rateLimiting.perEndpoint
     );
-    
+
     // Initialize retry strategy with circuit breaker integration
     // Circuit breaker will be created per-endpoint, so we pass undefined here
     this.retryStrategy = new RetryStrategy(
@@ -104,7 +104,7 @@ export class G2AIntegrationClient {
       this.logger,
       undefined // Will check circuit breaker in executeRequest
     );
-    
+
     // Initialize auth manager
     this.authManager = new AuthManager(
       this.config.apiHash,
@@ -116,22 +116,26 @@ export class G2AIntegrationClient {
       this.config.email,
       process.env.REDIS_URL || process.env.REDIS_GKEYS_REDIS_URL
     );
-    
+
     // Initialize HTTP clients (will be fully configured after auth init)
     this.exportHttpClient = this.createHttpClient('export');
     this.importHttpClient = this.createHttpClient('import');
-    
+
     // Initialize API modules with executeRequest method bound to this
     const executeRequest = this.executeRequest.bind(this);
-    
+
     this.products = new ProductsAPI(this.exportHttpClient, this.logger, executeRequest);
     this.orders = new OrdersAPI(this.exportHttpClient, this.logger, executeRequest);
     this.offers = new OffersAPI(this.importHttpClient, this.logger, executeRequest);
     this.reservations = new ReservationsAPI(this.importHttpClient, this.logger, executeRequest);
     this.jobs = new JobsAPI(this.importHttpClient, this.logger, executeRequest);
     this.bestsellers = new BestsellersAPI(this.importHttpClient, this.logger, executeRequest);
-    this.priceSimulations = new PriceSimulationsAPI(this.importHttpClient, this.logger, executeRequest);
-    
+    this.priceSimulations = new PriceSimulationsAPI(
+      this.importHttpClient,
+      this.logger,
+      executeRequest
+    );
+
     this.logger.info('G2A Integration Client created', {
       env: this.config.env,
       baseUrl: this.config.baseUrl,
@@ -139,7 +143,7 @@ export class G2AIntegrationClient {
       circuitBreaker: this.config.circuitBreaker.enabled,
     });
   }
-  
+
   /**
    * Initialize the client (must be called before using)
    */
@@ -148,13 +152,13 @@ export class G2AIntegrationClient {
       this.logger.warn('Client already initialized');
       return;
     }
-    
+
     try {
       await this.authManager.initialize();
-      
+
       // Configure HTTP clients with auth interceptors
       this.configureAuthInterceptors();
-      
+
       this.initialized = true;
       this.logger.info('G2A Integration Client initialized successfully');
     } catch (error) {
@@ -162,7 +166,7 @@ export class G2AIntegrationClient {
       throw error;
     }
   }
-  
+
   /**
    * Configure authentication interceptors for HTTP clients
    */
@@ -179,7 +183,7 @@ export class G2AIntegrationClient {
       },
       (error) => Promise.reject(error)
     );
-    
+
     // Import API (OAuth2 token auth)
     this.importHttpClient.interceptors.request.use(
       async (config) => {
@@ -193,7 +197,7 @@ export class G2AIntegrationClient {
       (error) => Promise.reject(error)
     );
   }
-  
+
   private createHttpClient(_apiType: ApiType): AxiosInstance {
     // Create HTTP agent with connection pooling
     const httpAgent = new HttpAgent({
@@ -202,14 +206,14 @@ export class G2AIntegrationClient {
       maxSockets: this.config.httpAgent.maxSockets,
       maxFreeSockets: this.config.httpAgent.maxFreeSockets,
     });
-    
+
     const httpsAgent = new HttpsAgent({
       keepAlive: this.config.httpAgent.keepAlive,
       keepAliveMsecs: this.config.httpAgent.keepAliveMsecs,
       maxSockets: this.config.httpAgent.maxSockets,
       maxFreeSockets: this.config.httpAgent.maxFreeSockets,
     });
-    
+
     const client = axios.create({
       baseURL: this.config.baseUrl,
       timeout: this.config.timeoutMs,
@@ -217,21 +221,21 @@ export class G2AIntegrationClient {
       httpsAgent,
       validateStatus: (status) => status < 500, // Don't throw on 4xx errors
     });
-    
+
     // Request interceptor
     client.interceptors.request.use(
       (config) => {
         const startTime = Date.now();
         (config as any).metadata = { startTime };
-        
+
         this.logger.debug('G2A API Request', {
           method: config.method?.toUpperCase(),
           url: config.url,
           params: config.params,
         });
-        
+
         this.metrics.increment('requests_total');
-        
+
         return config;
       },
       (error) => {
@@ -240,29 +244,29 @@ export class G2AIntegrationClient {
         return Promise.reject(error);
       }
     );
-    
+
     // Response interceptor
     client.interceptors.response.use(
       (response) => {
         const startTime = (response.config as any).metadata?.startTime;
         const duration = startTime ? Date.now() - startTime : 0;
-        
+
         this.logger.debug('G2A API Response', {
           method: response.config.method?.toUpperCase(),
           url: response.config.url,
           status: response.status,
           duration,
         });
-        
+
         this.metrics.increment('requests_success');
         this.metrics.set('request_duration_ms', duration);
-        
+
         return response;
       },
       (error) => {
         const startTime = (error.config as any)?.metadata?.startTime;
         const duration = startTime ? Date.now() - startTime : 0;
-        
+
         this.logger.error('G2A API Error', {
           method: error.config?.method?.toUpperCase(),
           url: error.config?.url,
@@ -270,16 +274,16 @@ export class G2AIntegrationClient {
           duration,
           error: error.message,
         });
-        
+
         this.metrics.increment('requests_error');
-        
+
         return Promise.reject(error);
       }
     );
-    
+
     return client;
   }
-  
+
   private getCircuitBreaker(endpoint: string): CircuitBreaker {
     if (!this.circuitBreakers.has(endpoint)) {
       this.circuitBreakers.set(
@@ -295,7 +299,7 @@ export class G2AIntegrationClient {
     }
     return this.circuitBreakers.get(endpoint)!;
   }
-  
+
   /**
    * Execute a request with rate limiting, circuit breaker, and retry logic
    */
@@ -306,10 +310,10 @@ export class G2AIntegrationClient {
   ): Promise<T> {
     // Rate limiting
     await this.rateLimiter.waitIfNeeded(endpoint);
-    
+
     // Circuit breaker
     const circuitBreaker = this.getCircuitBreaker(endpoint);
-    
+
     // Retry with circuit breaker check
     return this.retryStrategy.execute(async () => {
       return circuitBreaker.execute(async () => {
@@ -321,35 +325,35 @@ export class G2AIntegrationClient {
       }, operation);
     }, operation);
   }
-  
+
   /**
    * Get the underlying Axios instance for advanced usage
    */
   getHttpClient(apiType: ApiType = 'export'): AxiosInstance {
     return apiType === 'export' ? this.exportHttpClient : this.importHttpClient;
   }
-  
+
   /**
    * Get the auth manager
    */
   getAuthManager(): AuthManager {
     return this.authManager;
   }
-  
+
   /**
    * Get configuration
    */
   getConfig(): Readonly<G2AConfig> {
     return { ...this.config };
   }
-  
+
   /**
    * Get logger
    */
   getLogger(): G2ALogger {
     return this.logger;
   }
-  
+
   /**
    * Get metrics
    */
@@ -363,7 +367,7 @@ export class G2AIntegrationClient {
   getBatchProductFetcher(): BatchProductFetcher {
     const executeRequest = <T>(endpoint: string, operation: string, requestFn: () => Promise<T>) =>
       this.executeRequest(endpoint, operation, requestFn);
-    
+
     return new BatchProductFetcher(
       this.products,
       this.logger,
@@ -371,7 +375,7 @@ export class G2AIntegrationClient {
       this.config.batch.maxConcurrency
     );
   }
-  
+
   /**
    * Get rate limiter stats
    */
@@ -380,7 +384,7 @@ export class G2AIntegrationClient {
       remainingTokens: this.rateLimiter.getRemainingTokens(endpoint),
     };
   }
-  
+
   /**
    * Get circuit breaker stats
    */
@@ -388,17 +392,17 @@ export class G2AIntegrationClient {
     const circuitBreaker = this.getCircuitBreaker(endpoint);
     return circuitBreaker.getStats();
   }
-  
+
   /**
    * Reset all circuit breakers and rate limiters
    */
   reset(): void {
     this.rateLimiter.reset();
-    this.circuitBreakers.forEach(cb => cb.reset());
+    this.circuitBreakers.forEach((cb) => cb.reset());
     this.metrics.reset();
     this.logger.info('G2A Integration Client reset');
   }
-  
+
   /**
    * Close connections and cleanup
    */
@@ -407,14 +411,14 @@ export class G2AIntegrationClient {
     this.initialized = false;
     this.logger.info('G2A Integration Client closed');
   }
-  
+
   /**
    * Check if client is initialized
    */
   isInitialized(): boolean {
     return this.initialized;
   }
-  
+
   /**
    * Singleton instance getter (async to ensure initialization)
    */
@@ -428,7 +432,7 @@ export class G2AIntegrationClient {
     }
     return G2AIntegrationClient.instance;
   }
-  
+
   /**
    * Create a new client instance (useful for testing or multiple configs)
    */
@@ -437,7 +441,7 @@ export class G2AIntegrationClient {
     await client.initialize();
     return client;
   }
-  
+
   /**
    * Reset singleton instance
    */

@@ -20,39 +20,61 @@ export const validateRequired = <T>(value: T | undefined | null, fieldName: stri
   return value;
 };
 
-export const validateString = (value: unknown, fieldName: string, minLength?: number, maxLength?: number): string => {
+export const validateString = (
+  value: unknown,
+  fieldName: string,
+  minLength?: number,
+  maxLength?: number
+): string => {
   if (typeof value !== 'string') {
     throw new ValidationError(`${fieldName} must be a string`, fieldName, value);
   }
-  
+
   if (minLength !== undefined && value.length < minLength) {
-    throw new ValidationError(`${fieldName} must be at least ${minLength} characters`, fieldName, value);
+    throw new ValidationError(
+      `${fieldName} must be at least ${minLength} characters`,
+      fieldName,
+      value
+    );
   }
-  
+
   if (maxLength !== undefined && value.length > maxLength) {
-    throw new ValidationError(`${fieldName} must be at most ${maxLength} characters`, fieldName, value);
+    throw new ValidationError(
+      `${fieldName} must be at most ${maxLength} characters`,
+      fieldName,
+      value
+    );
   }
-  
+
   return value;
 };
 
-export const validateNumber = (value: unknown, fieldName: string, min?: number, max?: number): number => {
+export const validateNumber = (
+  value: unknown,
+  fieldName: string,
+  min?: number,
+  max?: number
+): number => {
   if (typeof value !== 'number' || isNaN(value)) {
     throw new ValidationError(`${fieldName} must be a number`, fieldName, value);
   }
-  
+
   if (min !== undefined && value < min) {
     throw new ValidationError(`${fieldName} must be at least ${min}`, fieldName, value);
   }
-  
+
   if (max !== undefined && value > max) {
     throw new ValidationError(`${fieldName} must be at most ${max}`, fieldName, value);
   }
-  
+
   return value;
 };
 
-export const validateEnum = <T extends string>(value: unknown, fieldName: string, allowedValues: T[]): T => {
+export const validateEnum = <T extends string>(
+  value: unknown,
+  fieldName: string,
+  allowedValues: T[]
+): T => {
   if (typeof value !== 'string' || !allowedValues.includes(value as T)) {
     throw new ValidationError(
       `${fieldName} must be one of: ${allowedValues.join(', ')}`,
@@ -63,11 +85,15 @@ export const validateEnum = <T extends string>(value: unknown, fieldName: string
   return value as T;
 };
 
-export const validateArray = <T>(value: unknown, fieldName: string, itemValidator?: (item: unknown) => T): T[] => {
+export const validateArray = <T>(
+  value: unknown,
+  fieldName: string,
+  itemValidator?: (item: unknown) => T
+): T[] => {
   if (!Array.isArray(value)) {
     throw new ValidationError(`${fieldName} must be an array`, fieldName, value);
   }
-  
+
   if (itemValidator) {
     return value.map((item, index) => {
       try {
@@ -81,13 +107,13 @@ export const validateArray = <T>(value: unknown, fieldName: string, itemValidato
       }
     });
   }
-  
+
   return value as T[];
 };
 
 export const validateUrl = (value: unknown, fieldName: string): string => {
   const url = validateString(value, fieldName);
-  
+
   try {
     new URL(url);
     return url;
@@ -99,11 +125,11 @@ export const validateUrl = (value: unknown, fieldName: string): string => {
 export const validateEmail = (value: unknown, fieldName: string): string => {
   const email = validateString(value, fieldName);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(email)) {
     throw new ValidationError(`${fieldName} must be a valid email address`, fieldName, value);
   }
-  
+
   return email;
 };
 
@@ -114,15 +140,15 @@ export const validateEmail = (value: unknown, fieldName: string): string => {
 export const normalizeG2AUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);
-    
+
     // Remove trailing slash
     let pathname = urlObj.pathname.replace(/\/$/, '');
-    
+
     // If pathname is empty or doesn't end with /v1, add it
     if (!pathname.endsWith('/v1') && !pathname.endsWith('/integration-api/v1')) {
       // Check if it's an Import API URL (contains 'integration-api')
       if (url.includes('integration-api')) {
-        pathname = pathname.endsWith('/integration-api') 
+        pathname = pathname.endsWith('/integration-api')
           ? `${pathname}/v1`
           : `${pathname}/integration-api/v1`;
       } else {
@@ -130,7 +156,7 @@ export const normalizeG2AUrl = (url: string): string => {
         pathname = pathname ? `${pathname}/v1` : '/v1';
       }
     }
-    
+
     urlObj.pathname = pathname;
     return urlObj.toString();
   } catch {

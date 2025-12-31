@@ -1,6 +1,6 @@
 /**
  * G2A Integration Client - Main Export
- * 
+ *
  * A comprehensive TypeScript client for G2A Integration API
  * Based on the official PHP client with enhanced features
  */

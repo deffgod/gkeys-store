@@ -41,7 +41,7 @@ describe('RateLimiter', () => {
       }
 
       // Wait for token refill (1 second = 5 tokens at 5 req/s)
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      await new Promise((resolve) => setTimeout(resolve, 1100));
 
       // Should be able to make requests again
       const canProceed = await rateLimiter.checkLimit('/test');
@@ -53,7 +53,7 @@ describe('RateLimiter', () => {
       expect(initial).toBe(10); // Initial burst size
 
       rateLimiter.checkLimit('/test');
-      
+
       const after = rateLimiter.getRemainingTokens();
       expect(after).toBe(9);
     });
@@ -61,14 +61,9 @@ describe('RateLimiter', () => {
 
   describe('Endpoint-Specific Limits', () => {
     it('should apply endpoint-specific rate limits', async () => {
-      rateLimiter = new RateLimiter(
-        true,
-        10,
-        20,
-        {
-          '/restricted': { requestsPerSecond: 1, burstSize: 2 },
-        }
-      );
+      rateLimiter = new RateLimiter(true, 10, 20, {
+        '/restricted': { requestsPerSecond: 1, burstSize: 2 },
+      });
 
       // Exhaust endpoint-specific burst
       await rateLimiter.checkLimit('/restricted');

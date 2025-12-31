@@ -43,4 +43,3 @@ export interface GameKeyResponse {
   activated: boolean;
   activationDate?: string;
 }
-

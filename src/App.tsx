@@ -6,7 +6,13 @@ import { WishlistProvider } from './context/WishlistContext';
 import Layout from './components/Layout';
 import PageTransition from './components/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminApp from './admin/AdminApp';
+import AdminApp from './admin/AdminApp';  
+import apiClient from './services/api';
+import { authApi } from './services/authApi';
+
+apiClient.setToken('1234567890');
+
+
 
 // @ts-ignore
 import HomePage from './pages/HomePage';
@@ -50,6 +56,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 // @ts-ignore
 import ComponentShowcase from './pages/ComponentShowcase';
+
 
 
 
@@ -104,7 +111,7 @@ function AnimatedRoutes() {
         <Route
           path="/wishlist"
           element={
-            <ProtectedRoute redirectTo="/login">
+            <ProtectedRoute redirectTo="/auth/login">
               <PageTransition>
                 <WishlistPage />
               </PageTransition>
@@ -265,7 +272,7 @@ function AppRoutes() {
     return (
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
-          <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+          <Route path="/auth/login" element={<PageTransition><LoginPage /></PageTransition>} />
           <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
           <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
           <Route path="/component-showcase" element={<PageTransition><ComponentShowcase /></PageTransition>} />

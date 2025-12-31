@@ -58,9 +58,9 @@ import {
   updateTag,
   deleteTag,
 } from '../services/admin.service.js';
-import { 
-  UserSearchFilters, 
-  TransactionFilters, 
+import {
+  UserSearchFilters,
+  TransactionFilters,
   PaymentTransactionFilters,
   CartSearchFilters,
   WishlistSearchFilters,
@@ -74,20 +74,13 @@ import {
   RoleUpdateRequest,
   ActivityFilters,
 } from '../types/admin.js';
-import { 
-  getUserCartForAdmin, 
-  updateUserCartForAdmin, 
+import {
+  getUserCartForAdmin,
+  updateUserCartForAdmin,
   clearUserCartForAdmin,
 } from '../services/cart.service.js';
-import { 
-  getUserWishlistForAdmin,
-} from '../services/wishlist.service.js';
-import {
-  createFAQ,
-  updateFAQ,
-  deleteFAQ,
-  getFAQCategories,
-} from '../services/faq.service.js';
+import { getUserWishlistForAdmin } from '../services/wishlist.service.js';
+import { createFAQ, updateFAQ, deleteFAQ, getFAQCategories } from '../services/faq.service.js';
 
 export const getDashboardController = async (
   req: AuthRequest,
@@ -149,11 +142,7 @@ export const getUserDetailsController = async (
   }
 };
 
-export const updateUserController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateUserController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const result = await updateUser(id, req.body);
@@ -167,11 +156,7 @@ export const updateUserController = async (
   }
 };
 
-export const deleteUserController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteUserController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     await deleteUser(id);
@@ -249,15 +234,11 @@ export const exportUserReportController = async (
   }
 };
 
-export const syncG2AController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const syncG2AController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { syncG2ACatalog } = await import('../services/g2a.service.js');
     const { fullSync, productIds, categories, includeRelationships } = req.body || {};
-    
+
     const result = await syncG2ACatalog({
       fullSync: fullSync === true,
       productIds: Array.isArray(productIds) ? productIds : undefined,
@@ -314,7 +295,7 @@ export const syncG2ACategoriesController = async (
     res.status(200).json({
       success: true,
       data: {
-        categories: result.categories.map(c => ({
+        categories: result.categories.map((c) => ({
           id: c.slug, // Using slug as identifier for response
           name: c.name,
           slug: c.slug,
@@ -340,7 +321,7 @@ export const syncG2AGenresController = async (
     res.status(200).json({
       success: true,
       data: {
-        genres: result.genres.map(g => ({
+        genres: result.genres.map((g) => ({
           id: g.slug, // Using slug as identifier for response
           name: g.name,
           slug: g.slug,
@@ -366,7 +347,7 @@ export const syncG2APlatformsController = async (
     res.status(200).json({
       success: true,
       data: {
-        platforms: result.platforms.map(p => ({
+        platforms: result.platforms.map((p) => ({
           id: p.slug, // Using slug as identifier for response
           name: p.name,
           slug: p.slug,
@@ -426,11 +407,7 @@ export const testG2AConnectionController = async (
 };
 
 // Games CRUD controllers
-export const getGamesController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getGamesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
     const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 20;
@@ -464,11 +441,7 @@ export const getGameByIdController = async (
   }
 };
 
-export const createGameController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const createGameController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await createGame(req.body, req.user?.userId);
 
@@ -481,11 +454,7 @@ export const createGameController = async (
   }
 };
 
-export const updateGameController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateGameController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const result = await updateGame(id, req.body, req.user?.userId);
@@ -499,11 +468,7 @@ export const updateGameController = async (
   }
 };
 
-export const deleteGameController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteGameController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     await deleteGame(id, req.user?.userId);
@@ -610,11 +575,7 @@ export const deleteBlogPostController = async (
 };
 
 // Orders controllers
-export const getOrdersController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getOrdersController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
     const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 20;
@@ -803,7 +764,8 @@ export const getUserCartsController = async (
     const filters: CartSearchFilters = {
       userId: req.query.userId as string | undefined,
       email: req.query.email as string | undefined,
-      hasItems: req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
+      hasItems:
+        req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
       page: req.query.page ? parseInt(req.query.page as string) : undefined,
       pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
     };
@@ -890,7 +852,8 @@ export const getUserWishlistsController = async (
     const filters: WishlistSearchFilters = {
       userId: req.query.userId as string | undefined,
       email: req.query.email as string | undefined,
-      hasItems: req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
+      hasItems:
+        req.query.hasItems === 'true' ? true : req.query.hasItems === 'false' ? false : undefined,
       page: req.query.page ? parseInt(req.query.page as string) : undefined,
       pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
     };
@@ -943,11 +906,7 @@ export const getWishlistStatisticsController = async (
 
 // FAQ Management Controllers
 
-export const getAllFAQsController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getAllFAQsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const filters: FAQAdminFilters = {
       category: req.query.category as string | undefined,
@@ -968,11 +927,7 @@ export const getAllFAQsController = async (
   }
 };
 
-export const createFAQController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const createFAQController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data: FAQCreateInput = req.body;
     const faq = await createFAQ(data);
@@ -986,11 +941,7 @@ export const createFAQController = async (
   }
 };
 
-export const updateFAQController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateFAQController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const data: FAQUpdateInput = req.body;
@@ -1005,11 +956,7 @@ export const updateFAQController = async (
   }
 };
 
-export const deleteFAQController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteFAQController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     await deleteFAQ(id);
@@ -1121,7 +1068,8 @@ export const cancelG2AReservationController = async (
 
     res.status(200).json({
       success: true,
-      message: 'Reservation cancellation attempted (note: G2A API may not support direct cancellation)',
+      message:
+        'Reservation cancellation attempted (note: G2A API may not support direct cancellation)',
     });
   } catch (error) {
     next(error);
@@ -1154,7 +1102,7 @@ export const invalidateCacheController = async (
 ) => {
   try {
     const { pattern } = req.body as CacheInvalidationRequest;
-    
+
     if (!pattern) {
       throw new Error('Pattern is required');
     }
@@ -1467,11 +1415,7 @@ export const deletePlatformController = async (
 };
 
 // Tag Management Controllers
-export const getAllTagsController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getAllTagsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const tags = await getAllTags();
     res.status(200).json({
@@ -1483,11 +1427,7 @@ export const getAllTagsController = async (
   }
 };
 
-export const createTagController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const createTagController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const tag = await createTag(req.body);
     res.status(201).json({
@@ -1499,11 +1439,7 @@ export const createTagController = async (
   }
 };
 
-export const updateTagController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateTagController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const tag = await updateTag(id, req.body);
@@ -1516,11 +1452,7 @@ export const updateTagController = async (
   }
 };
 
-export const deleteTagController = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteTagController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     await deleteTag(id);

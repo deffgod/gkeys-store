@@ -21,11 +21,11 @@ const isNewGame = (releaseDate: Date): boolean => {
 // Transform Prisma Game to GameResponse
 const transformGame = (game: any): GameResponse => {
   const isNew = isNewGame(game.releaseDate);
-  
+
   // Apply random discount (5-10%) except for New games
   let discount = game.discount;
   let originalPrice = game.originalPrice;
-  
+
   if (!isNew && !game.isPreorder && Math.random() > 0.3) {
     // 70% chance of having a discount
     discount = getRandomDiscount();
@@ -94,9 +94,7 @@ const transformGame = (game: any): GameResponse => {
   };
 };
 
-export const getGames = async (
-  filters?: GameFilters
-): Promise<PaginatedResponse<GameResponse>> => {
+export const getGames = async (filters?: GameFilters): Promise<PaginatedResponse<GameResponse>> => {
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || DEFAULT_PAGE_SIZE;
   const skip = (page - 1) * pageSize;
@@ -316,7 +314,7 @@ export const getGameBySlug = async (slug: string): Promise<GameResponse | null> 
 
 export const getBestSellers = async (genre?: string): Promise<GameResponse[]> => {
   const cacheKey = `best-sellers:weekly:${genre || 'all'}`;
-  
+
   // Try to get from cache
   try {
     const cached = await redisClient.get(cacheKey);
@@ -388,7 +386,7 @@ export const getBestSellers = async (genre?: string): Promise<GameResponse[]> =>
 
 export const getNewInCatalog = async (): Promise<GameResponse[]> => {
   const cacheKey = 'new-in-catalog:daily';
-  
+
   // Try to get from cache
   try {
     const cached = await redisClient.get(cacheKey);
@@ -580,7 +578,7 @@ export const getRandomGames = async (count: number = 10): Promise<GameResponse[]
 
   // Get random games
   const skip = Math.floor(Math.random() * Math.max(0, total - count));
-  
+
   const games = await prisma.game.findMany({
     where: { inStock: true },
     skip,
@@ -692,8 +690,12 @@ export const getSimilarGames = async (
   // Score games by matching tags (minimum 2)
   const scored = similarGames
     .map((g: any) => {
-      const matchingTags = g.tags ? g.tags.filter((t: any) => gameTagIds.includes(t.tagId)).length : 0;
-      const matchingGenres = g.genres ? g.genres.filter((gen: any) => gameGenreIds.includes(gen.genreId)).length : 0;
+      const matchingTags = g.tags
+        ? g.tags.filter((t: any) => gameTagIds.includes(t.tagId)).length
+        : 0;
+      const matchingGenres = g.genres
+        ? g.genres.filter((gen: any) => gameGenreIds.includes(gen.genreId)).length
+        : 0;
       return {
         game: g,
         score: matchingTags * 2 + matchingGenres,
@@ -772,10 +774,7 @@ export const getAllPlatforms = async (): Promise<Array<{ name: string; slug: str
 };
 
 export const getFilterOptions = async () => {
-  const [genres, platforms] = await Promise.all([
-    getAllGenres(),
-    getAllPlatforms(),
-  ]);
+  const [genres, platforms] = await Promise.all([getAllGenres(), getAllPlatforms()]);
 
   // Get unique values from games
   const games = await prisma.game.findMany({
@@ -787,9 +786,11 @@ export const getFilterOptions = async () => {
     },
   });
 
-  const activationServices = [...new Set(games.map(g => g.activationService).filter(Boolean))].sort();
-  const regions = [...new Set(games.map(g => g.region).filter(Boolean))].sort();
-  const publishers = [...new Set(games.map(g => g.publisher).filter(Boolean))].sort();
+  const activationServices = [
+    ...new Set(games.map((g) => g.activationService).filter(Boolean)),
+  ].sort();
+  const regions = [...new Set(games.map((g) => g.region).filter(Boolean))].sort();
+  const publishers = [...new Set(games.map((g) => g.publisher).filter(Boolean))].sort();
 
   return {
     genres,
@@ -801,9 +802,17 @@ export const getFilterOptions = async () => {
   };
 };
 
-export const getCollections = async (): Promise<Array<{ id: string; title: string; type: 'genre' | 'publisher'; value: string; games: GameResponse[] }>> => {
+export const getCollections = async (): Promise<
+  Array<{
+    id: string;
+    title: string;
+    type: 'genre' | 'publisher';
+    value: string;
+    games: GameResponse[];
+  }>
+> => {
   const collections = [];
-  
+
   // Get top 5 genres
   const topGenres = await prisma.genre.findMany({
     take: 5,
@@ -823,12 +832,15 @@ export const getCollections = async (): Promise<Array<{ id: string; title: strin
     },
   });
 
-  const publisherCounts = games.reduce((acc, game) => {
-    if (game.publisher) {
-      acc[game.publisher] = (acc[game.publisher] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
+  const publisherCounts = games.reduce(
+    (acc, game) => {
+      if (game.publisher) {
+        acc[game.publisher] = (acc[game.publisher] || 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const topPublishers = Object.entries(publisherCounts)
     .sort((a, b) => (b[1] as number) - (a[1] as number))
@@ -907,13 +919,15 @@ export const getCollections = async (): Promise<Array<{ id: string; title: strin
 export const getGameAutocomplete = async (
   query: string,
   limit: number = 10
-): Promise<Array<{
-  id: string;
-  title: string;
-  image: string;
-  slug: string;
-  relevanceScore: number;
-}>> => {
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    image: string;
+    slug: string;
+    relevanceScore: number;
+  }>
+> => {
   if (!query || query.length < 2) {
     return [];
   }
@@ -937,17 +951,14 @@ export const getGameAutocomplete = async (
         },
       },
     },
-    orderBy: [
-      { userRating: 'desc' },
-      { releaseDate: 'desc' },
-    ],
+    orderBy: [{ userRating: 'desc' }, { releaseDate: 'desc' }],
   });
 
   // Calculate relevance scores
   const suggestions = games.map((game) => {
     const titleLower = game.title.toLowerCase();
     const descriptionLower = game.description.toLowerCase();
-    
+
     let relevanceScore = 0;
 
     // Exact title match gets highest score
@@ -978,8 +989,5 @@ export const getGameAutocomplete = async (
   });
 
   // Sort by relevance and take top results
-  return suggestions
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, limit);
+  return suggestions.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, limit);
 };
-

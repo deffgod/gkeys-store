@@ -11,14 +11,14 @@ import { ProductsAPI } from '../api/ProductsAPI.js';
 export class ProductFilter {
   private filterBuilder: FilterBuilder<G2AProduct>;
   private g2aFilters: G2AProductFilters = {};
-  
+
   constructor(
     private productsAPI: ProductsAPI,
     private logger: G2ALogger
   ) {
     this.filterBuilder = new FilterBuilder<G2AProduct>(logger, 'Product');
   }
-  
+
   /**
    * Filter by product ID
    */
@@ -27,7 +27,7 @@ export class ProductFilter {
     this.filterBuilder.where('id', productId);
     return this;
   }
-  
+
   /**
    * Filter by minimum quantity (stock)
    */
@@ -36,7 +36,7 @@ export class ProductFilter {
     this.filterBuilder.whereGreaterThanOrEqual('qty', qty);
     return this;
   }
-  
+
   /**
    * Filter by price range
    */
@@ -46,7 +46,7 @@ export class ProductFilter {
     this.filterBuilder.whereBetween('price', min, max);
     return this;
   }
-  
+
   /**
    * Filter by minimum price
    */
@@ -55,7 +55,7 @@ export class ProductFilter {
     this.filterBuilder.whereGreaterThanOrEqual('price', price);
     return this;
   }
-  
+
   /**
    * Filter by maximum price
    */
@@ -64,7 +64,7 @@ export class ProductFilter {
     this.filterBuilder.whereLessThanOrEqual('price', price);
     return this;
   }
-  
+
   /**
    * Include out-of-stock products
    */
@@ -72,7 +72,7 @@ export class ProductFilter {
     this.g2aFilters.includeOutOfStock = include;
     return this;
   }
-  
+
   /**
    * Filter to only in-stock products
    */
@@ -81,7 +81,7 @@ export class ProductFilter {
     this.filterBuilder.whereGreaterThan('qty', 0);
     return this;
   }
-  
+
   /**
    * Filter by platform
    */
@@ -89,7 +89,7 @@ export class ProductFilter {
     this.filterBuilder.where('platform', platform);
     return this;
   }
-  
+
   /**
    * Filter by multiple platforms
    */
@@ -97,7 +97,7 @@ export class ProductFilter {
     this.filterBuilder.whereIn('platform', platforms);
     return this;
   }
-  
+
   /**
    * Filter by region
    */
@@ -105,7 +105,7 @@ export class ProductFilter {
     this.filterBuilder.where('region', region);
     return this;
   }
-  
+
   /**
    * Filter by type
    */
@@ -113,7 +113,7 @@ export class ProductFilter {
     this.filterBuilder.where('type', type);
     return this;
   }
-  
+
   /**
    * Filter by products updated since a date
    */
@@ -122,7 +122,7 @@ export class ProductFilter {
     this.filterBuilder.whereGreaterThanOrEqual('updatedAt', date);
     return this;
   }
-  
+
   /**
    * Filter by products updated until a date
    */
@@ -131,7 +131,7 @@ export class ProductFilter {
     this.filterBuilder.whereLessThanOrEqual('updatedAt', date);
     return this;
   }
-  
+
   /**
    * Filter by products updated between dates
    */
@@ -140,7 +140,7 @@ export class ProductFilter {
     this.g2aFilters.updatedAtTo = to;
     return this;
   }
-  
+
   /**
    * Search products by name
    */
@@ -148,7 +148,7 @@ export class ProductFilter {
     this.filterBuilder.search(query, ['name', 'description']);
     return this;
   }
-  
+
   /**
    * Sort by field
    */
@@ -156,7 +156,7 @@ export class ProductFilter {
     this.filterBuilder.sortBy(field, direction);
     return this;
   }
-  
+
   /**
    * Set pagination
    */
@@ -165,26 +165,26 @@ export class ProductFilter {
     this.filterBuilder.paginate(page, pageSize);
     return this;
   }
-  
+
   /**
    * Execute the filter and fetch products from G2A API
    */
   async execute(): Promise<G2AProductsResponse> {
     this.logger.info('Executing product filter', { g2aFilters: this.g2aFilters });
-    
+
     // Use G2A API filters (server-side filtering)
     let response = await this.productsAPI.list(this.g2aFilters);
-    
+
     // Apply client-side filters (for filters not supported by G2A API)
     const builtFilter = this.filterBuilder.build();
-    
+
     if (builtFilter.search || builtFilter.criteria.length > 0 || builtFilter.sort.length > 0) {
       response = this.applyClientSideFilters(response, builtFilter);
     }
-    
+
     return response;
   }
-  
+
   /**
    * Apply client-side filters (fuzzy search, complex filtering, sorting)
    */
@@ -193,12 +193,12 @@ export class ProductFilter {
     filter: ReturnType<FilterBuilder<G2AProduct>['build']>
   ): G2AProductsResponse {
     let filtered = [...response.docs];
-    
+
     // Apply search (fuzzy matching)
     if (filter.search) {
       const query = filter.search.query.toLowerCase();
-      filtered = filtered.filter(product => {
-        return filter.search!.fields.some(field => {
+      filtered = filtered.filter((product) => {
+        return filter.search!.fields.some((field) => {
           const value = (product as any)[field];
           if (typeof value === 'string') {
             return value.toLowerCase().includes(query);
@@ -207,48 +207,48 @@ export class ProductFilter {
         });
       });
     }
-    
+
     // Apply additional criteria (client-side)
-    filtered = filtered.filter(product => {
-      return filter.criteria.every(criterion => {
+    filtered = filtered.filter((product) => {
+      return filter.criteria.every((criterion) => {
         return this.evaluateCriterion(product, criterion);
       });
     });
-    
+
     // Apply sorting
     if (filter.sort.length > 0) {
       filtered.sort((a, b) => {
         for (const sort of filter.sort) {
           const aValue = (a as any)[sort.field];
           const bValue = (b as any)[sort.field];
-          
+
           if (aValue === bValue) continue;
-          
+
           const comparison = aValue < bValue ? -1 : 1;
           return sort.direction === 'asc' ? comparison : -comparison;
         }
         return 0;
       });
     }
-    
+
     this.logger.debug('Client-side filter applied', {
       originalCount: response.docs.length,
       filteredCount: filtered.length,
     });
-    
+
     return {
       ...response,
       docs: filtered,
       total: filtered.length,
     };
   }
-  
+
   /**
    * Evaluate a single filter criterion
    */
   private evaluateCriterion(product: G2AProduct, criterion: any): boolean {
     const value = (product as any)[criterion.field];
-    
+
     switch (criterion.operator) {
       case 'eq':
         return value === criterion.value;
@@ -267,14 +267,16 @@ export class ProductFilter {
       case 'nin':
         return !criterion.value.includes(value);
       case 'like':
-        return typeof value === 'string' && value.toLowerCase().includes(criterion.value.toLowerCase());
+        return (
+          typeof value === 'string' && value.toLowerCase().includes(criterion.value.toLowerCase())
+        );
       case 'between':
         return value >= criterion.value[0] && value <= criterion.value[1];
       default:
         return true;
     }
   }
-  
+
   /**
    * Reset the filter
    */
@@ -283,7 +285,7 @@ export class ProductFilter {
     this.g2aFilters = {};
     return this;
   }
-  
+
   /**
    * Clone the filter
    */

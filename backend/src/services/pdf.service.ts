@@ -6,9 +6,7 @@ import { UserDetailsResponse } from '../types/admin.js';
  * @param userData - User details including orders and transactions
  * @returns PDF buffer
  */
-export const generateUserSummaryPDF = async (
-  userData: UserDetailsResponse
-): Promise<Buffer> => {
+export const generateUserSummaryPDF = async (userData: UserDetailsResponse): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -107,12 +105,11 @@ export const generateUserSummaryPDF = async (
       }
 
       // Footer
-      doc.fontSize(8).text(
-        `Generated on ${new Date().toLocaleString()}`,
-        50,
-        doc.page.height - 50,
-        { align: 'center' }
-      );
+      doc
+        .fontSize(8)
+        .text(`Generated on ${new Date().toLocaleString()}`, 50, doc.page.height - 50, {
+          align: 'center',
+        });
 
       doc.end();
     } catch (error) {

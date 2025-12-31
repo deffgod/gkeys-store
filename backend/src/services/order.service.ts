@@ -41,7 +41,7 @@ export const createOrder = async (
     if (!game || !game.inStock) {
       throw new AppError(`Game ${game?.title || item.gameId} is out of stock`, 400);
     }
-    
+
     // Validate G2A stock if game has G2A product ID
     if (game.g2aProductId) {
       try {
@@ -54,7 +54,10 @@ export const createOrder = async (
         }
       } catch (error) {
         // If G2A validation fails, log but don't block order (graceful degradation)
-        console.warn(`G2A stock check failed for ${game.g2aProductId}, proceeding with local stock check:`, error);
+        console.warn(
+          `G2A stock check failed for ${game.g2aProductId}, proceeding with local stock check:`,
+          error
+        );
       }
     }
   }
@@ -83,7 +86,7 @@ export const createOrder = async (
     if (promo?.active && (promo.usedCount ?? 0) < (promo.maxUses ?? Infinity)) {
       const now = new Date();
       if (now >= promo.validFrom && now <= promo.validUntil) {
-        discount = Number((subtotal * Number(promo.discount) / 100).toFixed(2));
+        discount = Number(((subtotal * Number(promo.discount)) / 100).toFixed(2));
         // Update promo code usage
         await prisma.promoCode.update({
           where: { id: promo.id },
@@ -117,9 +120,15 @@ export const createOrder = async (
 
   if (existingOrder && 'items' in existingOrder && Array.isArray(existingOrder.items)) {
     // Check if items match (simple idempotency check)
-    const existingItemIds = existingOrder.items.map((i: any) => i.gameId).sort().join(',');
-    const newItemIds = items.map(i => i.gameId).sort().join(',');
-    
+    const existingItemIds = existingOrder.items
+      .map((i: any) => i.gameId)
+      .sort()
+      .join(',');
+    const newItemIds = items
+      .map((i) => i.gameId)
+      .sort()
+      .join(',');
+
     if (existingItemIds === newItemIds) {
       // Return existing order to prevent duplicate
       const orderResponse = await getOrderById(userId, existingOrder.id);
@@ -221,15 +230,15 @@ export const createOrder = async (
     createdAt: Date;
   }> = [];
   const purchaseErrors: Array<{ gameId: string; error: string }> = [];
-  
+
   for (const item of items) {
     const game = games.find((g) => g.id === item.gameId)!;
-    
+
     if (game.g2aProductId) {
       try {
         // Purchase keys from G2A (returns array of keys)
         const g2aKeys = await purchaseGameKey(game.g2aProductId, item.quantity);
-        
+
         // Create game key records for all keys received
         // NOTE: Game keys are currently stored in plain text in the database.
         // For production, consider implementing encryption at rest:
@@ -261,24 +270,27 @@ export const createOrder = async (
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof G2AError 
-          ? error.message 
-          : error instanceof Error 
-            ? error.message 
-            : 'Unknown error';
-        
+        const errorMessage =
+          error instanceof G2AError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'Unknown error';
+
         purchaseErrors.push({
           gameId: game.id,
           error: errorMessage,
         });
-        
+
         console.error(`Failed to purchase key for game ${game.id}:`, error);
-        
+
         // If it's a critical error (out of stock, API error), mark order as failed
-        if (error instanceof G2AError && 
-            (error.code === G2AErrorCode.G2A_OUT_OF_STOCK || 
-             error.code === G2AErrorCode.G2A_AUTH_FAILED ||
-             error.code === G2AErrorCode.G2A_API_ERROR)) {
+        if (
+          error instanceof G2AError &&
+          (error.code === G2AErrorCode.G2A_OUT_OF_STOCK ||
+            error.code === G2AErrorCode.G2A_AUTH_FAILED ||
+            error.code === G2AErrorCode.G2A_API_ERROR)
+        ) {
           // Mark order as failed
           await prisma.order.update({
             where: { id: order.id },
@@ -287,7 +299,7 @@ export const createOrder = async (
               paymentStatus: 'FAILED',
             },
           });
-          
+
           // Refund user balance
           await prisma.user.update({
             where: { id: userId },
@@ -297,7 +309,7 @@ export const createOrder = async (
               },
             },
           });
-          
+
           // Create refund transaction
           await prisma.transaction.create({
             data: {
@@ -310,11 +322,8 @@ export const createOrder = async (
               description: `Refund for failed order ${order.id}`,
             },
           });
-          
-          throw new AppError(
-            `Order failed: ${errorMessage}. Balance has been refunded.`,
-            400
-          );
+
+          throw new AppError(`Order failed: ${errorMessage}. Balance has been refunded.`, 400);
         }
         // For other errors, continue with other games
       }
@@ -494,4 +503,3 @@ export const getOrderById = async (
     })),
   };
 };
-

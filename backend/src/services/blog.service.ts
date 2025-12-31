@@ -4,9 +4,7 @@ import { Prisma } from '@prisma/client';
 
 const DEFAULT_PAGE_SIZE = 20;
 
-export const getArticles = async (
-  filters?: ArticleFilters
-): Promise<PaginatedArticleResponse> => {
+export const getArticles = async (filters?: ArticleFilters): Promise<PaginatedArticleResponse> => {
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || DEFAULT_PAGE_SIZE;
   const skip = (page - 1) * pageSize;
@@ -113,7 +111,9 @@ export const getArticleBySlug = async (slug: string): Promise<ArticleResponse | 
   };
 };
 
-export const getCategories = async (): Promise<Array<{ name: string; slug: string; count: number }>> => {
+export const getCategories = async (): Promise<
+  Array<{ name: string; slug: string; count: number }>
+> => {
   // Get all articles and group by category
   const articles = await prisma.article.findMany({
     where: { published: true },
@@ -121,7 +121,7 @@ export const getCategories = async (): Promise<Array<{ name: string; slug: strin
   });
 
   const categoryMap = new Map<string, number>();
-  
+
   for (const article of articles) {
     const count = categoryMap.get(article.category) || 0;
     categoryMap.set(article.category, count + 1);
@@ -138,4 +138,3 @@ export const getCategories = async (): Promise<Array<{ name: string; slug: strin
 
   return categories;
 };
-

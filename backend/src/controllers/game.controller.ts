@@ -19,49 +19,41 @@ import {
 } from '../services/game.service.js';
 import { GameFilters } from '../types/game.js';
 
-export const getGamesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getGamesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters: GameFilters = {
       search: req.query.search as string,
-      priceRange: req.query.minPrice && req.query.maxPrice
-        ? {
-            min: Number(req.query.minPrice),
-            max: Number(req.query.maxPrice),
-          }
-        : undefined,
+      priceRange:
+        req.query.minPrice && req.query.maxPrice
+          ? {
+              min: Number(req.query.minPrice),
+              max: Number(req.query.maxPrice),
+            }
+          : undefined,
       pricePreset: req.query.pricePreset as GameFilters['pricePreset'],
       inStockOnly: req.query.inStockOnly !== 'false',
       platforms: req.query.platforms
-        ? (Array.isArray(req.query.platforms)
+        ? ((Array.isArray(req.query.platforms)
             ? req.query.platforms
-            : [req.query.platforms]) as string[]
+            : [req.query.platforms]) as string[])
         : undefined,
       activationServices: req.query.activationServices
-        ? (Array.isArray(req.query.activationServices)
+        ? ((Array.isArray(req.query.activationServices)
             ? req.query.activationServices
-            : [req.query.activationServices]) as string[]
+            : [req.query.activationServices]) as string[])
         : undefined,
       regions: req.query.regions
-        ? (Array.isArray(req.query.regions)
-            ? req.query.regions
-            : [req.query.regions]) as string[]
+        ? ((Array.isArray(req.query.regions) ? req.query.regions : [req.query.regions]) as string[])
         : undefined,
-      multiplayer: req.query.multiplayer !== undefined
-        ? req.query.multiplayer === 'true'
-        : undefined,
+      multiplayer:
+        req.query.multiplayer !== undefined ? req.query.multiplayer === 'true' : undefined,
       publishers: req.query.publishers
-        ? (Array.isArray(req.query.publishers)
+        ? ((Array.isArray(req.query.publishers)
             ? req.query.publishers
-            : [req.query.publishers]) as string[]
+            : [req.query.publishers]) as string[])
         : undefined,
       genres: req.query.genres
-        ? (Array.isArray(req.query.genres)
-            ? req.query.genres
-            : [req.query.genres]) as string[]
+        ? ((Array.isArray(req.query.genres) ? req.query.genres : [req.query.genres]) as string[])
         : undefined,
       sort: req.query.sort as GameFilters['sort'],
       page: req.query.page ? Number(req.query.page) : undefined,
@@ -79,11 +71,7 @@ export const getGamesController = async (
   }
 };
 
-export const getGameByIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getGameByIdController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const game = await getGameById(id);
@@ -104,11 +92,7 @@ export const getGameByIdController = async (
   }
 };
 
-export const getGameBySlugController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getGameBySlugController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { slug } = req.params;
     const game = await getGameBySlug(slug);
@@ -129,11 +113,7 @@ export const getGameBySlugController = async (
   }
 };
 
-export const getBestSellersController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getBestSellersController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const genre = req.query.genre as string | undefined;
     const games = await getBestSellers(genre);
@@ -164,11 +144,7 @@ export const getNewInCatalogController = async (
   }
 };
 
-export const getPreordersController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getPreordersController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const games = await getPreorders();
 
@@ -181,11 +157,7 @@ export const getPreordersController = async (
   }
 };
 
-export const getNewGamesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getNewGamesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const games = await getNewGames();
 
@@ -216,11 +188,7 @@ export const getGamesByGenreController = async (
   }
 };
 
-export const getRandomGamesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getRandomGamesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const count = req.query.count ? Number(req.query.count) : 10;
     const games = await getRandomGames(count);
@@ -253,11 +221,7 @@ export const getSimilarGamesController = async (
   }
 };
 
-export const searchGamesController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const searchGamesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { q } = req.query;
 
@@ -279,11 +243,7 @@ export const searchGamesController = async (
   }
 };
 
-export const getAllGenresController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getAllGenresController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const genres = await getAllGenres();
 
@@ -330,11 +290,7 @@ export const getFilterOptionsController = async (
   }
 };
 
-export const getCollectionsController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getCollectionsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const collections = await getCollections();
 
@@ -382,4 +338,3 @@ export const getGameAutocompleteController = async (
     next(error);
   }
 };
-
