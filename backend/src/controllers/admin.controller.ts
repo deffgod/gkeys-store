@@ -470,7 +470,7 @@ export const createGameController = async (
   next: NextFunction
 ) => {
   try {
-    const result = await createGame(req.body, req.user?.id);
+    const result = await createGame(req.body, req.user?.userId);
 
     res.status(201).json({
       success: true,
@@ -488,7 +488,7 @@ export const updateGameController = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await updateGame(id, req.body, req.user?.id);
+    const result = await updateGame(id, req.body, req.user?.userId);
 
     res.status(200).json({
       success: true,
@@ -506,7 +506,7 @@ export const deleteGameController = async (
 ) => {
   try {
     const { id } = req.params;
-    await deleteGame(id, req.user?.id);
+    await deleteGame(id, req.user?.userId);
 
     res.status(200).json({
       success: true,

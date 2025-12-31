@@ -71,14 +71,13 @@ export const HeroContent: React.FC<HeroContentProps> = ({
         backgroundPosition: 'center',
         display: 'flex',
         alignItems: 'center',
-        padding: '32px 48px',
+        padding: 'clamp(160px, 20vw, 180px) clamp(16px, 4vw, 48px) clamp(32px, 6vw, 48px) clamp(16px, 4vw, 48px)',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
         zIndex: 1,
       }}
       className="hero-content-responsive"
-      className="hero-section"
     >
       {/* Dark overlay from top */}
       <div
@@ -99,7 +98,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
         <Aurora color={colors.accent} intensity={0.15} />
       </div>
       
-      <div style={{ maxWidth: '520px', zIndex: 2, width: '100%', position: 'relative', padding: '0 16px' }}>
+      <div style={{ maxWidth: '520px', zIndex: 2, width: '100%', position: 'relative', padding: '0' }}>
         {game.discount && (
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
@@ -282,7 +281,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           .hero-content-responsive {
             height: 500px !important;
             minHeight: 400px !important;
-            padding: 24px 16px !important;
+            padding: clamp(140px, 18vw, 160px) 16px 24px 16px !important;
           }
           .hero-content-responsive .hero-title {
             font-size: 36px !important;
@@ -301,7 +300,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           .hero-content-responsive {
             height: 450px !important;
             minHeight: 350px !important;
-            padding: 20px 12px !important;
+            padding: clamp(120px, 16vw, 140px) 12px 20px 12px !important;
           }
           .hero-content-responsive .hero-title {
             font-size: 28px !important;
