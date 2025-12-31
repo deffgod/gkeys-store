@@ -19,7 +19,7 @@ As an administrator, I need to view and manage all payment methods (Stripe, PayP
 
 1. **Given** an administrator accesses the admin panel, **When** they navigate to Payment Management section, **Then** they see all available payment methods (Stripe, PayPal, Mollie, Terminal) with their status and configuration.
 2. **Given** an administrator wants to view payment transactions, **When** they filter transactions by payment method, **Then** they see all transactions for that payment method with details (amount, status, user, timestamp).
-3. **Given** a payment transaction requires a refund, **When** administrator initiates refund, **Then** refund is processed through the appropriate payment gateway and transaction status is updated.
+3. **Given** a payment transaction requires a refund, **When** administrator initiates refund, **Then** refund is processed through the appropriate payment gateway and transaction status is updated. **Note**: Terminal payments are non-refundable per business policy; system displays appropriate message and logs attempt.
 
 ---
 
@@ -118,7 +118,13 @@ As an administrator, I need advanced user management capabilities including user
 
 - **FR-001**: Admin panel MUST provide Payment Management section displaying all payment methods (Stripe, PayPal, Mollie, Terminal) with status and configuration details.
 - **FR-002**: Admin panel MUST allow filtering and viewing transactions by payment method with details (amount, status, user, timestamp, transaction ID).
-- **FR-003**: Admin panel MUST support refund operations for transactions processed through supported payment gateways.
+- **FR-003**: Admin panel MUST support refund operations for transactions processed through supported payment gateways. **Refund Requirements**: 
+  - **Full Refunds**: Administrator can refund the full transaction amount. System MUST validate that refund amount does not exceed original transaction amount.
+  - **Partial Refunds**: Administrator can refund a partial amount (if supported by payment gateway). System MUST validate partial amount is positive and less than or equal to remaining refundable amount.
+  - **Refund Limits**: Maximum refund amount MUST equal original transaction amount minus any previous refunds. System MUST prevent over-refunding.
+  - **Error Handling**: If refund fails (gateway unavailable, insufficient funds, invalid transaction), system MUST display clear error message, log failure with reason, and maintain transaction status. System MUST NOT create duplicate refund transactions on retry.
+  - **Terminal Payments**: Terminal payments are non-refundable per business policy. System MUST display message "Terminal payments are non-refundable. Please contact support for assistance." and log refund attempt for audit.
+  - **Refund Transaction Record**: Each successful refund MUST create a new Transaction record with `type='REFUND'`, `amount` (negative value), `description` including original transaction ID, and link to original transaction.
 - **FR-004**: Admin panel MUST provide Cart Management section allowing administrators to view, search, and manage user carts.
 - **FR-005**: Admin panel MUST provide Wishlist Management section allowing administrators to view user wishlists and wishlist statistics.
 - **FR-006**: Admin panel MUST allow administrators to modify user carts (add items, remove items, update quantities, clear cart).
@@ -129,11 +135,20 @@ As an administrator, I need advanced user management capabilities including user
 - **FR-011**: Admin panel MUST provide G2A Reservations Management section displaying active reservations with details.
 - **FR-012**: Admin panel MUST display G2A metrics including sync statistics, API call metrics, error rates, and performance indicators. **Metric Definitions**: 
   - **Sync Statistics**: Last sync timestamp, total items synced (count), sync duration (milliseconds), sync status (success/failed/in-progress), items added/updated/deleted counts.
-  - **API Call Metrics**: Total request count, success count, failure count, success rate (percentage), average response time (milliseconds), requests per minute (rate).
-  - **Error Rates**: Error count by type (authentication, network, validation, rate limit), error percentage, last error timestamp, error trend (increasing/stable/decreasing).
-  - **Performance Indicators**: Circuit breaker state (closed/open/half-open), retry attempts count, cache hit rate (if applicable), queue depth (if applicable).
+  - **API Call Metrics**: Total request count, success count, failure count, success rate (percentage), average response time (milliseconds), requests per minute (rate). **Calculation**: Success rate = (success count / total request count) * 100. Average response time = sum of all response times / total request count. Requests per minute = total request count / time window in minutes.
+  - **Error Rates**: Error count by type (authentication, network, validation, rate limit), error percentage, last error timestamp, error trend (increasing/stable/decreasing). **Calculation**: Error percentage = (error count / total request count) * 100. Error trend determined by comparing error count in current time window vs previous time window (increasing if >10% increase, decreasing if >10% decrease, stable otherwise).
+  - **Performance Indicators**: Circuit breaker state (closed/open/half-open), retry attempts count, cache hit rate (if applicable), queue depth (if applicable). **Calculation**: Cache hit rate = (cache hits / (cache hits + cache misses)) * 100.
 - **FR-013**: Admin panel MUST provide Cache Management section displaying cache statistics (hit rates, keys, memory usage, Redis status).
-- **FR-014**: Admin panel MUST allow cache invalidation by pattern (e.g., all games, home page, specific user data).
+- **FR-014**: Admin panel MUST allow cache invalidation by pattern (e.g., all games, home page, specific user data). **Pattern Syntax**: 
+  - Patterns use wildcard matching: `*` matches any sequence of characters, `?` matches single character.
+  - **Examples**: 
+    - `games:*` - Invalidates all game-related cache keys (e.g., `games:123`, `games:list`, `games:featured`)
+    - `user:123:*` - Invalidates all cache for user ID 123 (e.g., `user:123:cart`, `user:123:wishlist`)
+    - `home:*` - Invalidates all home page cache (e.g., `home:featured`, `home:categories`)
+    - `transaction:*` - Invalidates all transaction cache
+    - `*` - Invalidates all cache (use with caution, requires confirmation)
+  - Pattern matching MUST be case-sensitive and match from start of cache key.
+  - System MUST display count of keys that will be invalidated before confirmation.
 - **FR-015**: Admin panel MUST provide enhanced user management allowing balance adjustments with transaction recording. **Transaction Requirements**: Each balance adjustment MUST create a Transaction record with `type='ADMIN_ADJUSTMENT'`, `amount` (positive for additions, negative for deductions), `reason` (required string field), `adminId` (ID of administrator making the change), and `timestamp`. Balance updates MUST be atomic (database transaction) to prevent race conditions.
 - **FR-016**: Admin panel MUST support user role assignment and role-based permission management.
 - **FR-017**: Admin panel MUST display user activity logs including login history, order history, and transaction history.
@@ -154,15 +169,15 @@ As an administrator, I need advanced user management capabilities including user
 
 ### Measurable Outcomes
 
-- **SC-001**: Administrators can access all payment methods and view payment transactions within 2 seconds of page load.
-- **SC-002**: Administrators can process refunds through any payment gateway in under 30 seconds.
-- **SC-003**: Administrators can view and manage any user's cart or wishlist within 3 seconds of search.
-- **SC-004**: Administrators can create, update, or delete FAQ items with changes reflected in public FAQ section within 5 seconds.
-- **SC-005**: Administrators can view G2A offers, reservations, and metrics with data loading within 3 seconds.
-- **SC-006**: Administrators can invalidate cache patterns with cache cleared and fresh data available within 10 seconds.
-- **SC-007**: Administrators can update user balance and assign roles with changes applied immediately and transactions recorded.
+- **SC-001**: Administrators can access all payment methods and view payment transactions within 2 seconds of page load (p95 latency, measured from page navigation to data display).
+- **SC-002**: Administrators can process refunds through any payment gateway in under 30 seconds (p95 latency, measured from refund initiation to confirmation, excluding gateway processing time).
+- **SC-003**: Administrators can view and manage any user's cart or wishlist within 3 seconds of search (p95 latency, measured from search submission to results display).
+- **SC-004**: Administrators can create, update, or delete FAQ items with changes reflected in public FAQ section within 5 seconds (p95 latency, measured from save action to public visibility).
+- **SC-005**: Administrators can view G2A offers, reservations, and metrics with data loading within 3 seconds (p95 latency, measured from page load to data display).
+- **SC-006**: Administrators can invalidate cache patterns with cache cleared and fresh data available within 10 seconds (p95 latency, measured from invalidation request to confirmation, for patterns matching up to 1000 keys).
+- **SC-007**: Administrators can update user balance and assign roles with changes applied immediately and transactions recorded (p95 latency < 500ms, measured from update submission to database commit).
 - **SC-008**: All new admin functions are accessible through consistent navigation and follow existing admin panel design patterns.
-- **SC-009**: 95% of admin operations complete successfully without errors on first attempt.
+- **SC-009**: 95% of admin operations complete successfully without errors on first attempt (measured across all admin operations over 7-day period).
 
 ## Assumptions
 

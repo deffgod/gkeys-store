@@ -20,6 +20,7 @@
 - [x] T003 Verify frontend admin structure exists: `src/admin/pages/`, `src/admin/services/adminApi.ts`, `src/admin/components/AdminSidebar.tsx`, `src/admin/AdminApp.tsx`
 - [x] T004 [P] Verify payment gateway services exist: `backend/src/services/stripe.service.ts`, `paypal.service.ts`, `mollie.service.ts`, `terminal.service.ts`
 - [x] T001a [P] Verify LoginHistory model exists in `backend/prisma/schema.prisma` and run migration if needed
+- [x] T001b [P] Verify Transaction model in `backend/prisma/schema.prisma` supports `ADMIN_ADJUSTMENT` type: Check that Transaction model has `type` field with enum values including `ADMIN_ADJUSTMENT`, `reason` field (string, required), `adminId` field (string, optional for linking to admin user), and verify atomic transaction support for balance updates. If missing, add migration to extend Transaction type enum and add required fields.
 
 ---
 
