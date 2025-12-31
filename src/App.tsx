@@ -52,6 +52,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ComponentShowcase from './pages/ComponentShowcase';
 
 
+
 function AnimatedRoutes() {
   const location = useLocation();
 

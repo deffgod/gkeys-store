@@ -84,6 +84,12 @@ try {
   prisma = createPrismaClient();
 } catch (error) {
   console.warn('⚠️  Failed to create Prisma Client:', error);
+  // Re-throw in production to prevent server startup with broken DB
+  if (process.env.NODE_ENV === 'production') {
+    throw error;
+  }
 }
 
-export default prisma as ReturnType<typeof createPrismaClient>;
+// Export with proper type assertion - prisma is guaranteed to be initialized
+// or the process would have exited in production
+export default prisma!;
