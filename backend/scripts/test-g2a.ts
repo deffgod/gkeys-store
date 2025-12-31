@@ -7,7 +7,7 @@
  */
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001';
-const ADMIN_TOKEN = process.argv[2] || process.env.ADMIN_TOKEN || '';
+const ADMIN_TOKEN = process.argv[2] || process.env.ADMIN_TOKEN || 'eyJhbGciOiJIUzI1NiJ9.e30.jBrIDEb49OUZvDk2UfwaGf_cH5YSDzR1rdaoKqOVafk';
 
 if (!ADMIN_TOKEN) {
   console.warn('⚠️  No admin token provided. Some tests will be skipped.');

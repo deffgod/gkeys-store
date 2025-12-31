@@ -105,12 +105,12 @@ As an administrator, I need advanced user management capabilities including user
 
 ### Edge Cases
 
-- What happens when a payment gateway is unavailable during refund processing? System should queue refund request, notify administrator, and retry when gateway is available.
-- How does system handle cart migration conflicts when administrator modifies cart while user is active? System should lock cart during admin modifications and notify user of changes.
+- What happens when a payment gateway is unavailable during refund processing? **Current behavior**: System queues refund request, logs error, and notifies administrator. Retry logic attempts refund when gateway becomes available. **Future enhancement**: Email notification to administrator (v2.0).
+- How does system handle cart migration conflicts when administrator modifies cart while user is active? **Current behavior**: System locks cart during admin modifications using database transactions. User sees updated cart on next page refresh. **Future enhancement**: Real-time notification to user via WebSocket (v2.0).
 - What happens when FAQ is deleted while user is viewing it? System should show appropriate error message and redirect to FAQ list.
 - How does system handle G2A API failures during offer management? System should show error details, allow retry, and log failures for troubleshooting.
-- What happens when cache invalidation fails? System should log error, notify administrator, and continue operating with potentially stale cache.
-- How does system handle concurrent user balance updates? System should use database transactions to prevent race conditions and ensure balance accuracy.
+- What happens when cache invalidation fails? **Current behavior**: System logs error, notifies administrator via console/logs, and continues operating with potentially stale cache. **Future enhancement**: Email alert to administrator (v2.0).
+- How does system handle concurrent user balance updates? **Current behavior**: System uses database transactions to prevent race conditions and ensure balance accuracy. All balance adjustments are logged with transaction records. **Future enhancement**: Email notification to user when balance is adjusted (v2.0).
 
 ## Requirements
 
@@ -127,10 +127,14 @@ As an administrator, I need advanced user management capabilities including user
 - **FR-009**: Admin panel MUST allow publishing and unpublishing FAQ items to control visibility.
 - **FR-010**: Admin panel MUST provide G2A Offers Management section displaying all G2A offers with status, inventory, and pricing.
 - **FR-011**: Admin panel MUST provide G2A Reservations Management section displaying active reservations with details.
-- **FR-012**: Admin panel MUST display G2A metrics including sync statistics, API call metrics, error rates, and performance indicators.
+- **FR-012**: Admin panel MUST display G2A metrics including sync statistics, API call metrics, error rates, and performance indicators. **Metric Definitions**: 
+  - **Sync Statistics**: Last sync timestamp, total items synced (count), sync duration (milliseconds), sync status (success/failed/in-progress), items added/updated/deleted counts.
+  - **API Call Metrics**: Total request count, success count, failure count, success rate (percentage), average response time (milliseconds), requests per minute (rate).
+  - **Error Rates**: Error count by type (authentication, network, validation, rate limit), error percentage, last error timestamp, error trend (increasing/stable/decreasing).
+  - **Performance Indicators**: Circuit breaker state (closed/open/half-open), retry attempts count, cache hit rate (if applicable), queue depth (if applicable).
 - **FR-013**: Admin panel MUST provide Cache Management section displaying cache statistics (hit rates, keys, memory usage, Redis status).
 - **FR-014**: Admin panel MUST allow cache invalidation by pattern (e.g., all games, home page, specific user data).
-- **FR-015**: Admin panel MUST provide enhanced user management allowing balance adjustments with transaction recording.
+- **FR-015**: Admin panel MUST provide enhanced user management allowing balance adjustments with transaction recording. **Transaction Requirements**: Each balance adjustment MUST create a Transaction record with `type='ADMIN_ADJUSTMENT'`, `amount` (positive for additions, negative for deductions), `reason` (required string field), `adminId` (ID of administrator making the change), and `timestamp`. Balance updates MUST be atomic (database transaction) to prevent race conditions.
 - **FR-016**: Admin panel MUST support user role assignment and role-based permission management.
 - **FR-017**: Admin panel MUST display user activity logs including login history, order history, and transaction history.
 

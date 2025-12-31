@@ -52,7 +52,7 @@
 - [x] T010 [P] [US1] Add `refundStripeTransaction()` helper function in `backend/src/services/payment.service.ts` (calls stripe.service.ts)
 - [x] T011 [P] [US1] Add `refundPayPalTransaction()` helper function in `backend/src/services/payment.service.ts` (calls paypal.service.ts)
 - [x] T012 [P] [US1] Add `refundMollieTransaction()` helper function in `backend/src/services/payment.service.ts` (calls mollie.service.ts)
-- [x] T013 [P] [US1] Add `refundTerminalTransaction()` helper function in `backend/src/services/payment.service.ts` (calls terminal.service.ts) - **Note**: Terminal payments may be non-refundable; verify with business requirements or implement as no-op with appropriate error message
+- [x] T013 [P] [US1] Add `refundTerminalTransaction()` helper function in `backend/src/services/payment.service.ts` (calls terminal.service.ts) - **Business Rule**: Terminal payments are non-refundable per business policy. Implementation: Return no-op result with user-visible message "Terminal payments are non-refundable. Please contact support for assistance." Log the refund attempt for audit purposes.
 - [x] T014 [US1] Extend `admin.service.ts` with `getPaymentMethods(): Promise<PaymentMethod[]>` function in `backend/src/services/admin.service.ts`
 - [x] T015 [US1] Extend `admin.service.ts` with `getPaymentTransactions(filters: PaymentTransactionFilters): Promise<TransactionResult>` function in `backend/src/services/admin.service.ts`
 - [x] T016 [US1] Extend `admin.service.ts` with `processRefund(transactionId: string, amount?: number, reason?: string): Promise<RefundResult>` function in `backend/src/services/admin.service.ts`
@@ -216,10 +216,10 @@
 
 #### Backend Service Extensions
 
-- [x] T087 [US4] Extend `g2a-offer.service.ts` with `getAllOffersForAdmin(filters: G2AOfferFilters): Promise<G2AOfferResult>` function in `backend/src/services/g2a-offer.service.ts` - **Note**: Verify g2a-offer.service.ts exists; may need to create or extend g2a.service.ts
-- [x] T088 [US4] Extend `g2a-offer.service.ts` with `getOfferByIdForAdmin(offerId: string): Promise<G2AOffer>` function in `backend/src/services/g2a-offer.service.ts` - **Note**: Verify g2a-offer.service.ts exists; may need to create or extend g2a.service.ts
-- [x] T089 [US4] Extend `g2a-reservation.service.ts` with `getAllReservationsForAdmin(filters: G2AReservationFilters): Promise<G2AReservationResult>` function in `backend/src/services/g2a-reservation.service.ts` - **Note**: Verify g2a-reservation.service.ts exists; may need to create or extend g2a.service.ts
-- [x] T090 [US4] Extend `g2a-reservation.service.ts` with `cancelReservationForAdmin(reservationId: string): Promise<void>` function in `backend/src/services/g2a-reservation.service.ts` - **Note**: Verify g2a-reservation.service.ts exists; may need to create or extend g2a.service.ts
+- [x] T087 [US4] Extend `g2a-offer.service.ts` with `getAllOffersForAdmin(filters: G2AOfferFilters): Promise<G2AOfferResult>` function in `backend/src/services/g2a-offer.service.ts` - **Decision Criteria**: If `backend/src/services/g2a-offer.service.ts` exists, extend it. Otherwise, extend `backend/src/services/g2a.service.ts` with offer management functions. Check service existence in Phase 1 (T001-T004).
+- [x] T088 [US4] Extend `g2a-offer.service.ts` with `getOfferByIdForAdmin(offerId: string): Promise<G2AOffer>` function in `backend/src/services/g2a-offer.service.ts` - **Decision Criteria**: Same as T087 - use existing service if available, otherwise extend g2a.service.ts.
+- [x] T089 [US4] Extend `g2a-reservation.service.ts` with `getAllReservationsForAdmin(filters: G2AReservationFilters): Promise<G2AReservationResult>` function in `backend/src/services/g2a-reservation.service.ts` - **Decision Criteria**: If `backend/src/services/g2a-reservation.service.ts` exists, extend it. Otherwise, extend `backend/src/services/g2a.service.ts` with reservation management functions.
+- [x] T090 [US4] Extend `g2a-reservation.service.ts` with `cancelReservationForAdmin(reservationId: string): Promise<void>` function in `backend/src/services/g2a-reservation.service.ts` - **Decision Criteria**: Same as T089 - use existing service if available, otherwise extend g2a.service.ts.
 - [x] T091 [US4] Verify `g2a-metrics.service.ts` has `getG2AMetrics()` function exposed (already exists) in `backend/src/services/g2a-metrics.service.ts`
 
 #### Backend Controllers and Routes

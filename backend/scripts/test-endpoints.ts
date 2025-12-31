@@ -43,7 +43,7 @@ async function main() {
   });
 
   // 2. Registration
-  let testEmail = `test${Date.now()}@example.com`;
+  const testEmail = `test${Date.now()}@example.com`;
   let testToken = '';
   
   await test('User Registration', async () => {

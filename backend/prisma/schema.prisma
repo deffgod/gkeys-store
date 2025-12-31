@@ -8,6 +8,8 @@ generator client {
 datasource db {
   provider  = "postgres"
   url       = env("DATABASE_URL")
+  // directUrl is required for Prisma Accelerate connection pooling
+  // Used for migrations and direct database connections
   directUrl = env("DIRECT_URL")
 }
 
@@ -52,59 +54,59 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  orders        Order[]
-  transactions  Transaction[]
-  wishlist      Wishlist[]
-  cart          CartItem[]
-  loginHistory  LoginHistory[]
+  orders       Order[]
+  transactions Transaction[]
+  wishlist     Wishlist[]
+  cart         CartItem[]
+  loginHistory LoginHistory[]
 
   @@index([email])
   @@map("users")
 }
 
 model Game {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   title             String
-  slug              String   @unique
-  description       String   @db.Text
+  slug              String    @unique
+  description       String    @db.Text
   shortDescription  String?
-  price             Decimal  @db.Decimal(10, 2)
-  originalPrice     Decimal? @db.Decimal(10, 2)
-  discount          Int?     @default(0)
-  currency          String   @default("EUR")
+  price             Decimal   @db.Decimal(10, 2)
+  originalPrice     Decimal?  @db.Decimal(10, 2)
+  discount          Int?      @default(0)
+  currency          String    @default("EUR")
   image             String
   images            String[]
-  inStock           Boolean  @default(true)
+  inStock           Boolean   @default(true)
   g2aProductId      String?
-  g2aStock          Boolean  @default(false)
+  g2aStock          Boolean   @default(false)
   g2aLastSync       DateTime?
   releaseDate       DateTime
   metacriticScore   Int?
-  userRating        Decimal? @db.Decimal(3, 2)
+  userRating        Decimal?  @db.Decimal(3, 2)
   ageRating         String?
-  multiplayer       Boolean  @default(false)
+  multiplayer       Boolean   @default(false)
   activationService String?
   region            String?
   publisher         String?
-  isBestSeller      Boolean  @default(false)
-  isNew             Boolean  @default(false)
-  isPreorder        Boolean  @default(false)
+  isBestSeller      Boolean   @default(false)
+  isNew             Boolean   @default(false)
+  isPreorder        Boolean   @default(false)
   // Extended fields for advanced filters
-  ratingCritic      Int?     @db.SmallInt  // 0-100, optional
-  ratingUser        Int?     @db.SmallInt  // 0-100, optional
-  languages         String[]                // Array of language codes (ISO 639-1)
+  ratingCritic      Int?      @db.SmallInt // 0-100, optional
+  ratingUser        Int?      @db.SmallInt // 0-100, optional
+  languages         String[] // Array of language codes (ISO 639-1)
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  categories        GameCategory[]
-  genres            GameGenre[]
-  platforms         GamePlatform[]
-  tags              GameTag[]
-  keys              GameKey[]
-  orderItems        OrderItem[]
-  wishlist          Wishlist[]
-  cart              CartItem[]
+  categories GameCategory[]
+  genres     GameGenre[]
+  platforms  GamePlatform[]
+  tags       GameTag[]
+  keys       GameKey[]
+  orderItems OrderItem[]
+  wishlist   Wishlist[]
+  cart       CartItem[]
 
   @@index([slug])
   @@index([inStock])
@@ -121,16 +123,16 @@ model Game {
 }
 
 model GameKey {
-  id            String    @id @default(uuid())
-  gameId        String
-  key           String   @unique
-  orderId       String?
-  activated     Boolean   @default(false)
+  id             String    @id @default(uuid())
+  gameId         String
+  key            String    @unique
+  orderId        String?
+  activated      Boolean   @default(false)
   activationDate DateTime?
-  createdAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
 
-  game          Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  order         Order?    @relation(fields: [orderId], references: [id])
+  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id])
 
   @@index([gameId])
   @@index([orderId])
@@ -138,24 +140,24 @@ model GameKey {
 }
 
 model Order {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   userId          String
-  status          OrderStatus  @default(PENDING)
-  subtotal        Decimal      @db.Decimal(10, 2)
-  discount        Decimal      @default(0) @db.Decimal(10, 2)
-  total           Decimal      @db.Decimal(10, 2)
+  status          OrderStatus    @default(PENDING)
+  subtotal        Decimal        @db.Decimal(10, 2)
+  discount        Decimal        @default(0) @db.Decimal(10, 2)
+  total           Decimal        @db.Decimal(10, 2)
   paymentMethod   String?
   paymentStatus   PaymentStatus?
   promoCode       String?
-  externalOrderId String?       @unique // G2A order ID for webhook integration
+  externalOrderId String?        @unique // G2A order ID for webhook integration
 
-  createdAt       DateTime      @default(now())
-  completedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
 
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items           OrderItem[]
-  keys            GameKey[]
-  transaction     Transaction?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+  keys        GameKey[]
+  transaction Transaction?
 
   @@index([userId])
   @@index([status])
@@ -165,15 +167,15 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  gameId    String
-  quantity  Int     @default(1)
-  price     Decimal @db.Decimal(10, 2)
-  discount  Decimal @default(0) @db.Decimal(10, 2)
+  id       String  @id @default(uuid())
+  orderId  String
+  gameId   String
+  quantity Int     @default(1)
+  price    Decimal @db.Decimal(10, 2)
+  discount Decimal @default(0) @db.Decimal(10, 2)
 
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  game      Game    @relation(fields: [gameId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  game  Game  @relation(fields: [gameId], references: [id])
 
   @@index([orderId])
   @@index([gameId])
@@ -193,10 +195,10 @@ model Transaction {
   transactionHash String?         @unique
   gatewayResponse Json?
 
-  createdAt       DateTime        @default(now())
+  createdAt DateTime @default(now())
 
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order           Order?          @relation(fields: [orderId], references: [id])
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id])
 
   @@index([userId])
   @@index([type])
@@ -207,27 +209,27 @@ model Transaction {
 }
 
 model PaymentMethod {
-  id          String   @id @default(uuid())
-  name        String
-  type        String
-  icon        String?
-  available   Boolean  @default(true)
-  order       Int      @default(0)
-  config      Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  icon      String?
+  available Boolean  @default(true)
+  order     Int      @default(0)
+  config    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("payment_methods")
 }
 
 model PaymentForm {
-  id          String   @id @default(uuid())
-  name        String
-  fields      Json
-  validation  Json?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  fields     Json
+  validation Json?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("payment_forms")
 }
@@ -246,8 +248,8 @@ model Article {
   readTime    Int?
   tags        String[]
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
   @@index([category])
@@ -266,10 +268,10 @@ model GameCategory {
 }
 
 model GameGenre {
-  gameId   String
-  genreId  String
-  game     Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  genre    Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  gameId  String
+  genreId String
+  game    Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
 
   @@id([gameId, genreId])
   @@map("game_genres")
@@ -288,44 +290,44 @@ model GamePlatform {
 model GameTag {
   gameId String
   tagId  String
-  game   Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([gameId, tagId])
   @@map("game_tags")
 }
 
 model Category {
-  id    String @id @default(uuid())
-  name  String @unique
-  slug  String @unique
+  id    String         @id @default(uuid())
+  name  String         @unique
+  slug  String         @unique
   games GameCategory[]
 
   @@map("categories")
 }
 
 model Genre {
-  id    String @id @default(uuid())
-  name  String @unique
-  slug  String @unique
+  id    String      @id @default(uuid())
+  name  String      @unique
+  slug  String      @unique
   games GameGenre[]
 
   @@map("genres")
 }
 
 model Platform {
-  id    String @id @default(uuid())
-  name  String @unique
-  slug  String @unique
+  id    String         @id @default(uuid())
+  name  String         @unique
+  slug  String         @unique
   games GamePlatform[]
 
   @@map("platforms")
 }
 
 model Tag {
-  id    String @id @default(uuid())
-  name  String @unique
-  slug  String @unique
+  id    String    @id @default(uuid())
+  name  String    @unique
+  slug  String    @unique
   games GameTag[]
 
   @@map("tags")
@@ -336,8 +338,8 @@ model Wishlist {
   gameId  String
   addedAt DateTime @default(now())
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  game    Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@id([userId, gameId])
   @@index([userId])
@@ -345,13 +347,13 @@ model Wishlist {
 }
 
 model CartItem {
-  userId    String
-  gameId    String
-  quantity  Int      @default(1)
-  addedAt   DateTime @default(now())
+  userId   String
+  gameId   String
+  quantity Int      @default(1)
+  addedAt  DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@id([userId, gameId])
   @@index([userId])
@@ -359,15 +361,15 @@ model CartItem {
 }
 
 model PromoCode {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  discount    Decimal  @db.Decimal(5, 2)
-  maxUses     Int?
-  usedCount   Int      @default(0)
-  validFrom   DateTime
-  validUntil  DateTime
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  code       String   @unique
+  discount   Decimal  @db.Decimal(5, 2)
+  maxUses    Int?
+  usedCount  Int      @default(0)
+  validFrom  DateTime
+  validUntil DateTime
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
   @@index([code])
   @@map("promo_codes")
@@ -376,7 +378,7 @@ model PromoCode {
 model Session {
   id        String   @id @default(uuid())
   sessionId String   @unique
-  data      Json     // Stores cart/wishlist data
+  data      Json // Stores cart/wishlist data
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -411,4 +413,3 @@ model LoginHistory {
   @@index([createdAt])
   @@map("login_history")
 }
-

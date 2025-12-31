@@ -23,6 +23,30 @@ One-click deploy to Vercel. After deployment, configure environment variables in
 - ✅ **OpenAPI спецификация API** ([docs/api/](docs/api/))
 - ✅ Troubleshooting и FAQ
 
+### 🔧 Vercel Deployment & Environment Variables
+
+**Для быстрой настройки Vercel:**
+- 📋 **[VERCEL_ENV_QUICK.md](VERCEL_ENV_QUICK.md)** - Быстрая шпаргалка (скопируй-вставь)
+- 📖 **[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)** - Пошаговая инструкция настройки
+- 📊 **[ENV_VARIABLES_TABLE.md](ENV_VARIABLES_TABLE.md)** - Сводная таблица всех переменных
+- 📚 **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Полный справочник
+
+### 🎮 G2A Integration (NEW!)
+
+**Новая улучшенная интеграция G2A:**
+- 🚀 **[backend/src/lib/g2a/README.md](backend/src/lib/g2a/README.md)** - Документация G2A клиента
+- 📖 **[docs/g2a/client-usage.md](docs/g2a/client-usage.md)** - Руководство по использованию
+- 📝 **[backend/src/lib/g2a/IMPLEMENTATION_SUMMARY.md](backend/src/lib/g2a/IMPLEMENTATION_SUMMARY.md)** - Сводка реализации
+
+**Ключевые улучшения:**
+- ✅ Unified Client Architecture - единая точка входа
+- ✅ Dual Authentication - OAuth2 + Hash-based
+- ✅ Circuit Breaker & Rate Limiting - устойчивость к сбоям
+- ✅ Batch Operations - эффективные массовые операции
+- ✅ Advanced Filtering - гибкая система фильтрации
+- ✅ Delta Sync - инкрементальная синхронизация
+- ✅ 85%+ Test Coverage - comprehensive testing
+
 ### 📚 API Documentation
 
 **👉 [OpenAPI Specification](docs/api/openapi.yaml)** - Полная спецификация REST API в формате OpenAPI 3.0.

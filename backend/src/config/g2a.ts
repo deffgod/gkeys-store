@@ -9,6 +9,7 @@ export interface G2AConfig {
   env: G2AEnvironment;
   timeoutMs: number;
   retryMax: number;
+  email?: string; // Email for Export API key generation
 }
 
 /**
@@ -56,6 +57,7 @@ export const getG2AConfig = (): G2AConfig => {
   // Support both G2A_API_HASH and G2A_API_SECRET for backward compatibility
   // G2A_API_HASH is the preferred name, G2A_API_SECRET is deprecated
   const apiHash = process.env.G2A_API_HASH || process.env.G2A_API_SECRET || '';
+  const email = process.env.G2A_EMAIL || 'Welcome@nalytoo.com'; // Default email for Export API
   const env = (process.env.G2A_ENV as G2AEnvironment) || 'sandbox';
   const timeoutMs = Number(process.env.G2A_TIMEOUT_MS || 8000);
   const retryMax = Number(process.env.G2A_RETRY_MAX || 2);
@@ -67,6 +69,11 @@ export const getG2AConfig = (): G2AConfig => {
   // Warn if using deprecated G2A_API_SECRET
   if (process.env.G2A_API_SECRET && !process.env.G2A_API_HASH) {
     console.warn('[G2A Config] WARNING: G2A_API_SECRET is deprecated. Please use G2A_API_HASH instead.');
+  }
+
+  // Warn if G2A_EMAIL is not set and using Export API
+  if (!process.env.G2A_EMAIL) {
+    console.warn('[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation.');
   }
 
   const baseUrl = normalizeG2AUrl(rawUrl);
@@ -81,5 +88,6 @@ export const getG2AConfig = (): G2AConfig => {
     env,
     timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 8000,
     retryMax: Number.isFinite(retryMax) ? retryMax : 2,
+    email,
   };
 };

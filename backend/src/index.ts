@@ -101,7 +101,7 @@ async function getHealthStatus() {
     // Check database
     await prisma.$queryRaw`SELECT 1`;
     health.checks.database = 'ok';
-  } catch (err) {
+  } catch {
     health.checks.database = 'error';
     health.status = 'degraded';
   }
@@ -116,7 +116,7 @@ async function getHealthStatus() {
       health.checks.redis = 'disconnected';
       health.status = 'degraded';
     }
-  } catch (err) {
+  } catch {
     health.checks.redis = 'error';
     health.status = 'degraded';
   }
@@ -124,12 +124,12 @@ async function getHealthStatus() {
   try {
     // Check G2A connectivity (try to get config - if it throws, G2A is misconfigured)
     const { getG2AConfig } = await import('./config/g2a.js');
-    const config = getG2AConfig();
+    getG2AConfig(); // Verify config is accessible
     // Try a simple token validation check
     const { validateG2ACredentials } = await import('./services/g2a.service.js');
     validateG2ACredentials();
     health.checks.g2a = 'ok';
-  } catch (err) {
+  } catch {
     health.checks.g2a = 'error';
     health.status = 'degraded';
   }

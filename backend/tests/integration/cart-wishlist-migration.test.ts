@@ -10,7 +10,7 @@
  * Run with: npm test -- cart-wishlist-migration.test.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, beforeAll, afterAll } from '@jest/globals';
 // Note: This is a test structure template
 // Actual implementation requires:
 // - Test database setup

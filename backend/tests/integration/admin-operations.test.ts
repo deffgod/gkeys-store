@@ -11,7 +11,7 @@
  * Run with: npm test -- admin-operations.test.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, beforeAll, afterAll } from '@jest/globals';
 // Note: This is a test structure template
 // Actual implementation requires:
 // - Test database setup
@@ -20,8 +20,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 // - Mock Redis if needed
 
 describe('Admin Operations', () => {
-  let adminToken: string;
-  let adminUserId: string;
+  // TODO: Uncomment when implementing actual tests
+  // let adminToken: string;
+  // let adminUserId: string;
 
   beforeAll(async () => {
     // Setup test database

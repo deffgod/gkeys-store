@@ -19,7 +19,7 @@
     "test:endpoints": "tsx scripts/test-endpoints.ts",
     "test:g2a": "tsx scripts/test-g2a.ts",
     "test:integration": "tsx src/test-integration.ts",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint src prisma scripts tests --ext .ts --ignore-pattern 'dist' --ignore-pattern 'node_modules'",
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {

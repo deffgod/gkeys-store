@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { authApi } from '../services/authApi';
+import apiClient from '../services/api';
 
 export interface User {
   id: string;
@@ -29,6 +31,7 @@ interface AuthProviderProps {
 const TOKEN_KEY = 'gkeys_auth_token';
 const USER_KEY = 'gkeys_user';
 const TOKEN_EXPIRY_KEY = 'gkeys_token_expiry';
+const REFRESH_TOKEN_KEY = 'gkeys_refresh_token';
 
 
 
@@ -80,19 +83,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const now = new Date();
 
         if (expiryDate > now) {
+          // Set token in API client
+          apiClient.setToken(storedToken);
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
           
           // Verify token is still valid by checking current user
           try {
-            const { authApi } = await import('../services/authApi');
-            await authApi.getCurrentUser();
+            const currentUser = await authApi.getCurrentUser();
+            // Update user data if changed
+            const updatedUser: User = {
+              id: currentUser.id,
+              email: currentUser.email,
+              name: currentUser.name || currentUser.nickname || currentUser.email,
+              avatar: currentUser.avatar,
+              role: currentUser.role,
+            };
+            setUser(updatedUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
           } catch (error) {
+            console.error('Token verification failed:', error);
             // Token invalid, try to refresh
             await refreshToken();
           }
         } else {
           // Token expired, try to refresh
+          console.log('Token expired, refreshing...');
           await refreshToken();
         }
       }
@@ -107,8 +123,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   async function login(email: string, password: string) {
     setIsLoading(true);
     try {
-      // Use actual API call
-      const { authApi } = await import('../services/authApi');
       const response = await authApi.login({ email, password });
 
       // Transform response to User format
@@ -127,13 +141,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(user);
       setToken(response.token);
 
+      // Token is already set in apiClient by authApi.login
+      // But we ensure it's set
+      apiClient.setToken(response.token);
+
       // Store in localStorage
       localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem('gkeys_refresh_token', response.refreshToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
+      
+      console.log('✅ Login successful', { userId: user.id, email: user.email });
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('❌ Login failed:', error);
+      clearAuth();
       throw error;
     } finally {
       setIsLoading(false);
@@ -143,8 +164,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   async function register(email: string, password: string, name: string) {
     setIsLoading(true);
     try {
-      // Use actual API call
-      const { authApi } = await import('../services/authApi');
       const response = await authApi.register({ email, password, name });
 
       // Transform response to User format
@@ -163,13 +182,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(user);
       setToken(response.token);
 
+      // Token is already set in apiClient by authApi.register
+      // But we ensure it's set
+      apiClient.setToken(response.token);
+
       // Store in localStorage
       localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem('gkeys_refresh_token', response.refreshToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
+      
+      console.log('✅ Registration successful', { userId: user.id, email: user.email });
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('❌ Registration failed:', error);
+      clearAuth();
       throw error;
     } finally {
       setIsLoading(false);
@@ -179,10 +205,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   async function logout() {
     try {
       // Call logout API
-      const { authApi } = await import('../services/authApi');
       await authApi.logout();
+      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('Logout API call failed:', error);
+      console.error('⚠️ Logout API call failed:', error);
       // Continue with logout even if API call fails
     } finally {
       clearAuth();
@@ -191,34 +217,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function refreshToken() {
     try {
-      const storedRefreshToken = localStorage.getItem('gkeys_refresh_token');
+      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       if (!storedRefreshToken) {
-        throw new Error('No refresh token available');
+        console.warn('⚠️ No refresh token available, clearing auth');
+        clearAuth();
+        return;
       }
 
-      // Use actual API call
-      const { authApi } = await import('../services/authApi');
+      console.log('🔄 Refreshing token...');
       const response = await authApi.refreshToken(storedRefreshToken);
 
       const expiryTime = new Date();
       expiryTime.setSeconds(expiryTime.getSeconds() + response.expiresIn);
 
       setToken(response.token);
+      
+      // Token is already set in apiClient by authApi.refreshToken
+      // But we ensure it's set
+      apiClient.setToken(response.token);
+      
       localStorage.setItem(TOKEN_KEY, response.token);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
+      
+      console.log('✅ Token refreshed successfully');
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      console.error('❌ Token refresh failed:', error);
       clearAuth();
+      throw error;
     }
   }
 
   function clearAuth() {
+    console.log('🧹 Clearing auth state');
     setUser(null);
     setToken(null);
+    apiClient.setToken(null);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
-    localStorage.removeItem('gkeys_refresh_token');
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 
   const value: AuthContextType = {

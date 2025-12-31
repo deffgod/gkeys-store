@@ -78,11 +78,9 @@ import {
   getUserCartForAdmin, 
   updateUserCartForAdmin, 
   clearUserCartForAdmin,
-  CartResponse,
 } from '../services/cart.service.js';
 import { 
   getUserWishlistForAdmin,
-  WishlistResponse,
 } from '../services/wishlist.service.js';
 import {
   createFAQ,

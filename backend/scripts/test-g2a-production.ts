@@ -9,10 +9,10 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 // Production G2A credentials
-const G2A_API_KEY = 'DNvKyOKBjWTVBmEw'; // Client ID
-const G2A_API_HASH = 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS'; // Client Secret
+const G2A_API_KEY = 'ibHtsEljmCxjOFAn'; // Client ID
+const G2A_API_HASH = 'HrsPmuOlWjqBMHnQWIgfchUqBTBYcRph'; // Client Secret
 const G2A_API_URL = 'https://api.g2a.com';
-const G2A_EMAIL = process.env.G2A_EMAIL || 'test@g2a.com'; // Required for Export API
+const G2A_EMAIL = process.env.G2A_EMAIL || 'Welcome@nalytoo.com'; // Required for Export API
 
 // Timeout for requests
 const TIMEOUT_MS = 30000;

@@ -42,6 +42,40 @@ interface OAuth2TokenResponse {
 }
 
 /**
+ * Generate API Key for G2A Export API (Developers API)
+ * Formula: sha256(ClientId + Email + ClientSecret)
+ * 
+ * @param clientId - G2A Client ID (defaults to G2A_API_KEY from config)
+ * @param email - Email address associated with G2A account (defaults to G2A_EMAIL from env)
+ * @param clientSecret - G2A Client Secret (defaults to G2A_API_HASH from config)
+ * @returns SHA256 hash of (ClientId + Email + ClientSecret)
+ */
+export const generateExportApiKey = (
+  clientId?: string,
+  email?: string,
+  clientSecret?: string
+): string => {
+  const config = getG2AConfig();
+  const finalClientId = clientId || config.apiKey;
+  const finalEmail = email || process.env.G2A_EMAIL || 'Welcome@nalytoo.com';
+  const finalClientSecret = clientSecret || config.apiHash;
+
+  if (!finalClientId || !finalEmail || !finalClientSecret) {
+    throw new AppError(
+      'G2A credentials missing for Export API key generation: ClientId, Email, and ClientSecret are required',
+      500
+    );
+  }
+
+  const apiKey = crypto
+    .createHash('sha256')
+    .update(finalClientId + finalEmail + finalClientSecret)
+    .digest('hex');
+
+  return apiKey;
+};
+
+/**
  * Get OAuth2 token for Import API
  * Token is cached in Redis with TTL matching expires_in
  * Token is refreshed if it expires within 5 minutes
@@ -572,18 +606,11 @@ export const createG2AClient = async (apiType: 'import' | 'export' = 'export'): 
       headers.Authorization = `${G2A_API_HASH}, ${G2A_API_KEY}`;
       authMethod = 'Authorization header (sandbox)';
     } else {
-      // Production Export API uses hash-based authentication with timestamp
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const hash = crypto
-        .createHash('sha256')
-        .update(G2A_API_HASH + G2A_API_KEY + timestamp)
-        .digest('hex');
-      
-      headers['X-API-HASH'] = G2A_API_HASH;
-      headers['X-API-KEY'] = G2A_API_KEY;
-      headers['X-G2A-Timestamp'] = timestamp;
-      headers['X-G2A-Hash'] = hash;
-      authMethod = 'Hash-based';
+      // Production Export API (Developers API) uses Authorization header with generated API key
+      // Format: Authorization: "ClientId, ApiKey" where ApiKey = sha256(ClientId + Email + ClientSecret)
+      const exportApiKey = generateExportApiKey();
+      headers.Authorization = `${G2A_API_KEY}, ${exportApiKey}`;
+      authMethod = 'Authorization header (Export API with generated key)';
     }
   }
 
@@ -1241,7 +1268,7 @@ export const syncG2ACatalog = async (options?: {
   const errors: Array<{ productId: string; error: string }> = [];
   
   try {
-    let allProducts: G2AProduct[] = [];
+    const allProducts: G2AProduct[] = [];
     
     if (productIds && productIds.length > 0) {
       // Sync specific products
@@ -1270,7 +1297,7 @@ export const syncG2ACatalog = async (options?: {
       for (const category of categoriesToSync) {
         logger.info(`Fetching products from category: ${category}`);
         let page = 1;
-        let hasMore = true;
+        const hasMore = true;
         
         // Get total pages for this category first (estimate)
         let totalPagesForCategory = 0;

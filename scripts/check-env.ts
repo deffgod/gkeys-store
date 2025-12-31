@@ -6,6 +6,25 @@
  * для frontend и backend приложения.
  */
 
+import dotenv from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get current directory in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from .env files
+const rootDir = resolve(__dirname, '..');
+const backendDir = resolve(rootDir, 'backend');
+
+// Load backend .env first (has priority)
+dotenv.config({ path: resolve(backendDir, '.env') });
+// Load root .env if exists
+dotenv.config({ path: resolve(rootDir, '.env') });
+// Load frontend .env.local if exists
+dotenv.config({ path: resolve(rootDir, '.env.local') });
+
 interface EnvVar {
   name: string;
   required: boolean;
@@ -39,16 +58,16 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'PostgreSQL connection string',
     category: 'backend',
-    validator: (value: string) => value.startsWith('postgresql://'),
-    errorMessage: 'Должен начинаться с postgresql://',
+    validator: (value: string) => value.startsWith('postgresql://') || value.startsWith('postgres://'),
+    errorMessage: 'Должен начинаться с postgresql:// или postgres://',
   },
   {
     name: 'DIRECT_URL',
     required: true,
     description: 'Прямое подключение к БД (обычно = DATABASE_URL)',
     category: 'backend',
-    validator: (value: string) => value.startsWith('postgresql://'),
-    errorMessage: 'Должен начинаться с postgresql://',
+    validator: (value: string) => value.startsWith('postgresql://') || value.startsWith('postgres://'),
+    errorMessage: 'Должен начинаться с postgresql:// или postgres://',
   },
   
   // Backend - JWT
@@ -127,7 +146,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: false,
     description: 'Окружение G2A (sandbox или live)',
     category: 'g2a',
-    validator: (value: string) => ['sandbox', 'live'].includes(value),
+    validator: (value: string) => ['sandbox', 'live'].includes(value.trim().toLowerCase()),
     errorMessage: 'Должен быть: sandbox или live',
   },
 ];
@@ -254,7 +273,8 @@ function main(): void {
   printSummary(results);
 }
 
-if (require.main === module) {
+// Run if executed directly (ES module check)
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 

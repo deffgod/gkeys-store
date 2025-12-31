@@ -30,21 +30,10 @@ export async function initializeDatabase(): Promise<boolean> {
   }
 }
 
-/**
- * Get Prisma client instance
- * @throws Error if database is not initialized
- */
-function getPrismaClient() {
-  if (!prisma) {
-    throw new Error('Prisma client not initialized. Call initializeDatabase() first.');
-  }
-  return prisma;
-}
-
 // Initialize on module load (non-blocking)
 if (process.env.NODE_ENV !== 'test') {
-  initializeDatabase().catch((err) => {
-    console.error('Failed to initialize database:', err);
+  initializeDatabase().catch((error) => {
+    console.error('Failed to initialize database:', error);
   });
 }
 

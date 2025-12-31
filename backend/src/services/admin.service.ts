@@ -1007,7 +1007,7 @@ export const updateBlogPost = async (id: string, data: BlogPostUpdateInput) => {
   }
 
   const updateData: Prisma.ArticleUpdateInput = {};
-  let oldSlug = existingPost.slug;
+  const oldSlug = existingPost.slug;
   let oldCategory = existingPost.category;
 
   if (data.title !== undefined) {
