@@ -77,6 +77,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
         marginBottom: 0,
         zIndex: 1,
       }}
+      className="hero-content-responsive"
       className="hero-section"
     >
       {/* Dark overlay from top */}
@@ -98,7 +99,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
         <Aurora color={colors.accent} intensity={0.15} />
       </div>
       
-      <div style={{ maxWidth: '520px', zIndex: 2, width: '100%', position: 'relative' }}>
+      <div style={{ maxWidth: '520px', zIndex: 2, width: '100%', position: 'relative', padding: '0 16px' }}>
         {game.discount && (
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
@@ -126,7 +127,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           transition={{ delay: 0.1 }}
           className="hero-title"
           style={{
-            fontSize: '72px',
+            fontSize: 'clamp(32px, 8vw, 72px)',
             fontWeight: '700',
             marginBottom: '16px',
             lineHeight: '1.1',
@@ -145,7 +146,7 @@ export const HeroContent: React.FC<HeroContentProps> = ({
             transition={{ delay: 0.2 }}
             style={{
               color: '#999999',
-              fontSize: '15px',
+              fontSize: 'clamp(14px, 2vw, 15px)',
               marginBottom: '20px',
               lineHeight: '1.5',
             }}
@@ -159,18 +160,19 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
           style={{
-            fontSize: '28px',
+            fontSize: 'clamp(20px, 4vw, 28px)',
             fontWeight: '700',
             marginBottom: '20px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
+            flexWrap: 'wrap',
           }}
           className="hero-price"
         >
           {game.originalPrice && game.discount ? (
             <>
-              <span style={{ textDecoration: 'line-through', color: '#666666', fontSize: '24px' }}>
+              <span style={{ textDecoration: 'line-through', color: '#666666', fontSize: 'clamp(18px, 3.5vw, 24px)' }}>
                 {game.originalPrice}€
               </span>
               <span>{game.price}€</span>
@@ -275,6 +277,42 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           </Link>
         </motion.div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .hero-content-responsive {
+            height: 500px !important;
+            minHeight: 400px !important;
+            padding: 24px 16px !important;
+          }
+          .hero-content-responsive .hero-title {
+            font-size: 36px !important;
+          }
+          .hero-content-responsive .hero-price {
+            font-size: 22px !important;
+          }
+          .hero-buttons {
+            flex-direction: column;
+          }
+          .hero-buttons > * {
+            width: 100%;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-content-responsive {
+            height: 450px !important;
+            minHeight: 350px !important;
+            padding: 20px 12px !important;
+          }
+          .hero-content-responsive .hero-title {
+            font-size: 28px !important;
+            margin-bottom: 12px !important;
+          }
+          .hero-content-responsive .hero-price {
+            font-size: 18px !important;
+            margin-bottom: 16px !important;
+          }
+        }
+      `}</style>
     </motion.div>
   );
 };

@@ -44,261 +44,259 @@ const ChevronRightIcon = () => (
 
 // Random Picks Section Component
 const RandomPicksSection = ({ games, loading }) => {
-  const scrollRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
     }
   };
 
-  // Background image with dark overlay
-  const backgroundImageStyle = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${hitMeWithSmthGoodBg})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    zIndex: 0,
-  };
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: '60px 80px',
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <div style={{ marginBottom: '32px' }}>
+          <div
+            style={{
+              width: '200px',
+              height: '24px',
+              backgroundColor: theme.colors.surface,
+              borderRadius: '4px',
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '16px', overflow: 'hidden' }}>
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                minWidth: '292px',
+                height: '292px',
+                backgroundColor: theme.colors.surface,
+                borderRadius: '36px',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <section
+    <div
       style={{
-        padding: '40px 0 60px',
+        padding: '60px 80px',
+        backgroundColor: theme.colors.background,
+        backgroundImage: `url(${hitMeWithSmthGoodBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         position: 'relative',
       }}
     >
+      {/* Overlay for better text readability */}
       <div
         style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          padding: '0 24px',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          zIndex: 0,
         }}
-      >
+      />
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Section Header */}
         <div
           style={{
-            position: 'relative',
-            backgroundColor: theme.colors.surface,
-            borderRadius: '16px',
-            padding: '40px 32px',
-            border: `1px solid ${theme.colors.border}`,
-            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '32px',
           }}
         >
-          {/* Background Pattern */}
-          <div style={backgroundImageStyle} />
-
-          {/* Content */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <SparkleIcon />
             <h2
               style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: theme.colors.text,
-                margin: '0 0 8px 0',
+                margin: 0,
               }}
             >
               Hit me with something good
             </h2>
-            <p
-              style={{
-                fontSize: '14px',
-                color: theme.colors.primary,
-                margin: '0 0 32px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <SparkleIcon />
-              Surprisingly awesome random picks
-            </p>
+          </div>
+        </div>
 
-            {loading ? (
-              <div style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '40px' }}>
-                Loading...
+        {/* Games Carousel */}
+        <div style={{ position: 'relative' }}>
+          {games && games.length > 0 ? (
+            <div style={{ position: 'relative' }}>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={scrollLeft}
+                style={{
+                  position: 'absolute',
+                  left: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: theme.colors.surface,
+                  border: `1px solid ${theme.colors.border}`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: theme.colors.text,
+                  zIndex: 10,
+                }}
+                className="carousel-btn-left"
+              >
+                <ChevronLeftIcon />
+              </motion.button>
+
+              <div
+                ref={scrollContainerRef}
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  scrollSnapType: 'x mandatory',
+                }}
+                className="carousel-scroll"
+              >
+                {games.map((game) => (
+                  <div
+                    key={game.id}
+                    style={{
+                      minWidth: '292px',
+                      maxWidth: '292px',
+                      flexShrink: 0,
+                      scrollSnapAlign: 'start',
+                    }}
+                  >
+                    <GameCard game={game} size="medium" />
+                  </div>
+                ))}
               </div>
-            ) : games.length > 0 ? (
-              <div style={{ position: 'relative' }}>
-                {/* Scroll Buttons */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={scrollLeft}
-                  style={{
-                    position: 'absolute',
-                    left: '-20px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    backgroundColor: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: theme.colors.text,
-                    zIndex: 10,
-                  }}
-                  className="carousel-btn-left"
-                >
-                  <ChevronLeftIcon />
-                </motion.button>
 
-                <div
-                  ref={scrollRef}
-                  style={{
-                    display: 'flex',
-                    gap: '16px',
-                    overflowX: 'auto',
-                    scrollSnapType: 'x mandatory',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    paddingBottom: '8px',
-                  }}
-                  className="carousel-scroll"
-                >
-                  {games.map((game) => (
-                    <div
-                      key={game.id}
-                      style={{
-                        minWidth: '292px',
-                        maxWidth: '292px',
-                        flexShrink: 0,
-                        scrollSnapAlign: 'start',
-                      }}
-                    >
-                      <GameCard game={game} size="medium" />
-                    </div>
-                  ))}
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={scrollRight}
-                  style={{
-                    position: 'absolute',
-                    right: '-20px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    backgroundColor: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: theme.colors.text,
-                    zIndex: 10,
-                  }}
-                  className="carousel-btn-right"
-                >
-                  <ChevronRightIcon />
-                </motion.button>
-              </div>
-            ) : (
-              <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '40px' }}>
-                No games available at the moment.
-              </p>
-            )}
-
-            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
-              <Link to="/catalog?sort=random" style={{ textDecoration: 'none' }}>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{
-                    padding: '12px 24px',
-                    backgroundColor: theme.colors.primary,
-                    color: '#000',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Check all
-                </motion.button>
-              </Link>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={scrollRight}
+                style={{
+                  position: 'absolute',
+                  right: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: theme.colors.surface,
+                  border: `1px solid ${theme.colors.border}`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: theme.colors.text,
+                  zIndex: 10,
+                }}
+                className="carousel-btn-right"
+              >
+                <ChevronRightIcon />
+              </motion.button>
             </div>
+          ) : (
+            <p style={{ color: theme.colors.textSecondary, textAlign: 'center', padding: '40px' }}>
+              No games available at the moment.
+            </p>
+          )}
+
+          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+            <Link to="/catalog" style={{ textDecoration: 'none' }}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  padding: '12px 32px',
+                  backgroundColor: theme.colors.primary,
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '50px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                See more
+              </motion.button>
+            </Link>
           </div>
         </div>
       </div>
-
-      <style>
-        {`
-          .carousel-scroll::-webkit-scrollbar {
-            display: none;
-          }
-          @media (max-width: 600px) {
-            .carousel-btn-left, .carousel-btn-right {
-              display: none !important;
-            }
-          }
-        `}
-      </style>
-    </section>
+    </div>
   );
 };
 
-/**
- * Fetch data for a single section based on its configuration
- */
+// Helper function to fetch section data based on configuration
 const fetchSectionData = async (section) => {
   try {
     const { dataSource } = section;
-    let games = [];
 
-    if (dataSource.type === 'api' && dataSource.method) {
-      // Type-safe method access
-      const method = gamesApi[dataSource.method];
-      if (!method || typeof method !== 'function') {
-        throw new Error(`Method ${dataSource.method} not found in gamesApi`);
-      }
+    if (dataSource.type === 'api') {
+      const method = dataSource.method;
+      const params = dataSource.params || {};
 
-      if (dataSource.params) {
-        // Call method with params (e.g., getGamesByGenre('Action'))
-        const paramValues = Object.values(dataSource.params);
-        games = await method(...paramValues);
-      } else {
-        // Call method without params (e.g., getBestSellers())
-        games = await method();
+      switch (method) {
+        case 'getBestSellers':
+          return { success: true, games: await gamesApi.getBestSellers(params.genre), error: null };
+        case 'getNewInCatalog':
+          return { success: true, games: await gamesApi.getNewInCatalog(), error: null };
+        case 'getPreorders':
+          return { success: true, games: await gamesApi.getPreorders(), error: null };
+        case 'getNewGames':
+          return { success: true, games: await gamesApi.getNewGames(), error: null };
+        case 'getGamesByGenre':
+          return { success: true, games: await gamesApi.getGamesByGenre(params.genre), error: null };
+        default:
+          // Fallback to random games if method not found
+          console.warn(`Unknown API method: ${method}, falling back to random games`);
+          return { success: true, games: await gamesApi.getRandomGames(12), error: null };
       }
     } else if (dataSource.type === 'collection') {
-      // Fetch collections and filter by collectionId
-      const collections = await gamesApi.getCollections();
-      const collection = collections.find(
-        (c) =>
-          c.id === dataSource.collectionId ||
-          c.title.toLowerCase().includes(dataSource.collectionId?.toLowerCase() || '') ||
-          c.value.toLowerCase().includes(dataSource.collectionId?.toLowerCase() || '')
-      );
-      games = collection?.games || [];
+      // For collections, use random games as fallback for now
+      // In production, you would have a specific API endpoint for collections
+      console.warn(`Collection ${dataSource.collectionId} not implemented, using random games`);
+      return { success: true, games: await gamesApi.getRandomGames(12), error: null };
     }
 
     return {
-      success: true,
-      games: Array.isArray(games) ? games : [],
-      error: null,
+      success: false,
+      games: [],
+      error: 'Invalid data source configuration',
     };
   } catch (error) {
-    console.warn(`Failed to fetch data for section ${section.id}:`, error);
+    console.error(`Error fetching section ${section.id}:`, error);
     return {
       success: false,
       games: [],
@@ -360,7 +358,7 @@ export default function HomePage() {
 
       // Update section states
       results.forEach((result, index) => {
-        if (index < sectionPromises.length) {
+        if (index < homepageSections.length) {
           // Regular section
           const { sectionId, success, games, error } =
             result.status === 'fulfilled' ? result.value : { sectionId: homepageSections[index].id, success: false, games: [], error: 'Failed to fetch' };
@@ -418,53 +416,39 @@ export default function HomePage() {
           minHeight: '100vh',
           backgroundColor: theme.colors.background,
           color: theme.colors.text,
-          padding: '40px 24px',
         }}
       >
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          {/* Hero Section Skeleton */}
-          <div
-            style={{
-              height: '600px',
-              backgroundColor: theme.colors.surface,
-              borderRadius: '16px',
-              marginBottom: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: theme.colors.textSecondary,
-            }}
-          >
-            Loading featured games...
-          </div>
+        {/* Hero Skeleton */}
+        <div
+          style={{
+            height: '600px',
+            backgroundColor: theme.colors.surface,
+            marginBottom: '60px',
+          }}
+        />
 
-          {/* Game Sections Skeleton */}
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} style={{ marginBottom: '40px' }}>
+        {/* Section Skeletons */}
+        <div style={{ padding: '0 80px' }}>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} style={{ marginBottom: '60px' }}>
               <div
                 style={{
-                  height: '28px',
                   width: '200px',
+                  height: '32px',
                   backgroundColor: theme.colors.surface,
-                  borderRadius: '8px',
+                  borderRadius: '4px',
                   marginBottom: '24px',
                 }}
               />
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(6, 1fr)',
-                  gap: '16px',
-                }}
-              >
-                {[1, 2, 3, 4, 5, 6].map((j) => (
+              <div style={{ display: 'flex', gap: '16px', overflow: 'hidden' }}>
+                {[...Array(6)].map((_, j) => (
                   <div
                     key={j}
                     style={{
-                      aspectRatio: '3/4',
+                      minWidth: '292px',
+                      height: '292px',
                       backgroundColor: theme.colors.surface,
-                      borderRadius: '12px',
-                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '36px',
                     }}
                   />
                 ))}
@@ -492,6 +476,7 @@ export default function HomePage() {
         const sectionState = sectionStates[section.id];
         const games = sectionState?.games || [];
 
+        // Always render section, even if empty (GameSection will handle loading/empty states)
         return (
           <GameSection
             key={section.id}

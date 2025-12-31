@@ -238,23 +238,51 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
               continue;
             }
 
+            // Generate slug from title
+            const slug = product.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .substring(0, 100); // Limit length
+
+            // Get price from G2A product (use minPrice or retailMinBasePrice)
+            const price = (product as any).minPrice || 
+                         (product as any).retailMinBasePrice || 
+                         product.price || 
+                         0;
+
+            // Get image URL
+            const imageUrl = product.coverImage || product.images?.[0] || '';
+            if (!imageUrl) {
+              console.warn(`⚠️  Product ${product.id} has no image, skipping`);
+              totalSkipped++;
+              continue;
+            }
+
+            // Get release date (required field)
+            const releaseDate = product.releaseDate 
+              ? new Date(product.releaseDate) 
+              : new Date(); // Default to today if not provided
+
             // Create game in database
             await prisma.game.create({
               data: {
                 title: product.name,
+                slug: slug,
                 description: product.description || product.shortDescription || '',
-                price: product.price,
+                price: price,
                 currency: product.currency || 'USD',
-                stock: product.qty || 0,
-                platform: product.platform || 'PC',
-                imageUrl: product.coverImage || product.images?.[0] || null,
+                image: imageUrl,
+                images: product.images || [imageUrl],
+                inStock: (product.qty || 0) > 0,
                 g2aProductId: product.id,
+                g2aStock: (product.qty || 0) > 0,
                 g2aLastSync: new Date(),
+                releaseDate: releaseDate,
                 // Map additional fields
-                developer: product.developer || null,
                 publisher: product.publisher || null,
-                releaseDate: product.releaseDate ? new Date(product.releaseDate) : null,
                 region: product.region || null,
+                activationService: product.platform || null,
               },
             });
 

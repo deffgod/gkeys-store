@@ -57,12 +57,15 @@ export class HashAuthenticator {
   /**
    * Generate authentication headers for sandbox environment
    * Sandbox uses simplified Authorization header
+   * Format: "ClientId, ApiKey" (not "ApiHash, ClientId")
    */
   getSandboxAuthHeaders(): AuthHeaders {
     this.logger.debug('Generated sandbox auth headers');
     
+    // For sandbox: Authorization: "ClientId, ApiKey"
+    // Where apiKey is the Client ID and apiHash is the API Key
     return {
-      'Authorization': `${this.apiHash}, ${this.apiKey}`,
+      'Authorization': `${this.apiKey}, ${this.apiHash}`,
     };
   }
   

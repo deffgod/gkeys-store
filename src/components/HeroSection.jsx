@@ -29,11 +29,41 @@ export default function HeroSection() {
   useEffect(() => {
     const fetchHeroGames = async () => {
       try {
-        // Fetch best sellers for hero carousel
-        const bestSellers = await gamesApi.getBestSellers();
-        if (bestSellers.length > 0) {
+        // Fetch all games for hero carousel - try multiple sources
+        let allGames = [];
+        
+        // Try to get best sellers first
+        try {
+          const bestSellers = await gamesApi.getBestSellers();
+          allGames = [...allGames, ...bestSellers];
+        } catch (e) {
+          console.warn('Failed to load best sellers:', e);
+        }
+        
+        // Try to get new games
+        try {
+          const newGames = await gamesApi.getNewGames();
+          allGames = [...allGames, ...newGames];
+        } catch (e) {
+          console.warn('Failed to load new games:', e);
+        }
+        
+        // Try to get random games to fill up
+        try {
+          const randomGames = await gamesApi.getRandomGames(30);
+          allGames = [...allGames, ...randomGames];
+        } catch (e) {
+          console.warn('Failed to load random games:', e);
+        }
+        
+        // Remove duplicates by id
+        const uniqueGames = Array.from(
+          new Map(allGames.map(game => [game.id, game])).values()
+        );
+        
+        if (uniqueGames.length > 0) {
           // Transform to hero format with images array
-          const transformed = bestSellers.slice(0, 10).map(game => ({
+          const transformed = uniqueGames.map(game => ({
             ...game,
             // Use first image from images array or fallback to image
             image: game.images && game.images.length > 0 ? game.images[0] : game.image,
@@ -122,10 +152,10 @@ export default function HeroSection() {
           right: 0,
           maxWidth: '1400px',
           margin: '0 auto',
-          padding: '24px 24px 16px',
+          padding: 'clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px) clamp(8px, 1.5vw, 12px)',
           zIndex: 10,
           pointerEvents: 'none',
-          maxHeight: '160px',
+          maxHeight: 'clamp(140px, 20vw, 160px)',
           overflow: 'hidden',
         }}
         className="hero-carousel-container"
@@ -140,6 +170,23 @@ export default function HeroSection() {
           />
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .hero-section {
+            margin-bottom: 0 !important;
+          }
+          .hero-carousel-container {
+            padding: 12px 12px 8px !important;
+            max-height: 140px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-carousel-container {
+            padding: 10px 8px 6px !important;
+            max-height: 120px !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }

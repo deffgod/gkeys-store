@@ -1,7 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/utils/bcrypt';
+import dotenv from 'dotenv';
 
-const prisma = new PrismaClient();
+// Load environment variables
+dotenv.config();
+
+// Use direct connection for seed script (bypass Prisma Accelerate)
+// This is necessary because seed operations need direct database access
+const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (!databaseUrl) {
+  console.error('❌ DATABASE_URL or DIRECT_URL not found in environment variables');
+  process.exit(1);
+}
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: databaseUrl,
+    },
+  },
+});
 
 async function main() {
   console.log('🌱 Seeding database...');

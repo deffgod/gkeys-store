@@ -124,13 +124,13 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
           onMouseLeave={() => autoPlay && startAutoPlay()}
           style={{
             position: 'absolute',
-            left: '8px',
+            left: '4px',
             top: '50%',
             transform: 'translateY(-50%) translateZ(0)',
             zIndex: 20,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
             color: '#fff',
-            padding: '8px',
+            padding: 'clamp(6px, 1.5vw, 8px)',
             borderRadius: '50%',
             border: 'none',
             cursor: 'pointer',
@@ -138,6 +138,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             willChange: 'transform',
+            minWidth: '32px',
+            minHeight: '32px',
           }}
           aria-label="Previous"
         >
@@ -147,17 +149,17 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 
       <div
         ref={containerRef}
-        style={{
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          scrollSnapType: 'x mandatory',
-          display: 'flex',
-          gap: '12px',
-          padding: '8px 0',
-          willChange: 'scroll-position',
-          WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
-        }}
+          style={{
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            scrollSnapType: 'x mandatory',
+            display: 'flex',
+            gap: 'clamp(8px, 2vw, 12px)',
+            padding: '8px 0',
+            willChange: 'scroll-position',
+            WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+          }}
         onMouseEnter={stopAutoPlay}
         onMouseLeave={() => autoPlay && startAutoPlay()}
       >
@@ -184,8 +186,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
               onClick={() => onGameSelect(game)}
               style={{
                 flexShrink: 0,
-                width: '120px',
-                height: '120px',
+                width: 'clamp(80px, 15vw, 120px)',
+                height: 'clamp(80px, 15vw, 120px)',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 cursor: 'pointer',
@@ -261,13 +263,13 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
           onMouseLeave={() => autoPlay && startAutoPlay()}
           style={{
             position: 'absolute',
-            right: '8px',
+            right: '4px',
             top: '50%',
             transform: 'translateY(-50%) translateZ(0)',
             zIndex: 20,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
             color: '#fff',
-            padding: '8px',
+            padding: 'clamp(6px, 1.5vw, 8px)',
             borderRadius: '50%',
             border: 'none',
             cursor: 'pointer',
@@ -275,12 +277,29 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             willChange: 'transform',
+            minWidth: '32px',
+            minHeight: '32px',
           }}
           aria-label="Next"
         >
           <ChevronRightIcon />
         </motion.button>
       )}
+      <style>{`
+        @media (max-width: 768px) {
+          .hero-carousel-item {
+            width: 100px !important;
+            height: 100px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-carousel-item {
+            width: 80px !important;
+            height: 80px !important;
+            border-radius: 8px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
