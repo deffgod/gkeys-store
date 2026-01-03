@@ -546,7 +546,7 @@ export default function WishlistPage() {
             />
 
             {/* Wishlist Content */}
-            <div className="flex-1 flex flex-col gap-6">
+            <div className="flex-1 flex flex-col gap-6 w-full min-w-0">
             {wishlistGames.length > 0 ? (
               <>
                 <div className="flex items-center justify-between mb-6">
@@ -708,7 +708,7 @@ export default function WishlistPage() {
                 </div>
 
                 {/* Random Games Section - 8 random games */}
-                <section className="mt-12 pt-12 border-t border-design-border">
+                <section className="mt-12 pt-12 pb-8 border-t border-design-border w-full">
                   <h2 className="text-2xl font-bold text-design-text mb-6">You might also like</h2>
                   {loadingRandom ? (
                     <div className="grid grid-cols-1 design-tablet:grid-cols-2 design-desktop:grid-cols-4 gap-6 random-games-grid">
@@ -743,12 +743,12 @@ export default function WishlistPage() {
               </>
             ) : (
               <>
-                <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="flex flex-col items-center justify-center py-20 px-4 text-center w-full">
                   <div className="mb-4">
                     <Heart className="h-16 w-16 text-[#00C8C2]" fill="#00C8C2" />
                   </div>
                   <h2 className="text-2xl font-bold text-design-text mb-2">Your wishlist is empty</h2>
-                  <p className="text-design-text-secondary mb-6">
+                  <p className="text-design-text-secondary mb-6 max-w-md">
                     Add items using the <Icons.Heart /> button. We'll notify you when they go on sale!
                   </p>
                   <Link 
@@ -760,7 +760,7 @@ export default function WishlistPage() {
                 </div>
 
                 {/* Random Games Section - also shown when wishlist is empty (8 random games) */}
-                <section className="mt-12 pt-12 border-t border-design-border">
+                <section className="mt-12 pt-12 pb-8 border-t border-design-border w-full">
                   <h2 className="text-2xl font-bold text-design-text mb-6">You might also like</h2>
                   {loadingRandom ? (
                     <div className="grid grid-cols-1 design-tablet:grid-cols-2 design-desktop:grid-cols-4 gap-6 random-games-grid">

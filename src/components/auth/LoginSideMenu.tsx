@@ -6,7 +6,6 @@ import { validateLoginForm } from '../../utils/authValidation';
 import { getAuthErrorMessage } from '../../utils/authErrors';
 
 
-
 const theme = {
   colors: {
     primary: '#00C8C2',

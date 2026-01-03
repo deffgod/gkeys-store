@@ -90,7 +90,7 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
       {onLogout && (
         <button
           onClick={onLogout}
-          className="px-6 py-4 text-base text-left text-design-primary hover:opacity-80 transition-opacity mt-4"
+          className="px-6 py-4 text-base text-left text-design-primary hover:opacity-80 transition-opacity mt-6 design-mobile:mt-4"
         >
           Log Out
         </button>
