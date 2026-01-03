@@ -579,7 +579,7 @@ npm run prisma:seed
 
 1. Click the "Deploy with Vercel" button above
 2. Import the GitHub repository
-3. Configure environment variables (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md))
+3. Configure environment variables (see [DOCUMENTATION.md](DOCUMENTATION.md))
 4. Deploy automatically
 
 For detailed instructions, see [DOCUMENTATION.md](DOCUMENTATION.md) and [docs/deployment/](docs/deployment/).
