@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npx tsx watch src/index.ts",
     "build": "npx tsc --noEmitOnError false --skipLibCheck",
     "build:full": "prisma generate && (npx tsc --noEmitOnError false --skipLibCheck || exit 0)",
     "build:deploy": "prisma generate && prisma migrate deploy && (npx tsc --noEmitOnError false --skipLibCheck || exit 0)",
@@ -14,23 +14,23 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx prisma/seed.ts",
-    "db:check": "tsx scripts/check-db.ts",
+    "prisma:seed": "npx tsx prisma/seed.ts",
+    "db:check": "npx tsx scripts/check-db.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src/__tests__/unit",
     "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
-    "test:endpoints": "tsx scripts/test-endpoints.ts",
-    "test:g2a": "tsx scripts/test-g2a.ts",
-    "g2a:sync": "tsx scripts/sync-all-g2a-games.ts",
-    "g2a:sync:dry": "tsx scripts/sync-all-g2a-games.ts --dry-run",
-    "g2a:sync:prices": "tsx scripts/sync-g2a-prices.ts",
-    "g2a:sync:stock": "tsx scripts/sync-g2a-stock.ts",
+    "test:endpoints": "npx tsx scripts/test-endpoints.ts",
+    "test:g2a": "npx tsx scripts/test-g2a.ts",
+    "g2a:sync": "npx tsx scripts/sync-all-g2a-games.ts",
+    "g2a:sync:dry": "npx tsx scripts/sync-all-g2a-games.ts --dry-run",
+    "g2a:sync:prices": "npx tsx scripts/sync-g2a-prices.ts",
+    "g2a:sync:stock": "npx tsx scripts/sync-g2a-stock.ts",
     "g2a:sync:all": "npm run g2a:sync && npm run g2a:sync:prices && npm run g2a:sync:stock",
     "db:update": "prisma migrate dev",
     "db:update:deploy": "prisma migrate deploy",
-    "orders:sync": "tsx scripts/sync-orders.ts",
+    "orders:sync": "npx tsx scripts/sync-orders.ts",
     "lint": "eslint src prisma scripts tests --ext .ts --ignore-pattern 'dist' --ignore-pattern 'node_modules'",
     "format": "prettier --write \"src/**/*.ts\""
   },
@@ -85,7 +85,7 @@
     "node": ">=20.0.0"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "postinstall": "prisma generate"
 }
