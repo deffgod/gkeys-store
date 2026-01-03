@@ -6,7 +6,7 @@ A modern, full-featured platform for selling game keys with an optimized interfa
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/deffgod/gkeys-store)
 
-One-click deploy to Vercel. After deployment, configure environment variables in Vercel dashboard (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)).
+One-click deploy to Vercel. After deployment, configure environment variables in Vercel dashboard (see [DOCUMENTATION.md](DOCUMENTATION.md) for details).
 
 ## 📖 Documentation
 
@@ -25,18 +25,15 @@ One-click deploy to Vercel. After deployment, configure environment variables in
 
 ### 🔧 Vercel Deployment & Environment Variables
 
-**Для быстрой настройки Vercel:**
-- 📋 **[VERCEL_ENV_QUICK.md](VERCEL_ENV_QUICK.md)** - Быстрая шпаргалка (скопируй-вставь)
-- 📖 **[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)** - Пошаговая инструкция настройки
-- 📊 **[ENV_VARIABLES_TABLE.md](ENV_VARIABLES_TABLE.md)** - Сводная таблица всех переменных
-- 📚 **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Полный справочник
+**Для настройки Vercel:**
+- 📖 **[DOCUMENTATION.md](DOCUMENTATION.md)** - Полное руководство по настройке и деплою
+- 📚 **[docs/deployment/](docs/deployment/)** - Детальные гайды по деплою
 
 ### 🎮 G2A Integration (NEW!)
 
-**Новая улучшенная интеграция G2A:**
+**Улучшенная интеграция G2A:**
 - 🚀 **[backend/src/lib/g2a/README.md](backend/src/lib/g2a/README.md)** - Документация G2A клиента
 - 📖 **[docs/g2a/client-usage.md](docs/g2a/client-usage.md)** - Руководство по использованию
-- 📝 **[backend/src/lib/g2a/IMPLEMENTATION_SUMMARY.md](backend/src/lib/g2a/IMPLEMENTATION_SUMMARY.md)** - Сводка реализации
 
 **Ключевые улучшения:**
 - ✅ Unified Client Architecture - единая точка входа
@@ -260,7 +257,7 @@ npm run g2a:sync:all
 npm run orders:sync
 ```
 
-For more information, see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) and [PROJECT_READINESS_REPORT.md](PROJECT_READINESS_REPORT.md).
+For more information, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
 ### Step 5: Run Database Migrations
 
@@ -585,12 +582,12 @@ npm run prisma:seed
 3. Configure environment variables (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md))
 4. Deploy automatically
 
-For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+For detailed instructions, see [DOCUMENTATION.md](DOCUMENTATION.md) and [docs/deployment/](docs/deployment/).
 
 ### Detailed Guides
 
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное пошаговое руководство по деплою на Vercel
-- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник всех переменных окружения
+- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Полное руководство по установке, настройке и деплою
+- **[docs/deployment/](docs/deployment/)** - Детальные гайды по деплою
 
 ### 🚀 Deployment Options & Verification
 
@@ -615,7 +612,7 @@ For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 
 **Основные шаги:**
 1. Подключите GitHub репозиторий к Vercel
-2. Настройте environment variables (см. [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md))
+2. Настройте environment variables (см. [DOCUMENTATION.md](DOCUMENTATION.md))
 3. Деплой выполняется автоматически при push в main branch
 
 ### Other Platforms
@@ -626,7 +623,7 @@ For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 - **Render**
 - **Heroku**
 
-См. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) для подробных инструкций.
+См. [DOCUMENTATION.md](DOCUMENTATION.md) и [docs/deployment/](docs/deployment/) для подробных инструкций.
 
 ## 📚 Additional Documentation
 
@@ -642,9 +639,9 @@ For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
   - Troubleshooting и FAQ
 
 ### Специализированные руководства
-- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Детальный справочник переменных окружения
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою на Vercel
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Руководство по тестированию
+- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Полное руководство (включает настройку переменных окружения)
+- **[docs/deployment/](docs/deployment/)** - Детальные гайды по деплою
+- **[docs/api/](docs/api/)** - API документация
 
 ### Дополнительные материалы
 - `CONTRIBUTING.md` - Contributing guidelines

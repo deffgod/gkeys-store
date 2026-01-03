@@ -84,8 +84,19 @@ backend/prisma/*.js.map
 *REPORT.md
 *_FIX.md
 *_REPORT.md
+*SUMMARY.md
+*STATUS.md
+*VALIDATION.md
+*ANALYSIS.md
+*COMPLETION.md
+*CRITICAL.md
 DEPLOYMENT_READY.md
 PROJECT_READINESS_REPORT.md
+DEPLOYMENT_CHECKLIST.md
+DEPLOYMENT_GUIDE.md
+VERCEL_ENV_SETUP.md
+QUICK_START.md
+ENVIRONMENT_VARIABLES.md
 
 # Exclude local IDE settings (keep shared configs)
 .vscode/settings.json
