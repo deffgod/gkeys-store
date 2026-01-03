@@ -145,6 +145,8 @@ export default function GameSection({
           maxWidth: '1400px',
           margin: '0 auto',
           padding: '0 24px',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
         className="game-section-container"
       >
@@ -282,9 +284,8 @@ export default function GameSection({
                   {filteredGames.map((game) => (
                     <div
                       key={game.id}
+                      className="carousel-card-wrapper"
                       style={{
-                        minWidth: '292px',
-                        maxWidth: '292px',
                         flexShrink: 0,
                         scrollSnapAlign: 'start',
                       }}
@@ -460,7 +461,7 @@ export default function GameSection({
 
             {/* Games Grid or Carousel */}
             {carousel ? (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
                 {/* Scroll Buttons */}
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -498,15 +499,16 @@ export default function GameSection({
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
                     paddingBottom: '8px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                   }}
                   className="carousel-scroll"
                 >
                   {filteredGames.map((game) => (
                     <div
                       key={game.id}
+                      className="carousel-card-wrapper carousel-card-wrapper-small"
                       style={{
-                        minWidth: '240px',
-                        maxWidth: '240px',
                         flexShrink: 0,
                         scrollSnapAlign: 'start',
                       }}
@@ -579,6 +581,18 @@ export default function GameSection({
             -ms-overflow-style: none;
           }
           
+          .carousel-card-wrapper {
+            min-width: 292px;
+            max-width: 292px;
+            aspect-ratio: 1/1;
+          }
+          
+          .carousel-card-wrapper-small {
+            min-width: 240px;
+            max-width: 240px;
+            aspect-ratio: 1/1;
+          }
+          
           .games-grid-6 {
             grid-template-columns: repeat(6, 1fr);
           }
@@ -620,10 +634,16 @@ export default function GameSection({
             }
             .carousel-scroll {
               gap: 12px !important;
+              padding-left: 0 !important;
+              padding-right: 0 !important;
             }
-            .carousel-scroll > div {
-              min-width: 180px !important;
-              max-width: 180px !important;
+            .carousel-card-wrapper {
+              min-width: calc(50vw - 24px) !important;
+              max-width: calc(50vw - 24px) !important;
+            }
+            .carousel-card-wrapper-small {
+              min-width: calc(50vw - 24px) !important;
+              max-width: calc(50vw - 24px) !important;
             }
           }
           
@@ -647,16 +667,16 @@ export default function GameSection({
             }
             .carousel-scroll {
               gap: 10px !important;
+              padding-left: 0 !important;
+              padding-right: 0 !important;
             }
-            .carousel-scroll > div {
-              min-width: 160px !important;
-              max-width: 160px !important;
+            .carousel-card-wrapper {
+              min-width: calc(50vw - 20px) !important;
+              max-width: calc(50vw - 20px) !important;
             }
-          }
-          
-          @media (max-width: 768px) {
-            .game-section-container {
-              padding: 0 16px !important;
+            .carousel-card-wrapper-small {
+              min-width: calc(50vw - 20px) !important;
+              max-width: calc(50vw - 20px) !important;
             }
           }
         `}

@@ -47,12 +47,12 @@ export default function GameCard({ game, size = 'medium', showNewBadge = false }
 
   const sizeStyles = {
     small: {
-      width: '240px',
-      height: '240px',
+      width: '100%',
+      aspectRatio: '1/1',
     },
     medium: {
-      width: '292px',
-      height: '292px',
+      width: '100%',
+      aspectRatio: '1/1',
     },
     large: {
       width: '100%',

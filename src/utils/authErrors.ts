@@ -26,8 +26,14 @@ export function getAuthErrorMessage(error: unknown, defaultMessage: string = 'An
     if (message.includes('HTTP 500') || message.includes('Internal Server Error')) {
       return 'Server error. Please try again later.';
     }
-    if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+    if (message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('Load failed')) {
       return 'Network error. Please check your internet connection and ensure the server is running.';
+    }
+    if (message.includes('CORS') || message.includes('access control')) {
+      return 'CORS error. Please check server configuration or try again later.';
+    }
+    if (message.includes('Preflight') || message.includes('preflight')) {
+      return 'Network error. Please check your connection and try again.';
     }
     
     // Return the error message if it's already user-friendly

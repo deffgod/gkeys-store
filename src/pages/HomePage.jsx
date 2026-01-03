@@ -144,9 +144,9 @@ const RandomPicksSection = ({ games, loading }) => {
         </div>
 
         {/* Games Carousel */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
           {games && games.length > 0 ? (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -182,15 +182,16 @@ const RandomPicksSection = ({ games, loading }) => {
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none',
                   scrollSnapType: 'x mandatory',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
                 className="carousel-scroll"
               >
                 {games.map((game) => (
                   <div
                     key={game.id}
+                    className="carousel-card-wrapper"
                     style={{
-                      minWidth: '292px',
-                      maxWidth: '292px',
                       flexShrink: 0,
                       scrollSnapAlign: 'start',
                     }}

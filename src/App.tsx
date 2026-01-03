@@ -6,10 +6,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import Layout from './components/Layout';
 import PageTransition from './components/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminApp from './admin/AdminApp';  
-import apiClient from './services/api';
-
-
+import AdminApp from './admin/AdminApp';
 
 // @ts-ignore
 import HomePage from './pages/HomePage';
@@ -53,7 +50,6 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 // @ts-ignore
 import ComponentShowcase from './pages/ComponentShowcase';
-
 
 
 
@@ -235,6 +231,14 @@ function AnimatedRoutes() {
             </PageTransition>
           }
         />
+        <Route 
+          path="/admin/*" 
+          element={
+            <ProtectedRoute redirectTo="/login">
+              <AdminApp />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/component-showcase"
           element={
@@ -250,29 +254,13 @@ function AnimatedRoutes() {
 
 function AppRoutes() {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
   const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(location.pathname);
   const isShowcaseRoute = location.pathname === '/component-showcase';
-
-  if (isAdminRoute) {
-    return (
-      <Routes>
-        <Route path="/admin/*" element={<AdminApp />} />
-      </Routes>
-    );
-  }
 
   // Auth pages and showcase don't need the main layout
   if (isAuthRoute || isShowcaseRoute) {
     return (
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/auth/login" element={<PageTransition><LoginPage /></PageTransition>} />
-          <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
-          <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
-          <Route path="/component-showcase" element={<PageTransition><ComponentShowcase /></PageTransition>} />
-        </Routes>
-      </AnimatePresence>
+      <AnimatedRoutes />
     );
   }
 

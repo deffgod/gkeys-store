@@ -1,6 +1,4 @@
-import apiClient from './api';  
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://gkeys2.vercel.app';
-const AUTH_URL = API_BASE_URL + '/auth';
+import apiClient from './api';
 
 
 export interface LoginRequest {
@@ -56,7 +54,7 @@ export const authApi = {
         console.log('🔐 Attempting login for:', credentials.email);
       }
       
-      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>(AUTH_URL + '/login', credentials);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials);
       
       // Check if response has success wrapper
       const authData = response.success ? response.data : response as unknown as AuthResponse;
@@ -75,7 +73,20 @@ export const authApi = {
       console.error('❌ Login error:', error);
       // Re-throw with improved message
       if (error instanceof Error) {
-        throw error;
+        // Improve error messages for common issues
+        let message = error.message;
+        if (message.includes('Failed to fetch') || message.includes('Load failed') || message.includes('NetworkError')) {
+          message = 'Network error. Please check your internet connection and ensure the server is running.';
+        } else if (message.includes('CORS') || message.includes('access control')) {
+          message = 'CORS error. Please check server configuration.';
+        } else if (message.includes('HTTP 500')) {
+          message = 'Server error. Please try again later.';
+        } else if (message.includes('HTTP 401')) {
+          message = 'Invalid email or password. Please check your credentials.';
+        } else if (!message.includes('HTTP')) {
+          message = `Login failed: ${message}`;
+        }
+        throw new Error(message);
       }
       throw new Error('Login failed. Please check your credentials and try again.');
     }
@@ -100,7 +111,7 @@ export const authApi = {
         console.log('📤 Sending registration request:', { email: requestData.email, hasNickname: !!requestData.nickname });
       }
 
-      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>(AUTH_URL + '/register', requestData);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/register', requestData);
       
       // Check if response has success wrapper
       const authData = response.success ? response.data : response as unknown as AuthResponse;
@@ -144,7 +155,7 @@ export const authApi = {
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post(AUTH_URL + '/logout');
+      await apiClient.post('/auth/logout');
       
       // Clear token from API client
       apiClient.setToken(null);
@@ -186,7 +197,7 @@ export const authApi = {
 
   async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
     try {
-      return await apiClient.post(AUTH_URL + '/reset-password', data);
+      return await apiClient.post('/auth/reset-password', data);
     } catch (error) {
       console.error('Reset password error:', error);
       throw error;
@@ -220,7 +231,7 @@ export const authApi = {
         lastName?: string;
         avatar?: string;
         role: string;
-      } }>(AUTH_URL + '/me');
+      } }>('/auth/me');
       
       // Check if response has success wrapper
       const userData = response.success ? response.data : response as unknown as {
