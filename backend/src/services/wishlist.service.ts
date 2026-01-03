@@ -1,6 +1,7 @@
 import prisma from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
 import redisClient from '../config/redis.js';
+import { hashPassword } from '../utils/bcrypt.js';
 
 // Cache TTL for wishlist (30 minutes)
 const WISHLIST_CACHE_TTL = 30 * 60;
@@ -26,6 +27,8 @@ export interface WishlistResponse {
  * Get cache key for wishlist
  */
 const getWishlistCacheKey = (userId?: string, sessionId?: string): string => {
+  // For authenticated users, use userId
+  // For guest sessions, use sessionId (but we'll create guest user with sessionId as id)
   const identifier = userId || sessionId!;
   return `wishlist:${identifier}`;
 };
@@ -56,9 +59,16 @@ export const getWishlist = async (
     throw new AppError('User ID or session ID required', 400);
   }
 
+  // For authenticated users, always use userId (ignore sessionId if userId is present)
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
+
   const cacheKey = getWishlistCacheKey(userId, sessionId);
 
-  // Try to get from cache
+  // Try to get from cache (only after identifier is determined)
   try {
     if (redisClient.isOpen) {
       const cached = await redisClient.get(cacheKey);
@@ -71,9 +81,9 @@ export const getWishlist = async (
     console.warn('[Wishlist Cache] Failed to read from cache:', err);
   }
 
-  // Fetch from database
+  // Fetch from database using the determined identifier
   const wishlistItems = await prisma.wishlist.findMany({
-    where: userId ? { userId } : { userId: sessionId },
+    where: { userId: identifier },
     include: {
       game: {
         select: {
@@ -90,6 +100,11 @@ export const getWishlist = async (
       addedAt: 'desc',
     },
   });
+
+  // Debug: log wishlist query result
+  if (process.env.NODE_ENV === 'test') {
+    console.log(`[Wishlist Debug] getWishlist called with userId=${userId}, sessionId=${sessionId}, identifier=${identifier}, found ${wishlistItems.length} items`);
+  }
 
   const result: WishlistResponse = {
     items: wishlistItems.map((item) => ({
@@ -120,6 +135,49 @@ export const getWishlist = async (
 };
 
 /**
+ * Get or create guest user for sessionId
+ * This is needed because Prisma schema requires foreign key to User table
+ */
+const getOrCreateGuestUser = async (sessionId: string): Promise<string> => {
+  // Check if guest user already exists for this session
+  const guestUser = await prisma.user.findUnique({
+    where: { id: sessionId },
+    select: { id: true },
+  });
+
+  if (guestUser) {
+    return guestUser.id;
+  }
+
+  // Create temporary guest user for this session
+  // Use sessionId as both id and email (with prefix to avoid conflicts)
+  const guestEmail = `guest-${sessionId}@temp.local`;
+  const tempPassword = await hashPassword(`temp-${sessionId}-${Date.now()}`);
+
+  try {
+    const newGuestUser = await prisma.user.create({
+      data: {
+        id: sessionId,
+        email: guestEmail,
+        passwordHash: tempPassword,
+        nickname: 'Guest',
+        emailVerified: false,
+        role: 'USER',
+      },
+      select: { id: true },
+    });
+
+    return newGuestUser.id;
+  } catch (error: any) {
+    // If user already exists (race condition), just return the sessionId
+    if (error.code === 'P2002') {
+      return sessionId;
+    }
+    throw error;
+  }
+};
+
+/**
  * Add game to wishlist
  */
 export const addToWishlist = async (
@@ -140,7 +198,8 @@ export const addToWishlist = async (
     throw new AppError('Game not found', 404);
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (await getOrCreateGuestUser(sessionId!));
 
   // Check if already in wishlist
   const existing = await prisma.wishlist.findUnique({
@@ -181,7 +240,11 @@ export const removeFromWishlist = async (
     throw new AppError('User ID or session ID required', 400);
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
 
   await prisma.wishlist.delete({
     where: {
@@ -208,7 +271,11 @@ export const isInWishlist = async (
     return false;
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    return false;
+  }
 
   const item = await prisma.wishlist.findUnique({
     where: {
@@ -235,7 +302,7 @@ export const migrateSessionWishlistToUser = async (
   }
 
   // Use transaction to ensure atomicity
-  await prisma.$transaction(async (tx) => {
+  const migratedCount = await prisma.$transaction(async (tx) => {
     // Get session wishlist items
     const sessionItems = await tx.wishlist.findMany({
       where: { userId: sessionId },
@@ -243,8 +310,10 @@ export const migrateSessionWishlistToUser = async (
 
     if (sessionItems.length === 0) {
       // No items to migrate
-      return;
+      return 0;
     }
+
+    let migrated = 0;
 
     // For each session item, add to user wishlist if not already there
     for (const sessionItem of sessionItems) {
@@ -280,29 +349,69 @@ export const migrateSessionWishlistToUser = async (
 
       if (!userItem) {
         // Add to user wishlist
-        await tx.wishlist.create({
-          data: {
-            userId,
-            gameId: sessionItem.gameId,
-          },
-        });
+        try {
+          await tx.wishlist.create({
+            data: {
+              userId,
+              gameId: sessionItem.gameId,
+            },
+          });
+          migrated++;
+          console.log(`[Wishlist Migration] Created wishlist item for user ${userId}, game ${sessionItem.gameId}`);
+        } catch (createError: any) {
+          console.error(`[Wishlist Migration] Failed to create wishlist item:`, createError);
+          // If creation fails, skip this item but continue migration
+          continue;
+        }
+      } else {
+        console.log(`[Wishlist Migration] User ${userId} already has game ${sessionItem.gameId} in wishlist, skipping`);
       }
 
       // Delete session item
-      await tx.wishlist.delete({
-        where: {
-          userId_gameId: {
-            userId: sessionId,
-            gameId: sessionItem.gameId,
+      try {
+        await tx.wishlist.delete({
+          where: {
+            userId_gameId: {
+              userId: sessionId,
+              gameId: sessionItem.gameId,
+            },
           },
-        },
-      });
+        });
+        console.log(`[Wishlist Migration] Deleted session wishlist item for session ${sessionId}, game ${sessionItem.gameId}`);
+      } catch (deleteError: any) {
+        // If delete fails, log but continue (item might already be deleted)
+        console.warn(`[Wishlist Migration] Failed to delete session item (may already be deleted):`, deleteError);
+      }
     }
+
+    return migrated;
   });
 
+  // Log migration result
+  if (migratedCount > 0) {
+    console.log(`[Wishlist Migration] Successfully migrated ${migratedCount} item(s) from session ${sessionId} to user ${userId}`);
+  }
+
   // Invalidate both session and user wishlist caches
+  // Invalidate session cache
   await invalidateWishlistCache(undefined, sessionId);
+  // Invalidate user cache - ensure we pass userId correctly
   await invalidateWishlistCache(userId, undefined);
+  
+  // Force clear user cache to ensure fresh data after migration
+  try {
+    if (redisClient.isOpen) {
+      // Clear cache for userId (authenticated user)
+      const userCacheKey = `wishlist:${userId}`;
+      await redisClient.del(userCacheKey);
+      // Also try clearing with undefined sessionId
+      const userCacheKey2 = getWishlistCacheKey(userId, undefined);
+      await redisClient.del(userCacheKey2);
+    }
+  } catch (err) {
+    // Gracefully handle Redis unavailability
+    console.warn('[Wishlist Migration] Failed to clear user cache:', err);
+  }
 };
 
 /**

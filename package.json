@@ -16,7 +16,9 @@
     "lint": "eslint .",
     "preview": "npx vite preview",
     "vercel-build": "npm run build:all:deploy",
-    "check:env": "npx tsx scripts/check-env.ts"
+    "check:env": "npx tsx scripts/check-env.ts",
+    "verify:deployment": "npx tsx scripts/verify-deployment.ts",
+    "validate:deployment": "npx tsx scripts/validate-deployment.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireAuth } from '../middleware/auth.js';
 import {
   getWishlistController,
   addToWishlistController,
@@ -13,19 +13,19 @@ const router = Router();
 // All wishlist routes support both authenticated and session-based access
 // authenticate middleware is optional - session middleware handles guests
 
-// Get wishlist
-router.get('/', getWishlistController);
+// Get wishlist (optional auth - will use userId if token provided, sessionId if not)
+router.get('/', authenticate, getWishlistController);
 
-// Add game to wishlist
-router.post('/', addToWishlistController);
+// Add game to wishlist (optional auth)
+router.post('/', authenticate, addToWishlistController);
 
-// Remove game from wishlist
-router.delete('/:gameId', removeFromWishlistController);
+// Remove game from wishlist (optional auth)
+router.delete('/:gameId', authenticate, removeFromWishlistController);
 
-// Check if game is in wishlist
-router.get('/:gameId/check', checkWishlistController);
+// Check if game is in wishlist (optional auth)
+router.get('/:gameId/check', authenticate, checkWishlistController);
 
 // Migrate session wishlist to user wishlist (requires authentication)
-router.post('/migrate', authenticate, migrateWishlistController);
+router.post('/migrate', requireAuth, migrateWishlistController);
 
 export default router;

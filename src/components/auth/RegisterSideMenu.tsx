@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { validateRegisterForm } from '../../utils/authValidation';
+import { getAuthErrorMessage } from '../../utils/authErrors';
 
 const theme = {
   colors: {
@@ -144,25 +146,19 @@ export default function RegisterSideMenu({ isOpen, onClose, onSwitchToLogin }: R
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.nickname) {
-      newErrors.nickname = 'Nickname is required';
-    }
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email address';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
+    
+    // Use shared validation for email, password, and nickname
+    const validationResult = validateRegisterForm(formData.email, formData.password, formData.nickname);
+    Object.assign(newErrors, validationResult.errors);
+    
+    // Additional validation for registration-specific fields
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = 'You must agree to the terms';
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -183,9 +179,10 @@ export default function RegisterSideMenu({ isOpen, onClose, onSwitchToLogin }: R
         onClose();
         navigate('/');
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = getAuthErrorMessage(error, 'Registration failed. Please try again.');
       setErrors({
-        submit: error?.message || 'Registration failed. Please try again.',
+        submit: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

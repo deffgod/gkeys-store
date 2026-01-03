@@ -19,7 +19,13 @@ export const getWishlistController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
+
+    // Debug in test environment
+    if (process.env.NODE_ENV === 'test') {
+      console.log(`[Wishlist Controller] getWishlist: userId=${userId}, sessionId=${sessionId}, req.user=`, req.user);
+    }
 
     const wishlist = await getWishlist(userId, sessionId);
 
@@ -42,7 +48,8 @@ export const addToWishlistController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
     const { gameId } = req.body;
 
     if (!gameId) {
@@ -73,7 +80,8 @@ export const removeFromWishlistController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
     const { gameId } = req.params;
 
     if (!gameId) {
@@ -104,7 +112,8 @@ export const checkWishlistController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
     const { gameId } = req.params;
 
     if (!gameId) {

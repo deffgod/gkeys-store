@@ -30,3 +30,42 @@ export interface PaginatedArticleResponse {
   pageSize: number;
   totalPages: number;
 }
+
+export interface BlogPostCreateInput {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  imageUrl?: string;
+  category: string;
+  tags: string[];
+  published: boolean;
+}
+
+export interface BlogPostUpdateInput {
+  title?: string;
+  slug?: string;
+  content?: string;
+  excerpt?: string;
+  imageUrl?: string;
+  category?: string;
+  tags?: string[];
+  published?: boolean;
+}
+
+export interface BlogPostResponse {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  coverImage: string;
+  category: string;
+  author: string;
+  published: boolean;
+  publishedAt?: string;
+  readTime?: number;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}

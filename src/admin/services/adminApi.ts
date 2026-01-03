@@ -170,7 +170,12 @@ export interface BlogPostItem {
   slug: string;
   excerpt: string;
   category: string;
+  content: string;
+  coverImage?: string;
+  tags: string[];
   published: boolean;
+  publishedAt?: string;
+  readTime?: number;
   author: string;
   createdAt: string;
 }

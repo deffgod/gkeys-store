@@ -3,6 +3,25 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateAccessToken, generateRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import redisClient from '../config/redis.js';
+
+if (!redisClient || !redisClient.isOpen) {
+  throw new AppError('Redis client not initialized', 500);
+}
+
+if (!prisma || !prisma.$connect || !prisma.$disconnect) {
+  throw new AppError('Prisma client not initialized', 500);
+}
+
+if (!redisClient.isOpen) {
+  throw new AppError('Redis client not connected', 500);
+}
+
+if (!prisma.$connect) {
+  throw new AppError('Prisma client not connected', 500);
+} else {
+  console.log('Prisma client connected');
+}
 
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
   if (!prisma) {
@@ -90,7 +109,7 @@ export const login = async (
 
   // Find user
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: email?.toLowerCase() },
   });
 
   if (!user) {

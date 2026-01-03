@@ -4,7 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'tests/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -14,10 +17,11 @@ export default defineConfig({
         'src/types/**',
         'src/config/**',
         'src/templates/**',
+        'src/index.ts',
       ],
     },
     setupFiles: ['./src/__tests__/setup.ts'],
-    testTimeout: 10000,
+    testTimeout: 30000, // Increased for integration tests
   },
 });
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../services/authApi';
 import apiClient from '../services/api';
@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, nickname: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
 }
@@ -33,12 +33,36 @@ const USER_KEY = 'gkeys_user';
 const TOKEN_EXPIRY_KEY = 'gkeys_token_expiry';
 const REFRESH_TOKEN_KEY = 'gkeys_refresh_token';
 
-
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Singleton refresh promise to prevent duplicate refresh requests
+  const refreshPromiseRef = useRef<Promise<{ token: string; refreshToken: string; expiresIn: number }> | null>(null);
+
+  /**
+   * Transform backend user data to frontend User type
+   * Backend provides 'nickname', frontend uses 'name'
+   * This ensures consistent type transformation across the application
+   */
+  function transformUser(backendUser: {
+    id: string;
+    email: string;
+    nickname?: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    role?: string;
+  }): User {
+    return {
+      id: backendUser.id,
+      email: backendUser.email,
+      name: backendUser.nickname || backendUser.email, // Transform nickname to name
+      avatar: backendUser.avatar,
+      role: backendUser.role,
+    };
+  }
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -91,14 +115,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Verify token is still valid by checking current user
           try {
             const currentUser = await authApi.getCurrentUser();
-            // Update user data if changed
-            const updatedUser: User = {
-              id: currentUser.id,
-              email: currentUser.email,
-              name: currentUser.name || currentUser.nickname || currentUser.email,
-              avatar: currentUser.avatar,
-              role: currentUser.role,
-            };
+            // Update user data if changed using transformUser for consistent type transformation
+            const updatedUser = transformUser(currentUser);
             setUser(updatedUser);
             localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
           } catch (error) {
@@ -125,14 +143,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await authApi.login({ email, password });
 
-      // Transform response to User format
-      const user: User = {
-        id: response.user.id,
-        email: response.user.email,
-        name: response.user.name || response.user.nickname || response.user.email,
-        avatar: response.user.avatar,
-        role: response.user.role,
-      };
+      // Transform response to User format using transformUser for consistency
+      const user = transformUser(response.user);
 
       const expiryTime = new Date();
       expiryTime.setSeconds(expiryTime.getSeconds() + response.expiresIn);
@@ -161,19 +173,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  async function register(email: string, password: string, name: string) {
+  async function register(email: string, password: string, nickname: string) {
     setIsLoading(true);
     try {
-      const response = await authApi.register({ email, password, name });
+      const response = await authApi.register({ email, password, nickname });
 
-      // Transform response to User format
-      const user: User = {
-        id: response.user.id,
-        email: response.user.email,
-        name: response.user.name || response.user.nickname || response.user.email,
-        avatar: response.user.avatar,
-        role: response.user.role,
-      };
+      // Transform response to User format using transformUser for consistency
+      const user = transformUser(response.user);
 
       const expiryTime = new Date();
       expiryTime.setSeconds(expiryTime.getSeconds() + response.expiresIn);
@@ -216,16 +222,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   async function refreshToken() {
-    try {
-      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!storedRefreshToken) {
-        console.warn('⚠️ No refresh token available, clearing auth');
-        clearAuth();
+    // If a refresh is already in progress, reuse the existing promise
+    if (refreshPromiseRef.current) {
+      try {
+        const response = await refreshPromiseRef.current;
+        const expiryTime = new Date();
+        expiryTime.setSeconds(expiryTime.getSeconds() + response.expiresIn);
+        
+        setToken(response.token);
+        apiClient.setToken(response.token);
+        localStorage.setItem(TOKEN_KEY, response.token);
+        localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
+        
         return;
+      } catch (error) {
+        // If the shared refresh failed, clear auth and rethrow
+        clearAuth();
+        throw error;
       }
+    }
 
-      console.log('🔄 Refreshing token...');
-      const response = await authApi.refreshToken(storedRefreshToken);
+    // Start new refresh request
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!storedRefreshToken) {
+      console.warn('⚠️ No refresh token available, clearing auth');
+      clearAuth();
+      return;
+    }
+
+    console.log('🔄 Refreshing token...');
+    
+    // Create refresh promise and store it
+    refreshPromiseRef.current = authApi.refreshToken(storedRefreshToken).then((response) => {
+      return {
+        token: response.token,
+        refreshToken: response.refreshToken,
+        expiresIn: response.expiresIn,
+      };
+    });
+
+    try {
+      const response = await refreshPromiseRef.current;
 
       const expiryTime = new Date();
       expiryTime.setSeconds(expiryTime.getSeconds() + response.expiresIn);
@@ -237,6 +274,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       apiClient.setToken(response.token);
       
       localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
       
       console.log('✅ Token refreshed successfully');
@@ -244,6 +282,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('❌ Token refresh failed:', error);
       clearAuth();
       throw error;
+    } finally {
+      // Clear the promise after completion (success or failure) to allow retry
+      refreshPromiseRef.current = null;
     }
   }
 

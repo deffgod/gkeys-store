@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-// @ts-ignore - UIKit is a JSX file
-import { Icons } from '../UIKit';
 import { Aurora } from '../ui/aurora';
 import { ClickSpark } from '../ui/click-spark';
 import { colors } from '@/styles/design-tokens';
@@ -64,14 +62,14 @@ export const HeroContent: React.FC<HeroContentProps> = ({
       exit="exit"
       style={{
         position: 'relative',
-        height: '600px',
+        height: '700px',
         minHeight: '500px',
         backgroundImage: `url(${game.image})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         display: 'flex',
         alignItems: 'center',
-        padding: 'clamp(160px, 20vw, 180px) clamp(16px, 4vw, 48px) clamp(32px, 6vw, 48px) clamp(16px, 4vw, 48px)',
+        justifyContent: 'around',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
@@ -98,7 +96,17 @@ export const HeroContent: React.FC<HeroContentProps> = ({
         <Aurora color={colors.accent} intensity={0.15} />
       </div>
       
-      <div style={{ maxWidth: '520px', zIndex: 2, width: '100%', position: 'relative', padding: '0' }}>
+      {/* Container wrapper to align with other sections */}
+      <div style={{ 
+        maxWidth: '1400px',
+        maxHeight: '100%',
+        margin: '0 auto', 
+        padding: '0 20px',
+        width: '100%',
+        zIndex: 2,
+        position: 'relative',
+      }}>
+        <div style={{ width: '100%', position: 'relative', padding: '0' }}>
         {game.discount && (
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
@@ -126,11 +134,13 @@ export const HeroContent: React.FC<HeroContentProps> = ({
           transition={{ delay: 0.1 }}
           className="hero-title"
           style={{
-            fontSize: 'clamp(32px, 8vw, 72px)',
+            fontSize: 'clamp(24px, 5vw, 48px)',
             fontWeight: '700',
             marginBottom: '16px',
-            lineHeight: '1.1',
+            lineHeight: '1.2',
             wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            hyphens: 'auto',
             color: '#FFFFFF',
             textShadow: '0 2px 20px rgba(0, 0, 0, 0.5)',
           }}
@@ -143,10 +153,11 @@ export const HeroContent: React.FC<HeroContentProps> = ({
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
+            className="hero-description"
             style={{
               color: '#999999',
               fontSize: 'clamp(14px, 2vw, 15px)',
-              marginBottom: '20px',
+              marginBottom: '24px',
               lineHeight: '1.5',
             }}
           >
@@ -256,59 +267,136 @@ export const HeroContent: React.FC<HeroContentProps> = ({
             </ClickSpark>
           </motion.div>
 
-          <Link to={`/game/${game.slug}`} style={{ textDecoration: 'none' }}>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'rgba(26, 26, 26, 0.8)',
-                color: '#fff',
-                border: '1px solid #333333',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
-            >
-              More Info
-            </motion.button>
-          </Link>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            style={{ display: 'inline-block' }}
+          >
+            <Link to={`/game/${game.slug}`} style={{ textDecoration: 'none', display: 'block' }}>
+              <motion.button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 20px',
+                  backgroundColor: 'rgba(26, 26, 26, 0.8)',
+                  color: '#fff',
+                  border: '1px solid #333333',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                More Info
+              </motion.button>
+            </Link>
+          </motion.div>
         </motion.div>
+        </div>
       </div>
       <style>{`
         @media (max-width: 768px) {
           .hero-content-responsive {
-            height: 500px !important;
+            height: auto !important;
             minHeight: 400px !important;
-            padding: clamp(140px, 18vw, 160px) 16px 24px 16px !important;
+            padding: 10px 0 20px 0 !important;
+          }
+          .hero-content-responsive > div {
+            padding: 0 16px !important;
           }
           .hero-content-responsive .hero-title {
-            font-size: 36px !important;
+            font-size: 30px !important;
+            line-height: 1.2 !important;
+            margin-bottom: 12px !important;
+          }
+          .hero-content-responsive .hero-description {
+            font-size: 14px !important;
+            margin-bottom: 16px !important;
           }
           .hero-content-responsive .hero-price {
-            font-size: 22px !important;
+            font-size: 20px !important;
+            margin-bottom: 16px !important;
+          }
+          .hero-content-responsive .hero-price span {
+            font-size: 18px !important;
           }
           .hero-buttons {
-            flex-direction: column;
+            flex-direction: row !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
           }
           .hero-buttons > * {
-            width: 100%;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+          .hero-buttons button,
+          .hero-buttons a,
+          .hero-buttons > div > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 10px 14px !important;
+            font-size: 13px !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
           }
         }
         @media (max-width: 480px) {
           .hero-content-responsive {
-            height: 450px !important;
+            height: auto !important;
             minHeight: 350px !important;
-            padding: clamp(120px, 16vw, 140px) 12px 20px 12px !important;
+            padding: 80px 0 24px 0 !important;
+          }
+          .hero-content-responsive > div {
+            padding: 0 12px !important;
           }
           .hero-content-responsive .hero-title {
-            font-size: 28px !important;
-            margin-bottom: 12px !important;
+            font-size: clamp(20px, 6vw, 28px) !important;
+            line-height: 1.2 !important;
+            margin-bottom: 10px !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+          }
+          .hero-content-responsive .hero-description {
+            font-size: 13px !important;
+            margin-bottom: 14px !important;
+            line-height: 1.4 !important;
           }
           .hero-content-responsive .hero-price {
             font-size: 18px !important;
-            margin-bottom: 16px !important;
+            margin-bottom: 14px !important;
+            flex-wrap: wrap !important;
+          }
+          .hero-content-responsive .hero-price span {
+            font-size: 16px !important;
+          }
+          .hero-buttons {
+            flex-direction: row !important;
+            gap: 8px !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+          }
+          .hero-buttons > * {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+          .hero-buttons button,
+          .hero-buttons a,
+          .hero-buttons > div > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 10px 12px !important;
+            font-size: 12px !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+          .hero-buttons img {
+            width: 14px !important;
+            height: 14px !important;
+            flex-shrink: 0 !important;
           }
         }
       `}</style>

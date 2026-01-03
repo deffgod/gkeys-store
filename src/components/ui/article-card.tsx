@@ -29,7 +29,7 @@ const formatDate = (dateString: string): string => {
 }
 
 export const ArticleCard = React.forwardRef<HTMLDivElement, ArticleCardProps>(
-  ({ slug, title, excerpt, image, publishedAt, readTime, index = 0, className }, ref) => {
+  ({ slug, title, excerpt, image, publishedAt, readTime, category, index = 0, className }, ref) => {
     return (
       <motion.div
         ref={ref}

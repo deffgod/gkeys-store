@@ -272,6 +272,60 @@ FRONTEND_URL=http://localhost:5173
 - Не должен заканчиваться на `/`
 - Должен включать протокол (`http://` или `https://`)
 
+**Deployment Scope**:
+- **Monolithic**: Required (set to deployment URL)
+- **Separate Backend**: Required (set to frontend deployment URL)
+- **Separate Frontend**: Not needed
+
+---
+
+### ALLOWED_ORIGINS
+
+**Описание**: Дополнительные разрешенные источники (origins) для CORS. Используется для разрешения запросов с других доменов, помимо основного `FRONTEND_URL`. Особенно полезно для локальной разработки, когда фронтенд работает на localhost, а бэкенд развернут на Vercel.
+
+**Тип**: `string` (список URL, разделенных запятыми)
+
+**Обязательно**: ❌ Нет (опционально)
+
+**Формат**: 
+- Несколько origins разделяются запятыми
+- Пробелы автоматически обрезаются
+- Каждый origin должен включать протокол (`http://` или `https://`)
+- Не должен заканчиваться на `/`
+
+**Примеры**:
+
+**Для локальной разработки** (когда фронтенд на localhost, а бэкенд на Vercel):
+```
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+**Для нескольких источников**:
+```
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,https://preview.example.com
+```
+
+**Для Vercel Preview окружений**:
+```
+ALLOWED_ORIGINS=http://localhost:5173,https://gkeys2-git-feature-branch.vercel.app
+```
+
+**Где используется**:
+- `backend/src/index.ts` - настройка CORS middleware в функции `getAllowedOrigins()`
+
+**Важно**: 
+- В development режиме (`NODE_ENV !== 'production'`) `http://localhost:5173` и `http://localhost:3000` добавляются автоматически
+- В production режиме на Vercel нужно явно указать localhost через `ALLOWED_ORIGINS`, если требуется локальная разработка
+- Все значения автоматически нормализуются (trim пробелов, фильтрация пустых)
+- Сравнение origins выполняется без учета регистра и завершающих слешей
+
+**Типичный сценарий использования**:
+1. Фронтенд запущен локально на `http://localhost:5173`
+2. Бэкенд развернут на Vercel (`https://gkeys2.vercel.app`)
+3. Добавить в Vercel Environment Variables: `ALLOWED_ORIGINS=http://localhost:5173`
+4. Выбрать окружения: Development, Preview (опционально)
+5. После передеплоя CORS ошибки исчезнут
+
 ---
 
 ### NODE_ENV
@@ -794,4 +848,38 @@ npm run check:env
 
 ---
 
-**Последнее обновление**: 2024-12-23
+---
+
+## G2A Синхронизация команды
+
+Проект включает команды для автоматической синхронизации данных с G2A:
+
+### Команды синхронизации
+
+```bash
+# Полная синхронизация каталога G2A
+npm run g2a:sync
+
+# Тестовая синхронизация (без сохранения в БД)
+npm run g2a:sync:dry
+
+# Синхронизация только цен
+npm run g2a:sync:prices
+
+# Синхронизация только наличия товаров
+npm run g2a:sync:stock
+
+# Полная синхронизация (игры + цены + наличие)
+npm run g2a:sync:all
+
+# Синхронизация статусов заказов
+npm run orders:sync
+```
+
+**Где используются**: `backend/scripts/` - скрипты синхронизации
+
+**Требуемые переменные**: Те же, что и для G2A интеграции (`G2A_API_KEY`, `G2A_API_HASH`, `G2A_API_URL`, `G2A_ENV`)
+
+---
+
+**Последнее обновление**: 2024-12-30

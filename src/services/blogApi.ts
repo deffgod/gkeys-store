@@ -258,7 +258,7 @@ export const blogApi = {
         data: Array<{ name: string; slug: string; count: number }>;
       }>('/api/blog/categories');
 
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Failed to load categories:', error);
       // Fallback to default categories

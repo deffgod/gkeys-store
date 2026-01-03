@@ -146,6 +146,7 @@ export default function GameSection({
           margin: '0 auto',
           padding: '0 24px',
         }}
+        className="game-section-container"
       >
         {/* Container wrapper for description sections */}
         {description ? (
@@ -201,7 +202,11 @@ export default function GameSection({
                   gap: '8px',
                   marginBottom: '24px',
                   overflowX: 'auto',
+                  overflowY: 'hidden',
                   paddingBottom: '8px',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
                 }}
                 className="tabs-scroll"
               >
@@ -222,6 +227,7 @@ export default function GameSection({
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
                       transition: 'all 0.2s ease',
+                      flexShrink: 0,
                     }}
                   >
                     {tab}
@@ -418,7 +424,11 @@ export default function GameSection({
                   gap: '8px',
                   marginBottom: '24px',
                   overflowX: 'auto',
+                  overflowY: 'hidden',
                   paddingBottom: '8px',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
                 }}
                 className="tabs-scroll"
               >
@@ -439,6 +449,7 @@ export default function GameSection({
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
                       transition: 'all 0.2s ease',
+                      flexShrink: 0,
                     }}
                   >
                     {tab}
@@ -562,6 +573,12 @@ export default function GameSection({
             display: none;
           }
           
+          .tabs-scroll {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          
           .games-grid-6 {
             grid-template-columns: repeat(6, 1fr);
           }
@@ -584,13 +601,62 @@ export default function GameSection({
             }
           }
           
-          @media (max-width: 600px) {
+          @media (max-width: 768px) {
+            .tabs-scroll {
+              gap: 6px !important;
+              marginBottom: 20px !important;
+            }
+            .tabs-scroll button {
+              padding: 6px 12px !important;
+              font-size: 12px !important;
+              white-space: nowrap !important;
+            }
             .games-grid-6, .games-grid-5, .games-grid-4 {
               grid-template-columns: repeat(2, 1fr) !important;
               gap: 12px !important;
             }
             .carousel-btn-left, .carousel-btn-right {
               display: none !important;
+            }
+            .carousel-scroll {
+              gap: 12px !important;
+            }
+            .carousel-scroll > div {
+              min-width: 180px !important;
+              max-width: 180px !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .game-section-container {
+              padding: 0 12px !important;
+            }
+            .tabs-scroll {
+              gap: 4px !important;
+              marginBottom: 16px !important;
+              paddingLeft: 0 !important;
+              paddingRight: 0 !important;
+            }
+            .tabs-scroll button {
+              padding: 6px 10px !important;
+              font-size: 11px !important;
+            }
+            .games-grid-6, .games-grid-5, .games-grid-4 {
+              grid-template-columns: repeat(2, 1fr) !important;
+              gap: 10px !important;
+            }
+            .carousel-scroll {
+              gap: 10px !important;
+            }
+            .carousel-scroll > div {
+              min-width: 160px !important;
+              max-width: 160px !important;
+            }
+          }
+          
+          @media (max-width: 768px) {
+            .game-section-container {
+              padding: 0 16px !important;
             }
           }
         `}

@@ -129,9 +129,13 @@ export interface BlogPostCreateInput {
   category: string;
   tags: string[];
   published?: boolean;
+  readTime?: number;  
+  publishedAt?: string;
 }
 
-export interface BlogPostUpdateInput extends Partial<BlogPostCreateInput> {}
+export interface BlogPostUpdateInput extends Partial<BlogPostCreateInput> {
+  readTime?: number;
+}
 
 // Payment Management Types
 export interface PaymentMethod {
@@ -410,6 +414,13 @@ export interface BalanceUpdateResult {
   newBalance: number;
   amount: number;
   reason: string;
+  currency: string;
+  method: string;
+  status: string;
+  description: string;
+  transactionHash: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RoleUpdateRequest {

@@ -22,3 +22,4 @@ prisma/*.d.ts.map
 prisma/*.js
 prisma/*.js.map
 
+.vercel

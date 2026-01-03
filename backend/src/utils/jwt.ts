@@ -1,9 +1,38 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+
+// Validate JWT secrets on module initialization - fail fast if invalid
+if (!JWT_SECRET) {
+  throw new Error(
+    'JWT_SECRET environment variable is required. Please set it to a secure random string of at least 32 characters.'
+  );
+}
+if (JWT_SECRET.length < 32) {
+  throw new Error(
+    `JWT_SECRET must be at least 32 characters long. Current length: ${JWT_SECRET.length}. Please set a longer secret in environment variables.`
+  );
+}
+
+if (!JWT_REFRESH_SECRET) {
+  throw new Error(
+    'JWT_REFRESH_SECRET environment variable is required. Please set it to a secure random string of at least 32 characters (different from JWT_SECRET).'
+  );
+}
+if (JWT_REFRESH_SECRET.length < 32) {
+  throw new Error(
+    `JWT_REFRESH_SECRET must be at least 32 characters long. Current length: ${JWT_REFRESH_SECRET.length}. Please set a longer secret in environment variables.`
+  );
+}
+
+if (JWT_SECRET === JWT_REFRESH_SECRET) {
+  throw new Error(
+    'JWT_SECRET and JWT_REFRESH_SECRET must be different. Please set different secrets in environment variables.'
+  );
+}
 
 export interface TokenPayload {
   userId: string;

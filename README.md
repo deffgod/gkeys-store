@@ -234,6 +234,38 @@ cd backend
 npm run prisma:generate
 
 # Run database migrations
+npm run db:update
+```
+
+### Step 4: G2A Integration (Optional)
+
+If you're using G2A integration, you can sync games, prices, and stock:
+
+```bash
+cd backend
+
+# Sync all G2A games
+npm run g2a:sync
+
+# Sync only prices
+npm run g2a:sync:prices
+
+# Sync only stock
+npm run g2a:sync:stock
+
+# Full sync (games + prices + stock)
+npm run g2a:sync:all
+
+# Sync orders
+npm run orders:sync
+```
+
+For more information, see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) and [PROJECT_READINESS_REPORT.md](PROJECT_READINESS_REPORT.md).
+
+### Step 5: Run Database Migrations
+
+```bash
+cd backend
 npm run prisma:migrate
 
 # Verify database connection
@@ -249,6 +281,13 @@ npm run prisma:seed
 # Test backend endpoints
 cd backend
 npm run test:endpoints
+
+# Run all tests
+cd backend
+npm run test                    # Run all tests
+npm run test:unit               # Run unit tests only
+npm run test:integration        # Run integration tests only
+npm run test:coverage           # Run tests with coverage report
 
 # Check health
 curl http://localhost:3001/health
@@ -552,6 +591,19 @@ For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Полное пошаговое руководство по деплою на Vercel
 - **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)** - Справочник всех переменных окружения
+
+### 🚀 Deployment Options & Verification
+
+**New deployment tools and guides:**
+- 📋 **[docs/deployment/DEPLOYMENT_OPTIONS.md](docs/deployment/DEPLOYMENT_OPTIONS.md)** - Compare monolithic vs separate deployment
+- 📖 **[docs/deployment/MONOLITHIC_DEPLOYMENT.md](docs/deployment/MONOLITHIC_DEPLOYMENT.md)** - Monolithic deployment guide
+- 📖 **[docs/deployment/SEPARATE_DEPLOYMENT.md](docs/deployment/SEPARATE_DEPLOYMENT.md)** - Separate frontend/backend deployment guide
+- 🔧 **[docs/deployment/TROUBLESHOOTING.md](docs/deployment/TROUBLESHOOTING.md)** - Common deployment issues and solutions
+- ✅ **[docs/deployment/DEPLOYMENT_CHECKLIST.md](docs/deployment/DEPLOYMENT_CHECKLIST.md)** - Complete deployment checklist
+
+**Deployment verification tools:**
+- 🔍 Pre-deployment: `npm run verify:deployment` - Verify readiness before deployment
+- ✅ Post-deployment: `npm run validate:deployment -- --url=https://your-project.vercel.app` - Validate after deployment
 
 ### Vercel (Recommended - Monolith Deployment)
 

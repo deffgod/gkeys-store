@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import { register, login, refreshToken } from '../services/auth.service.js';
 import { RegisterRequest, LoginRequest } from '../types/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { AuthRequest } from '../middleware/auth.js';
+import { getUserProfile } from '../services/user.service.js';
 
 export const registerController = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -60,6 +62,42 @@ export const refreshTokenController = async (req: Request, res: Response, next: 
     res.status(200).json({
       success: true,
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logoutController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Clear cookies if any
+    res.clearCookie('token');
+    res.clearCookie('refreshToken');
+    res.clearCookie('sessionId');
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCurrentUserController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Unauthorized' },
+      });
+    }
+
+    const profile = await getUserProfile(req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      data: profile,
     });
   } catch (error) {
     next(error);

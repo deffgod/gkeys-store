@@ -2,7 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';  
+import  apiClient  from '../services/api';
+import { authApi } from '../services/authApi';
+import { validateLoginForm } from '../utils/authValidation';
+import { getAuthErrorMessage } from '../utils/authErrors';
+
 
 // Using design tokens from design-tokens.ts
 // Colors: background #121212, surface #242424, surfaceLight #2A2A2A, border #333333
@@ -101,8 +106,9 @@ export default function LoginPage() {
         navigate(from, { replace: true });
       }, 500);
     } catch (error) {
+      const errorMessage = getAuthErrorMessage(error, 'Invalid email or password. Please try again.');
       setErrors({
-        general: error.message || 'Invalid email or password. Please try again.',
+        general: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

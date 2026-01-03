@@ -1,5 +1,28 @@
 # Полное Руководство по Деплою на Vercel
 
+> **Note**: This guide covers the original monolithic deployment. For comprehensive deployment options and guides, see:
+> - [Deployment Options](docs/deployment/DEPLOYMENT_OPTIONS.md) - Compare deployment architectures
+> - [Monolithic Deployment Guide](docs/deployment/MONOLITHIC_DEPLOYMENT.md) - Detailed monolithic deployment
+> - [Separate Deployment Guide](docs/deployment/SEPARATE_DEPLOYMENT.md) - Separate frontend/backend deployment
+> - [Troubleshooting Guide](docs/deployment/TROUBLESHOOTING.md) - Common issues and solutions
+> - [Deployment Checklist](docs/deployment/DEPLOYMENT_CHECKLIST.md) - Complete checklist
+
+## 🆕 New Deployment Tools
+
+Before deploying, use the new verification tools:
+
+```bash
+# Pre-deployment verification
+npm run verify:deployment
+
+# Post-deployment validation
+npm run validate:deployment -- --url=https://your-project.vercel.app
+```
+
+These tools automatically check builds, environment variables, database connectivity, and more.
+
+---
+
 ## 🚀 Быстрый старт (5 минут)
 
 Если у вас уже все готово, выполните эти команды:
@@ -393,13 +416,80 @@ curl https://your-project.vercel.app/api/health
 
 ### CORS Errors
 
-**Проблема**: CORS ошибки в браузере
+**Проблема**: CORS ошибки в браузере, особенно при локальной разработке, когда фронтенд на `http://localhost:5173`, а бэкенд на Vercel.
+
+**Симптомы**:
+- Ошибки в консоли: `Access to fetch at 'https://gkeys2.vercel.app/api/...' from origin 'http://localhost:5173' has been blocked by CORS policy`
+- `Failed to fetch` ошибки при API запросах
+- `TypeError: Failed to fetch` в коде
 
 **Решения**:
-1. Установите `FRONTEND_URL` в Vercel на ваш frontend URL
-2. Проверьте CORS middleware в `backend/src/index.ts`
-3. Убедитесь, что `origin` в CORS config совпадает с frontend URL
-4. Проверьте, что `VITE_API_BASE_URL` установлен правильно
+
+#### Решение 1: Использование ALLOWED_ORIGINS (рекомендуется для локальной разработки)
+
+Если вы разрабатываете локально, но используете бэкенд на Vercel:
+
+1. Перейдите в **Vercel Dashboard** → **Settings** → **Environment Variables**
+2. Добавьте новую переменную:
+   - **Key**: `ALLOWED_ORIGINS`
+   - **Value**: `http://localhost:5173`
+   - **Environments**: Выберите **Development** и **Preview** (опционально)
+3. Нажмите **Save**
+4. Дождитесь автоматического передеплоя или выполните **Redeploy** вручную
+
+**Для нескольких origins** (например, разные порты или preview URLs):
+```
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,https://preview-url.vercel.app
+```
+
+**Важно**: 
+- В production окружении не добавляйте localhost в `ALLOWED_ORIGINS` из соображений безопасности
+- Используйте только для Development и Preview окружений
+
+#### Решение 2: Использование локального бэкенда (альтернатива)
+
+Если вы хотите полностью локальную разработку:
+
+1. Запустите локальный бэкенд:
+   ```bash
+   cd backend
+   npm run dev
+   ```
+
+2. Создайте файл `.env.local` в корне проекта:
+   ```
+   VITE_API_BASE_URL=http://localhost:3001/api
+   ```
+
+3. Перезапустите фронтенд dev server
+
+**Преимущества**: 
+- Полностью локальная разработка
+- Быстрее (нет задержек сети)
+- Не требует изменений в Vercel
+
+#### Решение 3: Проверка базовой конфигурации
+
+Если ошибки возникают в production:
+
+1. Убедитесь, что `FRONTEND_URL` установлен правильно в Vercel:
+   ```
+   FRONTEND_URL=https://your-project.vercel.app
+   ```
+   (без завершающего слеша)
+
+2. Проверьте, что `VITE_API_BASE_URL` установлен правильно:
+   ```
+   VITE_API_BASE_URL=https://your-project.vercel.app/api
+   ```
+
+3. Убедитесь, что CORS middleware правильно настроен в `backend/src/index.ts`
+
+4. Проверьте логи в Vercel Dashboard → Functions → Logs для деталей ошибок CORS
+
+**Отладка**:
+- В development режиме бэкенд логирует все разрешенные origins: `🔍 Allowed CORS origins: [...]`
+- При ошибке CORS в development режиме выводится детальная информация о запрошенном origin
 
 ### G2A API Errors
 

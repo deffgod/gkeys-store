@@ -209,12 +209,22 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
     } else {
       console.log('💾 Saving products to database...\n');
 
-      // Get existing games to avoid duplicates
-      const existingGames = await prisma.game.findMany({
-        where: { g2aProductId: { not: null } },
-        select: { id: true, g2aProductId: true },
-      });
-      const existingG2AIds = new Set(existingGames.map(g => g.g2aProductId!));
+      // Get existing games to avoid unnecessary updates
+      let existingGames: Array<{ id: number; g2aProductId: string | null; slug: string }> = [];
+      let existingG2AIds = new Set<string>();
+      let existingSlugs = new Set<string>();
+      
+      try {
+        existingGames = await prisma.game.findMany({
+          where: { g2aProductId: { not: null } },
+          select: { id: true, g2aProductId: true, slug: true },
+        });
+        existingG2AIds = new Set(existingGames.map(g => g.g2aProductId!));
+        existingSlugs = new Set(existingGames.map(g => g.slug));
+      } catch (error: any) {
+        console.warn('⚠️  Could not fetch existing games, will process all products:', error.message);
+        // Continue without existing games check - upsert will handle duplicates
+      }
 
       // Process products in batches
       const batchSize = 50;
@@ -223,8 +233,16 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
         
         for (const product of batch) {
           try {
-            // Skip if already exists
-            if (existingG2AIds.has(product.id)) {
+            // Generate slug from title first to check for duplicates
+            const slug = product.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .substring(0, 100); // Limit length
+
+            // Skip if already exists by G2A ID (to avoid unnecessary updates)
+            // But still process if slug is different (upsert will handle it)
+            if (existingG2AIds.has(product.id) && existingSlugs.has(slug)) {
               totalSkipped++;
               continue;
             }
@@ -237,13 +255,6 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
               totalSkipped++;
               continue;
             }
-
-            // Generate slug from title
-            const slug = product.name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/^-+|-+$/g, '')
-              .substring(0, 100); // Limit length
 
             // Get price from G2A product (use minPrice or retailMinBasePrice)
             const price = (product as any).minPrice || 
@@ -264,9 +275,29 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
               ? new Date(product.releaseDate) 
               : new Date(); // Default to today if not provided
 
-            // Create game in database
-            await prisma.game.create({
-              data: {
+            // Upsert game in database (create or update if exists)
+            await prisma.game.upsert({
+              where: {
+                slug: slug,
+              },
+              update: {
+                title: product.name,
+                description: product.description || product.shortDescription || '',
+                price: price,
+                currency: product.currency || 'USD',
+                image: imageUrl,
+                images: product.images || [imageUrl],
+                inStock: (product.qty || 0) > 0,
+                g2aProductId: product.id,
+                g2aStock: (product.qty || 0) > 0,
+                g2aLastSync: new Date(),
+                releaseDate: releaseDate,
+                // Map additional fields
+                publisher: product.publisher || null,
+                region: product.region || null,
+                activationService: product.platform || null,
+              },
+              create: {
                 title: product.name,
                 slug: slug,
                 description: product.description || product.shortDescription || '',
@@ -286,14 +317,28 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
               },
             });
 
+            // Count as saved (upsert creates or updates)
+            const wasUpdate = existingG2AIds.has(product.id) || existingSlugs.has(slug);
+            if (wasUpdate) {
+              // Count updates separately if needed, but for now count as saved
+            }
             totalSaved++;
             
             if (totalSaved % 10 === 0) {
-              process.stdout.write(`\r💾 Saved: ${totalSaved} games...`);
+              process.stdout.write(`\r💾 Processed: ${totalSaved} games...`);
             }
-          } catch (error) {
-            console.error(`\n❌ Error saving product ${product.id}:`, error);
-            totalErrors++;
+          } catch (error: any) {
+            // Handle unique constraint errors gracefully
+            if (error?.code === 'P2002') {
+              // Duplicate slug - skip silently or log as info
+              totalSkipped++;
+              if (totalSkipped % 10 === 0) {
+                process.stdout.write(`\r⏭️  Skipped: ${totalSkipped} duplicates...`);
+              }
+            } else {
+              console.error(`\n❌ Error saving product ${product.id}:`, error);
+              totalErrors++;
+            }
           }
         }
       }

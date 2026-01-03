@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { authApi } from '../../services/authApi';
+import { validateLoginForm } from '../../utils/authValidation';
+import { getAuthErrorMessage } from '../../utils/authErrors';
+
 
 
 const theme = {
@@ -130,17 +132,9 @@ export default function LoginSideMenu({ isOpen, onClose, onSwitchToRegister }: L
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email address';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validationResult = validateLoginForm(formData.email, formData.password);
+    setErrors(validationResult.errors);
+    return validationResult.isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,9 +165,10 @@ export default function LoginSideMenu({ isOpen, onClose, onSwitchToRegister }: L
         onClose();
         navigate('/');
       }, 500);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = getAuthErrorMessage(error, 'Login failed. Please check your credentials.');
       setErrors({
-        submit: error?.message || 'Login failed. Please check your credentials.',
+        submit: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

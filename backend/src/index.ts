@@ -9,9 +9,21 @@ import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { sessionMiddleware } from './middleware/session.middleware.js';
 import { startG2ASyncJob, startStockCheckJob } from './jobs/g2a-sync.job.js';
 import prisma, { initializeDatabase } from './config/database.js';
+import { clearAllCache } from './services/cache.service.js';
 
 // Load environment variables
 dotenv.config();
+
+
+
+
+// Clear cache on startup
+clearAllCache().then(() => {
+  console.log('🧹 Cache cleared on startup');
+}).catch((error) => {
+  console.error('❌ Failed to clear cache on startup:', error);
+});
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +34,7 @@ const getAllowedOrigins = (): string[] => {
 
   // Production frontend URL
   if (process.env.FRONTEND_URL) {
-    origins.push(process.env.FRONTEND_URL);
+    origins.push(process.env.FRONTEND_URL.trim());
   }
 
   // Vercel preview URLs pattern
@@ -33,14 +45,22 @@ const getAllowedOrigins = (): string[] => {
     }
   }
 
-  // Explicit allowed origins
+  // Explicit allowed origins (with normalization)
   if (process.env.ALLOWED_ORIGINS) {
-    origins.push(...process.env.ALLOWED_ORIGINS.split(','));
+    const allowed = process.env.ALLOWED_ORIGINS.split(',')
+      .map(origin => origin.trim())
+      .filter(origin => origin.length > 0);
+    origins.push(...allowed);
   }
 
-  // Development
+  // Development - add localhost by default
+  if (process.env.NODE_ENV === 'development') {
+    origins.push('http://localhost:5173', 'http://localhost:3001', 'http://localhost:3000');
+  }
+
+  // Log in development for debugging
   if (process.env.NODE_ENV !== 'production') {
-    origins.push('http://localhost:5173', 'http://localhost:3000');
+    console.log('🔍 Allowed CORS origins:', origins);
   }
 
   return origins;
@@ -58,11 +78,30 @@ app.use(
         return callback(null, true);
       }
 
+      // Normalize origin for comparison (lowercase, remove trailing slash)
+      const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+
       // Check if origin is allowed
-      if (allowedOrigins.some((allowed) => origin === allowed || origin.endsWith('.vercel.app'))) {
+      const isAllowed = allowedOrigins.some((allowed) => {
+        const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+        return (
+          normalizedOrigin === normalizedAllowed ||
+          origin.endsWith('.vercel.app') ||
+          normalizedAllowed === normalizedOrigin
+        );
+      });
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // Log detailed error in development
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('❌ CORS Error:', {
+            requestedOrigin: origin,
+            allowedOrigins: allowedOrigins,
+          });
+        }
+        callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
       }
     },
     credentials: true,
@@ -180,11 +219,12 @@ async function initializeApp(): Promise<boolean> {
   return true;
 }
 
-// Initialize database and start server (only if not in Vercel/serverless environment)
+// Initialize database and start server (only if not in Vercel/serverless environment or test)
 const isVercel = !!process.env.VERCEL;
 const isServerless = !!process.env.VERCEL_ENV;
+const isTest = process.env.NODE_ENV === 'test';
 
-if (!isVercel && !isServerless) {
+if (!isVercel && !isServerless && !isTest) {
   // Running as standalone server (development/production server)
   async function startServer() {
     const dbConnected = await initializeApp();

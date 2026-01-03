@@ -8,9 +8,6 @@ import PageTransition from './components/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminApp from './admin/AdminApp';  
 import apiClient from './services/api';
-import { authApi } from './services/authApi';
-
-apiClient.setToken('1234567890');
 
 
 

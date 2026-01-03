@@ -175,10 +175,9 @@ export class G2AIntegrationClient {
     this.exportHttpClient.interceptors.request.use(
       async (config) => {
         const authHeaders = await this.authManager.getAuthHeaders('export');
-        config.headers = {
-          ...config.headers,
-          ...authHeaders,
-        };
+        if (config.headers) {
+          Object.assign(config.headers, authHeaders);
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -188,10 +187,9 @@ export class G2AIntegrationClient {
     this.importHttpClient.interceptors.request.use(
       async (config) => {
         const authHeaders = await this.authManager.getAuthHeaders('import');
-        config.headers = {
-          ...config.headers,
-          ...authHeaders,
-        };
+        if (config.headers) {
+          Object.assign(config.headers, authHeaders);
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -371,8 +369,8 @@ export class G2AIntegrationClient {
     return new BatchProductFetcher(
       this.products,
       this.logger,
-      this.config.batch.chunkSize,
-      this.config.batch.maxConcurrency
+      this.config.batch.productFetchChunkSize,
+      this.config.batch.maxConcurrentRequests
     );
   }
 

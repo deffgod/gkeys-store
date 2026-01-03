@@ -1,5 +1,6 @@
 import type { SectionConfig } from '../types/sections';
 import { bestSellersTabs } from '../data/gamesData';
+import { gamesApi } from '../services/gamesApi';
 
 /**
  * Homepage Section Configurations
@@ -16,7 +17,7 @@ export const homepageSections: SectionConfig[] = [
       method: 'getBestSellers',
     },
     display: {
-      columns: 6,
+      columns: 8,
       carousel: true,
       showCheckAll: true,
       checkAllLink: '/catalog?sort=best-sellers',
@@ -33,7 +34,7 @@ export const homepageSections: SectionConfig[] = [
       method: 'getNewInCatalog',
     },
     display: {
-      columns: 6,
+      columns: 8,
       carousel: true,
       showCheckAll: true,
       checkAllLink: '/catalog?sort=new',

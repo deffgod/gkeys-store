@@ -80,6 +80,12 @@ backend/prisma/*.js.map
 *.plan.md
 *.backup
 *.old
+*FIX.md
+*REPORT.md
+*_FIX.md
+*_REPORT.md
+DEPLOYMENT_READY.md
+PROJECT_READINESS_REPORT.md
 
 # Exclude local IDE settings (keep shared configs)
 .vscode/settings.json

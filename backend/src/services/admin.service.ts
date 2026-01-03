@@ -153,11 +153,7 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
 
   const topGamesWithDetails = await Promise.all(
     topSellingGames.map(
-      async (item: {
-        gameId: string;
-        _count: { gameId: number };
-        _sum: { price: number | null };
-      }) => {
+      async (item) => {
         const game = await prisma.game.findUnique({
           where: { id: item.gameId },
           select: { id: true, title: true, slug: true },
@@ -561,7 +557,6 @@ export const getGameById = async (id: string) => {
     tags: game.tags.map((t) => t.tag.name),
     categories: game.categories.map((c) => c.category.name),
     publisher: game.publisher || '',
-    developer: game.developer || '',
     releaseDate: game.releaseDate ? game.releaseDate.toISOString().split('T')[0] : '',
     isPreorder: game.isPreorder,
     inStock: game.inStock,
@@ -2503,10 +2498,8 @@ export const deleteUser = async (userId: string): Promise<void> => {
       where: { userId },
     });
 
-    // Delete user's sessions
-    await tx.session.deleteMany({
-      where: { userId },
-    });
+    // Delete user's sessions (sessions don't have userId, they use sessionId)
+    // Sessions are managed separately and don't need to be deleted here
 
     // Finally, delete the user
     await tx.user.delete({
@@ -2539,10 +2532,7 @@ export const getAllCategories = async () => {
     id: cat.id,
     name: cat.name,
     slug: cat.slug,
-    description: cat.description || undefined,
     gamesCount: cat._count.games,
-    createdAt: cat.createdAt.toISOString(),
-    updatedAt: cat.updatedAt.toISOString(),
   }));
 };
 
@@ -2565,7 +2555,6 @@ export const createCategory = async (data: { name: string; description?: string 
     data: {
       name: data.name,
       slug,
-      description: data.description,
     },
   });
 
@@ -2579,14 +2568,11 @@ export const createCategory = async (data: { name: string; description?: string 
     console.warn('[Category Create] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    description: category.description || undefined,
-    createdAt: category.createdAt.toISOString(),
-    updatedAt: category.updatedAt.toISOString(),
-  };
+    return {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    };
 };
 
 export const updateCategory = async (id: string, data: { name?: string; description?: string }) => {
@@ -2608,9 +2594,7 @@ export const updateCategory = async (id: string, data: { name?: string; descript
     updateData.slug = slug;
   }
 
-  if (data.description !== undefined) {
-    updateData.description = data.description;
-  }
+  // Description field is not in the schema, removed
 
   const category = await prisma.category.update({
     where: { id },
@@ -2627,13 +2611,11 @@ export const updateCategory = async (id: string, data: { name?: string; descript
     console.warn('[Category Update] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    description: category.description || undefined,
-    updatedAt: category.updatedAt.toISOString(),
-  };
+    return {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    };
 };
 
 export const deleteCategory = async (id: string) => {
@@ -2678,10 +2660,7 @@ export const getAllGenres = async () => {
     id: genre.id,
     name: genre.name,
     slug: genre.slug,
-    description: genre.description || undefined,
     gamesCount: genre._count.games,
-    createdAt: genre.createdAt.toISOString(),
-    updatedAt: genre.updatedAt.toISOString(),
   }));
 };
 
@@ -2704,7 +2683,6 @@ export const createGenre = async (data: { name: string; description?: string }) 
     data: {
       name: data.name,
       slug,
-      description: data.description,
     },
   });
 
@@ -2718,14 +2696,11 @@ export const createGenre = async (data: { name: string; description?: string }) 
     console.warn('[Genre Create] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: genre.id,
-    name: genre.name,
-    slug: genre.slug,
-    description: genre.description || undefined,
-    createdAt: genre.createdAt.toISOString(),
-    updatedAt: genre.updatedAt.toISOString(),
-  };
+    return {
+      id: genre.id,
+      name: genre.name,
+      slug: genre.slug,
+    };
 };
 
 export const updateGenre = async (id: string, data: { name?: string; description?: string }) => {
@@ -2747,9 +2722,7 @@ export const updateGenre = async (id: string, data: { name?: string; description
     updateData.slug = slug;
   }
 
-  if (data.description !== undefined) {
-    updateData.description = data.description;
-  }
+  // Description field is not in the schema, removed
 
   const genre = await prisma.genre.update({
     where: { id },
@@ -2766,13 +2739,11 @@ export const updateGenre = async (id: string, data: { name?: string; description
     console.warn('[Genre Update] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: genre.id,
-    name: genre.name,
-    slug: genre.slug,
-    description: genre.description || undefined,
-    updatedAt: genre.updatedAt.toISOString(),
-  };
+    return {
+      id: genre.id,
+      name: genre.name,
+      slug: genre.slug,
+    };
 };
 
 export const deleteGenre = async (id: string) => {
@@ -2817,10 +2788,7 @@ export const getAllPlatforms = async () => {
     id: platform.id,
     name: platform.name,
     slug: platform.slug,
-    description: platform.description || undefined,
     gamesCount: platform._count.games,
-    createdAt: platform.createdAt.toISOString(),
-    updatedAt: platform.updatedAt.toISOString(),
   }));
 };
 
@@ -2843,7 +2811,6 @@ export const createPlatform = async (data: { name: string; description?: string 
     data: {
       name: data.name,
       slug,
-      description: data.description,
     },
   });
 
@@ -2857,14 +2824,11 @@ export const createPlatform = async (data: { name: string; description?: string 
     console.warn('[Platform Create] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: platform.id,
-    name: platform.name,
-    slug: platform.slug,
-    description: platform.description || undefined,
-    createdAt: platform.createdAt.toISOString(),
-    updatedAt: platform.updatedAt.toISOString(),
-  };
+    return {
+      id: platform.id,
+      name: platform.name,
+      slug: platform.slug,
+    };
 };
 
 export const updatePlatform = async (id: string, data: { name?: string; description?: string }) => {
@@ -2886,9 +2850,7 @@ export const updatePlatform = async (id: string, data: { name?: string; descript
     updateData.slug = slug;
   }
 
-  if (data.description !== undefined) {
-    updateData.description = data.description;
-  }
+  // Description field is not in the schema, removed
 
   const platform = await prisma.platform.update({
     where: { id },
@@ -2905,13 +2867,11 @@ export const updatePlatform = async (id: string, data: { name?: string; descript
     console.warn('[Platform Update] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: platform.id,
-    name: platform.name,
-    slug: platform.slug,
-    description: platform.description || undefined,
-    updatedAt: platform.updatedAt.toISOString(),
-  };
+    return {
+      id: platform.id,
+      name: platform.name,
+      slug: platform.slug,
+    };
 };
 
 export const deletePlatform = async (id: string) => {
@@ -2957,8 +2917,6 @@ export const getAllTags = async () => {
     name: tag.name,
     slug: tag.slug,
     gamesCount: tag._count.games,
-    createdAt: tag.createdAt.toISOString(),
-    updatedAt: tag.updatedAt.toISOString(),
   }));
 };
 
@@ -2994,13 +2952,11 @@ export const createTag = async (data: { name: string }) => {
     console.warn('[Tag Create] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: tag.id,
-    name: tag.name,
-    slug: tag.slug,
-    createdAt: tag.createdAt.toISOString(),
-    updatedAt: tag.updatedAt.toISOString(),
-  };
+    return {
+      id: tag.id,
+      name: tag.name,
+      slug: tag.slug,
+    };
 };
 
 export const updateTag = async (id: string, data: { name?: string }) => {
@@ -3037,12 +2993,11 @@ export const updateTag = async (id: string, data: { name?: string }) => {
     console.warn('[Tag Update] Failed to invalidate cache:', cacheError);
   }
 
-  return {
-    id: tag.id,
-    name: tag.name,
-    slug: tag.slug,
-    updatedAt: tag.updatedAt.toISOString(),
-  };
+    return {
+      id: tag.id,
+      name: tag.name,
+      slug: tag.slug,
+    };
 };
 
 export const deleteTag = async (id: string) => {

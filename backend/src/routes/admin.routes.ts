@@ -73,13 +73,15 @@ import {
   updateTagController,
   deleteTagController,
 } from '../controllers/admin.controller.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
-
+import { authenticate, requireAdmin, requireAuth } from '../middleware/auth.js';
+import { sessionMiddleware } from '../middleware/session.middleware.js';
 const router = Router();
 
 // All admin routes require authentication and admin role
 router.use(authenticate);
 router.use(requireAdmin);
+router.use(sessionMiddleware);
+router.use(requireAuth);
 
 // Dashboard
 router.get('/dashboard', getDashboardController);

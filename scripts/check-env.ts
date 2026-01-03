@@ -25,6 +25,8 @@ dotenv.config({ path: resolve(rootDir, '.env') });
 // Load frontend .env.local if exists
 dotenv.config({ path: resolve(rootDir, '.env.local') });
 
+type DeploymentType = 'monolithic' | 'separate-frontend' | 'separate-backend';
+
 interface EnvVar {
   name: string;
   required: boolean;
@@ -32,6 +34,7 @@ interface EnvVar {
   validator?: (value: string) => boolean;
   errorMessage?: string;
   category: 'frontend' | 'backend' | 'g2a';
+  deploymentScope?: DeploymentType[]; // Which deployment types require this variable
 }
 
 const REQUIRED_VARS: EnvVar[] = [
@@ -41,6 +44,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'Базовый URL API для frontend',
     category: 'frontend',
+    deploymentScope: ['monolithic', 'separate-frontend'],
     validator: (value: string) => {
       try {
         const url = new URL(value);
@@ -58,6 +62,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'PostgreSQL connection string',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => value.startsWith('postgresql://') || value.startsWith('postgres://'),
     errorMessage: 'Должен начинаться с postgresql:// или postgres://',
   },
@@ -66,6 +71,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'Прямое подключение к БД (обычно = DATABASE_URL)',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => value.startsWith('postgresql://') || value.startsWith('postgres://'),
     errorMessage: 'Должен начинаться с postgresql:// или postgres://',
   },
@@ -76,6 +82,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'Секретный ключ для JWT access токенов',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => value.length >= 32,
     errorMessage: 'Должен быть минимум 32 символа',
   },
@@ -84,6 +91,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'Секретный ключ для JWT refresh токенов',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => value.length >= 32,
     errorMessage: 'Должен быть минимум 32 символа',
   },
@@ -94,6 +102,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'URL фронтенда для CORS',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => {
       try {
         const url = new URL(value);
@@ -109,6 +118,7 @@ const REQUIRED_VARS: EnvVar[] = [
     required: true,
     description: 'Окружение приложения',
     category: 'backend',
+    deploymentScope: ['monolithic', 'separate-backend'],
     validator: (value: string) => ['development', 'production', 'test'].includes(value),
     errorMessage: 'Должен быть: development, production или test',
   },
@@ -159,10 +169,15 @@ interface CheckResult {
   error?: string;
 }
 
-function checkEnvironmentVariables(): CheckResult[] {
+function checkEnvironmentVariables(deploymentType?: DeploymentType): CheckResult[] {
   const results: CheckResult[] = [];
   
-  for (const envVar of REQUIRED_VARS) {
+  // Filter variables based on deployment type
+  const varsToCheck = deploymentType
+    ? REQUIRED_VARS.filter(v => !v.deploymentScope || v.deploymentScope.includes(deploymentType))
+    : REQUIRED_VARS;
+  
+  for (const envVar of varsToCheck) {
     const value = process.env[envVar.name];
     const exists = !!value;
     
@@ -262,13 +277,28 @@ function printSummary(results: CheckResult[]): void {
 }
 
 function main(): void {
-  console.log('🔍 Проверка Environment Variables...\n');
+  // Parse command line arguments for deployment type
+  const deploymentTypeArg = process.argv.find(arg => 
+    arg.startsWith('--deployment-type=') || arg.startsWith('--type=')
+  );
+  const deploymentType: DeploymentType | undefined = deploymentTypeArg
+    ? (deploymentTypeArg.split('=')[1] as DeploymentType)
+    : undefined;
+  
+  if (deploymentType && !['monolithic', 'separate-frontend', 'separate-backend'].includes(deploymentType)) {
+    console.error(`❌ Неверный тип деплоя: ${deploymentType}`);
+    console.error('Допустимые значения: monolithic, separate-frontend, separate-backend');
+    process.exit(1);
+  }
+  
+  const typeLabel = deploymentType ? ` (${deploymentType})` : '';
+  console.log(`🔍 Проверка Environment Variables${typeLabel}...\n`);
   
   // Для frontend переменных нужно проверить через import.meta.env
   // Но в Node.js скрипте мы можем проверить только process.env
   // Поэтому для VITE_ переменных нужно запускать через Vite
   
-  const results = checkEnvironmentVariables();
+  const results = checkEnvironmentVariables(deploymentType);
   printResults(results);
   printSummary(results);
 }
@@ -278,4 +308,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-export { checkEnvironmentVariables, REQUIRED_VARS };
+export { checkEnvironmentVariables, REQUIRED_VARS, type DeploymentType };

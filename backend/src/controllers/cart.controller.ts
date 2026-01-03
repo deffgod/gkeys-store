@@ -20,7 +20,8 @@ export const getCartController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
 
     const cart = await getCart(userId, sessionId);
 
@@ -43,7 +44,8 @@ export const addToCartController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
     const { gameId, quantity = 1 } = req.body;
 
     if (!gameId) {
@@ -74,7 +76,8 @@ export const updateCartItemController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
     const { gameId } = req.params;
     const { quantity } = req.body;
 
@@ -137,7 +140,8 @@ export const clearCartController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const sessionId = req.sessionId;
+    // Only use sessionId if user is not authenticated (guest)
+    const sessionId = userId ? undefined : req.sessionId;
 
     await clearCart(userId, sessionId);
 

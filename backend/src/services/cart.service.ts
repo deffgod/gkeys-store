@@ -1,6 +1,7 @@
 import prisma from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
 import redisClient from '../config/redis.js';
+import { hashPassword } from '../utils/bcrypt.js';
 
 // Cache TTL for cart (15 minutes)
 const CART_CACHE_TTL = 15 * 60;
@@ -47,6 +48,49 @@ const invalidateCartCache = async (userId?: string, sessionId?: string): Promise
 };
 
 /**
+ * Get or create guest user for sessionId
+ * This is needed because Prisma schema requires foreign key to User table
+ */
+const getOrCreateGuestUser = async (sessionId: string): Promise<string> => {
+  // Check if guest user already exists for this session
+  const guestUser = await prisma.user.findUnique({
+    where: { id: sessionId },
+    select: { id: true },
+  });
+
+  if (guestUser) {
+    return guestUser.id;
+  }
+
+  // Create temporary guest user for this session
+  // Use sessionId as both id and email (with prefix to avoid conflicts)
+  const guestEmail = `guest-${sessionId}@temp.local`;
+  const tempPassword = await hashPassword(`temp-${sessionId}-${Date.now()}`);
+
+  try {
+    const newGuestUser = await prisma.user.create({
+      data: {
+        id: sessionId,
+        email: guestEmail,
+        passwordHash: tempPassword,
+        nickname: 'Guest',
+        emailVerified: false,
+        role: 'USER',
+      },
+      select: { id: true },
+    });
+
+    return newGuestUser.id;
+  } catch (error: any) {
+    // If user already exists (race condition), just return the sessionId
+    if (error.code === 'P2002') {
+      return sessionId;
+    }
+    throw error;
+  }
+};
+
+/**
  * Get cart items for user (authenticated) or session (guest)
  */
 export const getCart = async (userId?: string, sessionId?: string): Promise<CartResponse> => {
@@ -54,9 +98,15 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     throw new AppError('User ID or session ID required', 400);
   }
 
+  // For guest sessions, ensure guest user exists first
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
+
   const cacheKey = getCartCacheKey(userId, sessionId);
 
-  // Try to get from cache
+  // Try to get from cache (only after identifier is determined)
   try {
     if (redisClient.isOpen) {
       const cached = await redisClient.get(cacheKey);
@@ -69,10 +119,9 @@ export const getCart = async (userId?: string, sessionId?: string): Promise<Cart
     console.warn('[Cart Cache] Failed to read from cache:', err);
   }
 
-  // Fetch from database
-  // For guests, use sessionId as userId (temporary workaround until schema supports sessionId)
+  // Fetch from database using the determined identifier
   const cartItems = await prisma.cartItem.findMany({
-    where: userId ? { userId } : { userId: sessionId },
+    where: { userId: identifier },
     include: {
       game: {
         select: {
@@ -141,20 +190,28 @@ export const addToCart = async (
   // Verify game exists and is in stock
   const game = await prisma.game.findUnique({
     where: { id: gameId },
-    select: { id: true, inStock: true, g2aStock: true },
+    select: { id: true, inStock: true, g2aStock: true, g2aProductId: true },
   });
 
   if (!game) {
     throw new AppError('Game not found', 404);
   }
 
-  // Check both inStock and g2aStock if g2aProductId exists
-  const isAvailable = game.inStock && game.g2aStock !== false;
-  if (!isAvailable) {
+  // Check stock: inStock must be true, and if game has G2A productId, g2aStock must also be true
+  if (!game.inStock) {
     throw new AppError('Game is out of stock', 400);
   }
 
-  const identifier = userId || sessionId!;
+  // Only check g2aStock if game has G2A productId
+  if (game.g2aProductId && game.g2aStock === false) {
+    throw new AppError('Game is out of stock on G2A', 400);
+  }
+
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
 
   // Check if item already in cart
   const existingItem = await prisma.cartItem.findUnique({
@@ -213,7 +270,11 @@ export const updateCartItem = async (
     return;
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
 
   await prisma.cartItem.update({
     where: {
@@ -243,7 +304,11 @@ export const removeFromCart = async (
     throw new AppError('User ID or session ID required', 400);
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
 
   await prisma.cartItem.delete({
     where: {
@@ -266,7 +331,11 @@ export const clearCart = async (userId?: string, sessionId?: string): Promise<vo
     throw new AppError('User ID or session ID required', 400);
   }
 
-  const identifier = userId || sessionId!;
+  // For guest sessions, ensure guest user exists
+  const identifier = userId || (sessionId ? await getOrCreateGuestUser(sessionId) : undefined);
+  if (!identifier) {
+    throw new AppError('User ID or session ID required', 400);
+  }
 
   await prisma.cartItem.deleteMany({
     where: {

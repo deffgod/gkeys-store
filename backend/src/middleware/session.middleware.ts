@@ -1,6 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import prisma from '../config/database.js';
+import { AppError } from './errorHandler.js';
+import redisClient from '../config/redis.js';
+
+if (!redisClient || !redisClient.isOpen) {
+  throw new AppError('Redis client not initialized', 500);
+}
+
+if (!prisma || !prisma.$connect || !prisma.$disconnect) {
+  throw new AppError('Prisma client not initialized', 500);
+}
+
+if (!redisClient.isOpen) {
+  throw new AppError('Redis client not connected', 500);
+}
+
+if (!prisma.$connect) {
+  throw new AppError('Prisma client not connected', 500);
+}
 
 export interface SessionRequest extends Request {
   sessionId?: string;

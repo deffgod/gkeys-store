@@ -1,16 +1,17 @@
 // Wishlist Page - GKEYS Gaming Store
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
-import { Icons } from '../components/UIKit';
-import { useAuth } from '../context/AuthContext';
-import { useWishlist } from '../hooks/useWishlist';
-import { useCart } from '../hooks/useCart';
+import { Icons } from '@/components/UIKit';
+import { useAuth } from '@/context/AuthContext';
+import { useWishlist } from '@/hooks/useWishlist';
+import { useCart } from '@/hooks/useCart';
 import { gamesApi } from '../services/gamesApi';
 import { Container } from '@/components/ui/container';
 import { ProfileSidebar } from '@/components/profile/ProfileSidebar';
 import GameCard from '../components/GameCard';
 import { typography } from '../styles/design-tokens';
+import { userApi } from '@/services/userApi';
 
 const theme = {
   colors: {

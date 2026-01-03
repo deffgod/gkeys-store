@@ -83,17 +83,29 @@ export const createOrder = async (
       where: { code: promoCode },
     });
 
-    if (promo?.active && (promo.usedCount ?? 0) < (promo.maxUses ?? Infinity)) {
-      const now = new Date();
-      if (now >= promo.validFrom && now <= promo.validUntil) {
-        discount = Number(((subtotal * Number(promo.discount)) / 100).toFixed(2));
-        // Update promo code usage
-        await prisma.promoCode.update({
-          where: { id: promo.id },
-          data: { usedCount: promo.usedCount + 1 },
-        });
-      }
+    if (!promo) {
+      throw new AppError('Invalid promo code', 400);
     }
+
+    if (!promo.active) {
+      throw new AppError('Promo code is not active', 400);
+    }
+
+    const now = new Date();
+    if (now < promo.validFrom || now > promo.validUntil) {
+      throw new AppError('Promo code is not valid at this time', 400);
+    }
+
+    if ((promo.usedCount ?? 0) >= (promo.maxUses ?? Infinity)) {
+      throw new AppError('Promo code has reached maximum uses', 400);
+    }
+
+    discount = Number(((subtotal * Number(promo.discount)) / 100).toFixed(2));
+    // Update promo code usage
+    await prisma.promoCode.update({
+      where: { id: promo.id },
+      data: { usedCount: promo.usedCount + 1 },
+    });
   }
 
   const total = subtotal - discount;
@@ -197,13 +209,21 @@ export const createOrder = async (
       },
     });
 
-    // Update order status to PROCESSING when G2A API calls start
-    await tx.order.update({
-      where: { id: newOrder.id },
-      data: {
-        status: 'PROCESSING',
-      },
+    // Update order status to PROCESSING only if there are G2A games
+    // Otherwise keep it as PENDING (manual processing)
+    const hasG2AGames = items.some((item) => {
+      const game = games.find((g) => g.id === item.gameId);
+      return game?.g2aProductId;
     });
+
+    if (hasG2AGames) {
+      await tx.order.update({
+        where: { id: newOrder.id },
+        data: {
+          status: 'PROCESSING',
+        },
+      });
+    }
 
     return newOrder;
   });
@@ -331,21 +351,33 @@ export const createOrder = async (
   }
 
   // Update order status based on results
-  let finalStatus: 'COMPLETED' | 'FAILED' = 'COMPLETED';
-  if (purchaseErrors.length > 0 && gameKeys.length === 0) {
-    // All purchases failed
-    finalStatus = 'FAILED';
-  } else if (purchaseErrors.length > 0) {
-    // Partial success - some keys purchased, some failed
-    // Order is completed but with errors logged
-    console.warn(`Order ${order.id} completed with ${purchaseErrors.length} errors`);
+  // If no games have G2A productId, keep order in PENDING status (manual processing)
+  const hasG2AGames = items.some((item) => {
+    const game = games.find((g) => g.id === item.gameId);
+    return game?.g2aProductId;
+  });
+
+  let finalStatus: 'COMPLETED' | 'FAILED' | 'PENDING' = 'PENDING';
+  
+  if (hasG2AGames) {
+    // Only process status if there are G2A games
+    finalStatus = 'COMPLETED';
+    if (purchaseErrors.length > 0 && gameKeys.length === 0) {
+      // All purchases failed
+      finalStatus = 'FAILED';
+    } else if (purchaseErrors.length > 0) {
+      // Partial success - some keys purchased, some failed
+      // Order is completed but with errors logged
+      console.warn(`Order ${order.id} completed with ${purchaseErrors.length} errors`);
+    }
   }
+  // If no G2A games, keep status as PENDING (set in transaction)
 
   const completedOrder = await prisma.order.update({
     where: { id: order.id },
     data: {
       status: finalStatus,
-      paymentStatus: finalStatus === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+      paymentStatus: finalStatus === 'COMPLETED' ? 'COMPLETED' : finalStatus === 'FAILED' ? 'FAILED' : 'PENDING',
       completedAt: finalStatus === 'COMPLETED' ? new Date() : null,
     },
     include: {
