@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiKey, FiCopy, FiCheck, FiSave, FiTrash2, FiEdit2, FiAlertCircle } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
-import { inputStyle, buttonStyle } from '../styles/adminStyles';
+import { adminInputStyle, adminButtonStyle } from '../styles/adminStyles';
 
 const theme = {
   colors: {
@@ -262,7 +262,7 @@ const G2AKeyManagerPage: React.FC = () => {
                 value={formData.clientId}
                 onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
                 placeholder="qdaiciDiyMaTjxMt"
-                style={inputStyle}
+                style={adminInputStyle}
               />
             </div>
 
@@ -275,7 +275,7 @@ const G2AKeyManagerPage: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="sandboxapitest@g2a.com"
-                style={inputStyle}
+                style={adminInputStyle}
               />
             </div>
 
@@ -288,7 +288,7 @@ const G2AKeyManagerPage: React.FC = () => {
                 value={formData.clientSecret}
                 onChange={(e) => setFormData(prev => ({ ...prev, clientSecret: e.target.value }))}
                 placeholder="Enter client secret"
-                style={inputStyle}
+                style={adminInputStyle}
               />
             </div>
 
@@ -373,7 +373,7 @@ const G2AKeyManagerPage: React.FC = () => {
                 value={formData.apiKey}
                 onChange={(e) => setFormData(prev => ({ ...prev, apiKey: e.target.value }))}
                 placeholder="Generated API key or enter manually"
-                style={inputStyle}
+                style={adminInputStyle}
               />
             </div>
 
