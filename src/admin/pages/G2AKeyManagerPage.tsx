@@ -296,7 +296,7 @@ const G2AKeyManagerPage: React.FC = () => {
               onClick={handleGenerateKey}
               disabled={!formData.clientId || !formData.email || !formData.clientSecret}
               style={{
-                ...buttonStyle,
+                ...adminButtonStyle,
                 backgroundColor: theme.colors.primary,
                 opacity: (!formData.clientId || !formData.email || !formData.clientSecret) ? 0.5 : 1,
               }}
@@ -385,7 +385,7 @@ const G2AKeyManagerPage: React.FC = () => {
               onClick={handleSave}
               disabled={saving || !formData.clientId || !formData.email || !formData.clientSecret}
               style={{
-                ...buttonStyle,
+                ...adminButtonStyle,
                 backgroundColor: theme.colors.success,
                 opacity: (saving || !formData.clientId || !formData.email || !formData.clientSecret) ? 0.5 : 1,
               }}
