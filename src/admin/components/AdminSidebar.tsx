@@ -28,12 +28,14 @@ const Icons = {
   FAQ: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   G2AOffers: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>,
   G2AReservations: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  G2AEnvSetup: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
   Cache: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>,
   Sync: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>,
   Categories: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   Genres: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
   Platforms: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
   Tags: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>,
+  Email: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
   Settings: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
   Home: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
 };
@@ -52,14 +54,27 @@ const menuItems = [
   { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', icon: Icons.Sync },
   { id: 'g2a-offers', label: 'G2A Offers', path: '/admin/g2a/offers', icon: Icons.G2AOffers },
   { id: 'g2a-reservations', label: 'G2A Reservations', path: '/admin/g2a/reservations', icon: Icons.G2AReservations },
+  { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', icon: Icons.G2AEnvSetup },
+  { id: 'g2a-key-manager', label: 'G2A Key Manager', path: '/admin/g2a/key-manager', icon: Icons.G2AEnvSetup },
   { id: 'cache', label: 'Cache', path: '/admin/cache', icon: Icons.Cache },
   { id: 'categories', label: 'Categories', path: '/admin/categories', icon: Icons.Categories },
   { id: 'genres', label: 'Genres', path: '/admin/genres', icon: Icons.Genres },
   { id: 'platforms', label: 'Platforms', path: '/admin/platforms', icon: Icons.Platforms },
   { id: 'tags', label: 'Tags', path: '/admin/tags', icon: Icons.Tags },
+  { id: 'email-templates', label: 'Email Templates', path: '/admin/email-templates', icon: Icons.Email },
 ];
 
-const AdminSidebar: React.FC = () => {
+interface AdminSidebarProps {
+  isMobile?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const AdminSidebar: React.FC<AdminSidebarProps> = ({ 
+  isMobile = false, 
+  isOpen = false,
+  onClose 
+}) => {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -69,17 +84,27 @@ const AdminSidebar: React.FC = () => {
     return location.pathname.startsWith(path);
   };
 
+  // Close sidebar on mobile when navigating
+  const handleLinkClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   const styles = {
     sidebar: {
-      width: '260px',
+      width: isMobile ? '280px' : '260px',
       height: '100vh',
       backgroundColor: theme.colors.surface,
       borderRight: `1px solid ${theme.colors.border}`,
       display: 'flex',
       flexDirection: 'column' as const,
       position: 'fixed' as const,
-      left: 0,
+      left: isMobile ? (isOpen ? 0 : '-280px') : 0,
       top: 0,
+      zIndex: 1000,
+      transition: 'left 0.3s ease',
+      boxShadow: isMobile && isOpen ? '2px 0 8px rgba(0,0,0,0.3)' : 'none',
     },
     header: {
       padding: '24px',
@@ -110,7 +135,7 @@ const AdminSidebar: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      padding: '12px 16px',
+      padding: '14px 16px', // Increased padding for better touch targets
       borderRadius: '8px',
       color: active ? theme.colors.text : theme.colors.textSecondary,
       backgroundColor: active ? theme.colors.surfaceLight : 'transparent',
@@ -119,6 +144,8 @@ const AdminSidebar: React.FC = () => {
       fontWeight: active ? '600' : '400',
       marginBottom: '4px',
       transition: 'all 0.2s ease',
+      minHeight: '48px', // Minimum touch target size for mobile
+      WebkitTapHighlightColor: 'transparent',
     }),
     footer: {
       padding: '16px 12px',
@@ -128,17 +155,19 @@ const AdminSidebar: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      padding: '12px 16px',
+      padding: '14px 16px', // Increased padding for better touch targets
       borderRadius: '8px',
       color: theme.colors.textSecondary,
       textDecoration: 'none',
       fontSize: '14px',
       transition: 'all 0.2s ease',
+      minHeight: '48px', // Minimum touch target size for mobile
+      WebkitTapHighlightColor: 'transparent',
     },
   };
 
   return (
-    <aside style={styles.sidebar}>
+    <aside className="admin-sidebar" style={styles.sidebar}>
       <div style={styles.header}>
         <div style={styles.logo}>
           <span style={{ color: theme.colors.primary }}>G</span>KEYS
@@ -152,6 +181,7 @@ const AdminSidebar: React.FC = () => {
             key={item.id}
             to={item.path}
             style={styles.navItem(isActive(item.path))}
+            onClick={handleLinkClick}
           >
             <item.icon />
             {item.label}
@@ -160,7 +190,11 @@ const AdminSidebar: React.FC = () => {
       </nav>
 
       <div style={styles.footer}>
-        <Link to="/" style={styles.backLink}>
+        <Link 
+          to="/" 
+          style={styles.backLink}
+          onClick={handleLinkClick}
+        >
           <Icons.Home />
           Back to Store
         </Link>

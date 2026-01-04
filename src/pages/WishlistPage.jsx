@@ -537,13 +537,13 @@ export default function WishlistPage() {
         <Container>
           <div className="flex flex-col design-tablet:flex-row gap-12 design-mobile:gap-6">
             {/* Sidebar */}
-            <ProfileSidebar
+            {/* <ProfileSidebar
               userName={user?.nickname || user?.username || 'Newbie Guy'}
               userStats={userStats}
               items={sidebarItems}
               onLogout={handleLogout}
               showUserStats={true}
-            />
+            /> */}
 
             {/* Wishlist Content */}
             <div className="flex-1 flex flex-col gap-6 w-full min-w-0">
@@ -749,7 +749,7 @@ export default function WishlistPage() {
                   </div>
                   <h2 className="text-2xl font-bold text-design-text mb-2">Your wishlist is empty</h2>
                   <p className="text-design-text-secondary mb-6 max-w-md">
-                    Add items using the <Icons.Heart /> button. We'll notify you when they go on sale!
+                    Add items using the button.<br></br> We'll notify you when they go on sale!
                   </p>
                   <Link 
                     to="/catalog" 

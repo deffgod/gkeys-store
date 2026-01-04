@@ -25,7 +25,7 @@ const theme = {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, loading: cartLoading } = useCart();
+  const { cart, loading: cartLoading, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [recommendedGames, setRecommendedGames] = useState<Game[]>([]);
   const [promoCode, setPromoCode] = useState('');
@@ -90,9 +90,27 @@ export default function CheckoutPage() {
         promoCode: promoCode || undefined,
       };
 
-      await orderApi.createOrder(orderData);
-      // Navigate to orders page on success
-      navigate('/profile/orders');
+      const order = await orderApi.createOrder(orderData);
+      
+      // Clear cart after successful order creation
+      try {
+        await clearCart();
+      } catch (clearError) {
+        console.warn('Failed to clear cart after order:', clearError);
+        // Don't fail the order if cart clearing fails
+      }
+      
+      // Small delay to ensure state is updated before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Navigate to orders page on success with order ID in state
+      navigate('/profile/orders', { 
+        state: { 
+          orderCreated: true,
+          orderId: order.id 
+        },
+        replace: true // Use replace to prevent back navigation to checkout
+      });
     } catch (err) {
       console.error('Failed to create order:', err);
       throw err;

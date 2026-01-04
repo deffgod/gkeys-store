@@ -1,0 +1,132 @@
+/* Admin Panel Mobile Optimizations */
+
+/* Responsive grid for stats */
+@media (max-width: 768px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+  .admin-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  
+  .admin-page-header h1 {
+    font-size: 24px !important;
+  }
+}
+
+/* Responsive search */
+@media (max-width: 768px) {
+  .admin-search-input {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* Responsive tables - horizontal scroll on mobile */
+@media (max-width: 768px) {
+  .admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+  }
+  
+  .admin-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .admin-table-wrapper::-webkit-scrollbar-track {
+    background: #1A1A1A;
+  }
+  
+  .admin-table-wrapper::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+  }
+}
+
+/* Modal optimizations for mobile */
+@media (max-width: 768px) {
+  .admin-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+  }
+  
+  .admin-modal-content {
+    padding: 16px !important;
+  }
+}
+
+/* Form optimizations for mobile */
+@media (max-width: 768px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .admin-form-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+}
+
+/* Button optimizations */
+@media (max-width: 768px) {
+  .admin-button-group {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  .admin-button-group button {
+    width: 100% !important;
+  }
+}
+
+/* Touch-friendly targets */
+@media (max-width: 768px) {
+  button,
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent text selection on tap */
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Optimize spacing for mobile */
+@media (max-width: 768px) {
+  .admin-section {
+    margin-bottom: 24px !important;
+  }
+  
+  .admin-card {
+    padding: 16px !important;
+  }
+}

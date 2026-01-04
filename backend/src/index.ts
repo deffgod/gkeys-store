@@ -10,20 +10,29 @@ import { sessionMiddleware } from './middleware/session.middleware.js';
 import { startG2ASyncJob, startStockCheckJob } from './jobs/g2a-sync.job.js';
 import prisma, { initializeDatabase } from './config/database.js';
 import { clearAllCache } from './services/cache.service.js';
+import authRoutes from './routes/auth.routes.js';
+import gameRoutes from './routes/game.routes.js';
+import orderRoutes from './routes/order.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import userRoutes from './routes/user.routes.js';
+import blogRoutes from './routes/blog.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import cartRoutes from './routes/cart.routes.js';
+import wishlistRoutes from './routes/wishlist.routes.js';
+import faqRoutes from './routes/faq.routes.js';
+import g2aWebhookRoutes from './routes/g2a-webhook.routes.js';
 
 // Load environment variables
 dotenv.config();
 
-
-
-
 // Clear cache on startup
-clearAllCache().then(() => {
-  console.log('🧹 Cache cleared on startup');
-}).catch((error) => {
-  console.error('❌ Failed to clear cache on startup:', error);
-});
-
+clearAllCache()
+  .then(() => {
+    console.log('🧹 Cache cleared on startup');
+  })
+  .catch((error) => {
+    console.error('❌ Failed to clear cache on startup:', error);
+  });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,70 +57,132 @@ const getAllowedOrigins = (): string[] => {
   // Explicit allowed origins (with normalization)
   if (process.env.ALLOWED_ORIGINS) {
     const allowed = process.env.ALLOWED_ORIGINS.split(',')
-      .map(origin => origin.trim())
-      .filter(origin => origin.length > 0);
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0);
     origins.push(...allowed);
   }
 
-  // Development - add localhost by default
-  if (process.env.NODE_ENV === 'development') {
-    origins.push('http://localhost:5173', 'http://localhost:3001', 'http://localhost:3000');
+  // Development - add localhost by default (always allow in non-production)
+  if (process.env.NODE_ENV !== 'production') {
+    origins.push('http://localhost:5173', 'http://localhost:4173', 'http://localhost:3001');
   }
 
   // Log in development for debugging
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'development') {
     console.log('🔍 Allowed CORS origins:', origins);
   }
 
   return origins;
 };
 
+// Handle OPTIONS requests FIRST, before any other middleware
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = getAllowedOrigins();
+  
+  // Always allow localhost in non-production
+  const isLocalhost = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
+  const isDev = process.env.NODE_ENV !== 'production';
+  
+  // Check if origin is allowed
+  const isAllowed = !origin || isLocalhost || allowedOrigins.some((allowed) => {
+    const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+    const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+    return normalizedOrigin === normalizedAllowed || origin.endsWith('.vercel.app');
+  });
+  
+  if (isAllowed && origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (isAllowed || (isDev && isLocalhost)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
+
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// CORS configuration with proper error handling
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = getAllowedOrigins();
+      try {
+        const allowedOrigins = getAllowedOrigins();
 
-      // Allow requests with no origin (mobile apps, Postman, etc.)
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // Normalize origin for comparison (lowercase, remove trailing slash)
-      const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
-
-      // Check if origin is allowed
-      const isAllowed = allowedOrigins.some((allowed) => {
-        const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
-        return (
-          normalizedOrigin === normalizedAllowed ||
-          origin.endsWith('.vercel.app') ||
-          normalizedAllowed === normalizedOrigin
-        );
-      });
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        // Log detailed error in development
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('❌ CORS Error:', {
-            requestedOrigin: origin,
-            allowedOrigins: allowedOrigins,
-          });
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) {
+          return callback(null, true);
         }
-        callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
+
+        // Normalize origin for comparison (lowercase, remove trailing slash)
+        const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+
+        // Always allow localhost in non-production
+        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+        const isDev = process.env.NODE_ENV !== 'production';
+        
+        // Check if origin is allowed
+        const isAllowed = isLocalhost || allowedOrigins.some((allowed) => {
+          const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+          return (
+            normalizedOrigin === normalizedAllowed ||
+            origin.endsWith('.vercel.app') ||
+            normalizedAllowed === normalizedOrigin
+          );
+        });
+        
+        // In development, always allow localhost
+        if (isDev && isLocalhost) {
+          return callback(null, true);
+        }
+
+        if (isAllowed) {
+          callback(null, true);
+        } else {
+          // Log detailed error in development
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('❌ CORS Error:', {
+              requestedOrigin: origin,
+              allowedOrigins: allowedOrigins,
+            });
+          }
+          callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
+        }
+      } catch (error) {
+        // If CORS check fails, log but don't block in development
+        console.error('❌ CORS check error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          callback(null, true); // Allow in dev mode if check fails
+        } else {
+          callback(error instanceof Error ? error : new Error('CORS check failed'));
+        }
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
 );
+
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(sessionMiddleware);
+
+// Skip session middleware for OPTIONS requests
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  return sessionMiddleware(req, res, next);
+});
 
 // Health check with G2A and idempotency store checks
 app.get('/health', async (req, res) => {
@@ -178,19 +249,7 @@ async function getHealthStatus() {
   return health;
 }
 
-// API Routes
-import authRoutes from './routes/auth.routes.js';
-import gameRoutes from './routes/game.routes.js';
-import orderRoutes from './routes/order.routes.js';
-import paymentRoutes from './routes/payment.routes.js';
-import userRoutes from './routes/user.routes.js';
-import blogRoutes from './routes/blog.routes.js';
-import adminRoutes from './routes/admin.routes.js';
-import cartRoutes from './routes/cart.routes.js';
-import wishlistRoutes from './routes/wishlist.routes.js';
-import faqRoutes from './routes/faq.routes.js';
-import g2aWebhookRoutes from './routes/g2a-webhook.routes.js';
-
+// API Routes - using routes imported at the top
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/orders', orderRoutes);

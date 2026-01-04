@@ -1621,5 +1621,128 @@ export const adminApi = {
     } }>(`/api/admin/users/${userId}/activity?${params.toString()}`);
     return response.data;
   },
+
+  // Email Templates
+  getEmailTemplates: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      name: string;
+      filename: string;
+      description: string;
+      variables: string[];
+      subject: string;
+      content: string;
+    }> }>('/api/admin/email-templates');
+    return response.data;
+  },
+
+  getEmailTemplate: async (name: string) => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      name: string;
+      filename: string;
+      description: string;
+      variables: string[];
+      subject: string;
+      content: string;
+    } }>(`/api/admin/email-templates/${name}`);
+    return response.data;
+  },
+
+  updateEmailTemplate: async (name: string, content: string) => {
+    const response = await apiClient.put<{ success: boolean; message: string }>(
+      `/api/admin/email-templates/${name}`,
+      { content }
+    );
+    return response.data;
+  },
+
+  getEmailTemplateMetadata: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Record<string, {
+      name: string;
+      filename: string;
+      description: string;
+      variables: string[];
+      subject: string;
+    }> }>('/api/admin/email-templates/metadata');
+    return response.data;
+  },
+
+  // G2A Settings
+  getG2ASettings: async () => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      clientId: string;
+      email: string;
+      clientSecret: string;
+      apiKey: string | null;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    } | null }>('/api/admin/g2a-settings');
+    return response.data;
+  },
+
+  getAllG2ASettings: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      clientId: string;
+      email: string;
+      clientSecret: string;
+      apiKey: string | null;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    }> }>('/api/admin/g2a-settings/all');
+    return response.data;
+  },
+
+  generateG2AApiKey: async (data: { clientId: string; email: string; clientSecret: string }) => {
+    const response = await apiClient.post<{ success: boolean; data: { apiKey: string } }>('/api/admin/g2a-settings/generate-key', data);
+    return response.data;
+  },
+
+  upsertG2ASettings: async (data: {
+    clientId: string;
+    email: string;
+    clientSecret: string;
+    apiKey?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      clientId: string;
+      email: string;
+      clientSecret: string;
+      apiKey: string | null;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    } }>('/api/admin/g2a-settings', data);
+    return response.data;
+  },
+
+  updateG2ASettings: async (id: string, data: {
+    clientId?: string;
+    email?: string;
+    clientSecret?: string;
+    apiKey?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      clientId: string;
+      email: string;
+      clientSecret: string;
+      apiKey: string | null;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    } }>(`/api/admin/g2a-settings/${id}`, data);
+    return response.data;
+  },
+
+  deleteG2ASettings: async (id: string) => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/admin/g2a-settings/${id}`);
+    return response.data;
+  },
 };
 

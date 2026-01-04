@@ -37,7 +37,7 @@ const menuItems = [
   { label: 'Orders', path: '/profile/orders' },
   { label: 'Wishlist', path: '/profile/wishlist' },
   { label: 'Balance', path: '/profile/balance' },
-  { label: 'Edit Profile', path: '/profile/edit', badge: '+5' },
+  { label: 'Edit Profile', path: '/profile/edit' },
 ];
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
@@ -197,6 +197,115 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                 </Link>
               );
             })}
+            {/* Action Buttons */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${theme.colors.border}` }}>
+              {/* Back to Store */}
+              <Link
+                to="/"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: '12px',
+                  color: theme.colors.text,
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceLight;
+                  e.currentTarget.style.borderColor = theme.colors.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = theme.colors.border;
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Back to Store
+              </Link>
+
+              {/* Create Ticket */}
+              <Link
+                to="/support"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: '12px',
+                  color: theme.colors.text,
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.surfaceLight;
+                  e.currentTarget.style.borderColor = theme.colors.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = theme.colors.border;
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                  <line x1="9" y1="10" x2="15" y2="10"/>
+                  <line x1="9" y1="14" x2="13" y2="14"/>
+                </svg>
+                Create Ticket
+              </Link>
+
+              {/* Admin Panel (only for admins) */}
+              {user?.role === 'ADMIN' && (
+                <Link
+                  to="/admin"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 20px',
+                    backgroundColor: theme.colors.primary,
+                    border: `1px solid ${theme.colors.primary}`,
+                    borderRadius: '12px',
+                    color: '#000',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primaryDark || '#00B8B3';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="9" y1="3" x2="9" y2="21"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                  </svg>
+                  Admin Panel
+                </Link>
+              )}
+            </div>
+
             {/* Logout button */}
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -319,6 +428,90 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                       </Link>
                     );
                   })}
+                  <div
+                    style={{
+                      height: '1px',
+                      backgroundColor: theme.colors.border,
+                      margin: '8px 0',
+                    }}
+                  />
+                  {/* Action Buttons for Mobile */}
+                  <Link
+                    to="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '8px',
+                      color: theme.colors.text,
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    Back to Store
+                  </Link>
+                  <Link
+                    to="/support"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '8px',
+                      color: theme.colors.text,
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                      <line x1="9" y1="10" x2="15" y2="10"/>
+                      <line x1="9" y1="14" x2="13" y2="14"/>
+                    </svg>
+                    Create Ticket
+                  </Link>
+                  {user?.role === 'ADMIN' && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        backgroundColor: theme.colors.primary,
+                        border: `1px solid ${theme.colors.primary}`,
+                        borderRadius: '8px',
+                        color: '#000',
+                        textDecoration: 'none',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <line x1="9" y1="3" x2="9" y2="21"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                      </svg>
+                      Admin Panel
+                    </Link>
+                  )}
                   <div
                     style={{
                       height: '1px',

@@ -72,6 +72,16 @@ import {
   createTagController,
   updateTagController,
   deleteTagController,
+  getEmailTemplatesController,
+  getEmailTemplateController,
+  updateEmailTemplateController,
+  getEmailTemplateMetadataController,
+  getG2ASettingsController,
+  getAllG2ASettingsController,
+  generateG2AApiKeyController,
+  upsertG2ASettingsController,
+  updateG2ASettingsController,
+  deleteG2ASettingsController,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin, requireAuth } from '../middleware/auth.js';
 import { sessionMiddleware } from '../middleware/session.middleware.js';
@@ -187,5 +197,19 @@ router.get('/tags', getAllTagsController);
 router.post('/tags', createTagController);
 router.put('/tags/:id', updateTagController);
 router.delete('/tags/:id', deleteTagController);
+
+// Email Templates
+router.get('/email-templates', getEmailTemplatesController);
+router.get('/email-templates/metadata', getEmailTemplateMetadataController);
+router.get('/email-templates/:name', getEmailTemplateController);
+router.put('/email-templates/:name', updateEmailTemplateController);
+
+// G2A Settings Management
+router.get('/g2a-settings', getG2ASettingsController);
+router.get('/g2a-settings/all', getAllG2ASettingsController);
+router.post('/g2a-settings/generate-key', generateG2AApiKeyController);
+router.post('/g2a-settings', upsertG2ASettingsController);
+router.put('/g2a-settings/:id', updateG2ASettingsController);
+router.delete('/g2a-settings/:id', deleteG2ASettingsController);
 
 export default router;

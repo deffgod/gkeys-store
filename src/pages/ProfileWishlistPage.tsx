@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import ProfileLayout from '../components/profile/ProfileLayout';
 import bestSellerBadge from '../assets/best-seller-badge.svg';
+import { gamesApi, type Game } from '../services/gamesApi';
 
 const theme = {
   colors: {
@@ -29,69 +30,7 @@ const mockWishlistItems = [
   },
 ];
 
-// Mock suggested games
-const suggestedGames = [
-  {
-    id: '1',
-    title: 'Ghost of Tsushima',
-    slug: 'ghost-of-tsushima',
-    image: 'https://images.g2a.com/300x400/1x1x0/ghost-of-tsushima-directors-cut-pc-steam-key-global/6193ec445bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: false,
-  },
-  {
-    id: '2',
-    title: 'Resident Evil Village',
-    slug: 'resident-evil-village',
-    image: 'https://images.g2a.com/300x400/1x1x0/resident-evil-village-pc-steam-key-global/5fa0e0345bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: true,
-  },
-  {
-    id: '3',
-    title: 'Back 4 Blood',
-    slug: 'back-4-blood',
-    image: 'https://images.g2a.com/300x400/1x1x0/back-4-blood-pc-steam-key-global/5fa0e0345bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: false,
-  },
-  {
-    id: '4',
-    title: 'Ghost of Tsushima',
-    slug: 'ghost-of-tsushima-2',
-    image: 'https://images.g2a.com/300x400/1x1x0/ghost-of-tsushima-directors-cut-pc-steam-key-global/6193ec445bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: false,
-  },
-  {
-    id: '5',
-    title: 'Resident Evil Village',
-    slug: 'resident-evil-village-2',
-    image: 'https://images.g2a.com/300x400/1x1x0/resident-evil-village-pc-steam-key-global/5fa0e0345bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: true,
-  },
-  {
-    id: '6',
-    title: 'Back 4 Blood',
-    slug: 'back-4-blood-2',
-    image: 'https://images.g2a.com/300x400/1x1x0/back-4-blood-pc-steam-key-global/5fa0e0345bafe3f8501e6f87',
-    price: 13,
-    originalPrice: 90,
-    discount: 86,
-    isBestSeller: false,
-  },
-];
+// Removed mock games - will load from API
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -130,7 +69,13 @@ const SparkleIcon = () => (
 );
 
 // Game Card Component
-const GameCard = ({ game }) => (
+const GameCard = ({ game }: { game: Game }) => {
+  // Calculate discount if originalPrice exists
+  const discount = game.originalPrice && game.originalPrice > game.price
+    ? Math.round(((game.originalPrice - game.price) / game.originalPrice) * 100)
+    : undefined;
+
+  return (
   <Link
     to={`/game/${game.slug}`}
     style={{ textDecoration: 'none' }}
@@ -172,7 +117,7 @@ const GameCard = ({ game }) => (
         }}
       >
         <img
-          src={game.image}
+          src={game.image || game.images?.[0] || 'https://via.placeholder.com/300x400?text=Game'}
           alt={game.title}
           style={{
             width: '100%',
@@ -223,7 +168,7 @@ const GameCard = ({ game }) => (
                 textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
               }}
             >
-              {typeof game.price === 'number' ? game.price.toFixed(2) : game.price}€
+              {typeof game.price === 'number' ? game.price.toFixed(2) : game.price}{game.currency || '€'}
             </span>
             {game.originalPrice && game.originalPrice > game.price && (
               <>
@@ -235,9 +180,9 @@ const GameCard = ({ game }) => (
                     textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
                   }}
                 >
-                  {typeof game.originalPrice === 'number' ? game.originalPrice.toFixed(2) : game.originalPrice}€
+                  {typeof game.originalPrice === 'number' ? game.originalPrice.toFixed(2) : game.originalPrice}{game.currency || '€'}
                 </span>
-                {game.discount && (
+                {discount && (
                   <span
                     style={{
                       backgroundColor: theme.colors.primary,
@@ -250,7 +195,7 @@ const GameCard = ({ game }) => (
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
                     }}
                   >
-                    -{game.discount}%
+                    -{discount}%
                   </span>
                 )}
               </>
@@ -260,23 +205,51 @@ const GameCard = ({ game }) => (
       </div>
     </motion.div>
   </Link>
-);
+  );
+};
 
 export default function ProfileWishlistPage() {
   const [wishlist, setWishlist] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestedGames, setSuggestedGames] = useState<Game[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
     const loadWishlist = async () => {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // Toggle between empty and filled wishlist for testing
-      setWishlist(mockWishlistItems); // Change to [] to test empty state
-      setIsLoading(false);
+      setError(null);
+      try {
+        const wishlistData = await gamesApi.getWishlist();
+        setWishlist(wishlistData || []);
+      } catch (err) {
+        console.error('Failed to load wishlist:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load wishlist');
+        setWishlist([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadWishlist();
+  }, []);
+
+  // Load suggested games from API
+  useEffect(() => {
+    const loadSuggestedGames = async () => {
+      setLoadingSuggested(true);
+      try {
+        const games = await gamesApi.getRandomGames(6);
+        setSuggestedGames(games || []);
+      } catch (err) {
+        console.error('Failed to load suggested games:', err);
+        setSuggestedGames([]);
+      } finally {
+        setLoadingSuggested(false);
+      }
+    };
+
+    loadSuggestedGames();
   }, []);
 
   if (isLoading) {
@@ -312,9 +285,38 @@ export default function ProfileWishlistPage() {
     );
   }
 
+  const handleRemoveFromWishlist = async (gameId: string) => {
+    try {
+      await gamesApi.removeFromWishlist(gameId);
+      // Reload wishlist after removal
+      const updatedWishlist = await gamesApi.getWishlist();
+      setWishlist(updatedWishlist || []);
+    } catch (err) {
+      console.error('Failed to remove from wishlist:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove item');
+    }
+  };
+
   return (
     <ProfileLayout>
       <div>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(255, 68, 68, 0.1)',
+              border: `1px solid #FF4444`,
+              borderRadius: '8px',
+              color: '#FF4444',
+              fontSize: '14px',
+              marginBottom: '24px',
+            }}
+          >
+            {error}
+          </motion.div>
+        )}
         {/* Wishlist Content */}
         {wishlist.length === 0 ? (
           /* Empty State */
@@ -400,15 +402,17 @@ export default function ProfileWishlistPage() {
                 }}
               >
                 {/* Item Title */}
-                <span
+                <Link
+                  to={`/game/${item.slug || item.id || '#'}`}
                   style={{
                     fontSize: '16px',
                     color: theme.colors.text,
                     flex: 1,
+                    textDecoration: 'none',
                   }}
                 >
-                  {item.title}
-                </span>
+                  {item.title || 'Unknown Game'}
+                </Link>
                 {/* Item Image */}
                 <div
                   style={{
@@ -442,15 +446,37 @@ export default function ProfileWishlistPage() {
                     textAlign: 'right',
                   }}
                 >
-                  {item.price}€
+                  {typeof item.price === 'number' ? item.price.toFixed(2) : item.price}€
                 </span>
+                {/* Remove Button */}
+                {item.id && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => handleRemoveFromWishlist(item.id)}
+                    style={{
+                      padding: '8px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '8px',
+                      color: theme.colors.textSecondary,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title="Remove from wishlist"
+                  >
+                    <HeartIcon />
+                  </motion.button>
+                )}
               </motion.div>
             ))}
           </motion.div>
         )}
 
         {/* You might also like */}
-        <div>
+        <div style={{ marginTop: '48px' }}>
           <h2
             style={{
               fontSize: '24px',
@@ -461,26 +487,76 @@ export default function ProfileWishlistPage() {
           >
             You might also like
           </h2>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '20px',
-            }}
-            className="suggested-games-grid"
-          >
-            {suggestedGames.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
-          </motion.div>
+          {loadingSuggested ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '20px',
+              }}
+              className="suggested-games-grid"
+            >
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={`skeleton-${index}`}
+                  style={{
+                    aspectRatio: '3/4',
+                    backgroundColor: theme.colors.surface,
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: theme.colors.surfaceLight,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : suggestedGames.length > 0 ? (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '20px',
+              }}
+              className="suggested-games-grid"
+            >
+              {suggestedGames.map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))}
+            </motion.div>
+          ) : (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: theme.colors.textSecondary,
+              }}
+            >
+              <p>Unable to load recommendations at this time.</p>
+            </div>
+          )}
         </div>
       </div>
 
       <style>
         {`
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
           @media (max-width: 900px) {
             .suggested-games-grid {
               grid-template-columns: repeat(2, 1fr) !important;

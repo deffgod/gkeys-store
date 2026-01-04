@@ -72,16 +72,21 @@ export async function initializeDatabase(): Promise<boolean> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('❌ Database connection failed:', errorMessage);
-    
+
     // Provide helpful error messages
-    if (errorMessage.includes('Can\'t reach database server') || errorMessage.includes('db.prisma.io')) {
-      console.error('💡 Tip: If using Prisma Accelerate, make sure DIRECT_URL is set in environment variables');
+    if (
+      errorMessage.includes("Can't reach database server") ||
+      errorMessage.includes('db.prisma.io')
+    ) {
+      console.error(
+        '💡 Tip: If using Prisma Accelerate, make sure DIRECT_URL is set in environment variables'
+      );
       console.error('💡 For local development, ensure DATABASE_URL points to your local database');
     } else if (errorMessage.includes('P1001') || errorMessage.includes('connection')) {
       console.error('💡 Tip: Check that your database server is running and accessible');
       console.error('💡 Verify DATABASE_URL or DIRECT_URL in your .env file');
     }
-    
+
     console.warn('⚠️  Some features may not work without database connection');
     return false;
   }

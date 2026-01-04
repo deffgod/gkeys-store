@@ -55,9 +55,47 @@ export const generateRefreshToken = (payload: TokenPayload): string => {
 };
 
 export const verifyAccessToken = (token: string): TokenPayload => {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+
+    // Validate payload structure
+    if (!decoded.userId || !decoded.email || !decoded.role) {
+      throw new Error('Invalid token payload: missing required fields');
+    }
+
+    return decoded;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Token has expired');
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Invalid token');
+    } else if (error instanceof jwt.NotBeforeError) {
+      throw new Error('Token not active yet');
+    }
+    // Re-throw if it's our custom error or unknown error
+    throw error;
+  }
 };
 
 export const verifyRefreshToken = (token: string): TokenPayload => {
-  return jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload;
+  try {
+    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload;
+
+    // Validate payload structure
+    if (!decoded.userId || !decoded.email || !decoded.role) {
+      throw new Error('Invalid token payload: missing required fields');
+    }
+
+    return decoded;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Refresh token has expired');
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Invalid refresh token');
+    } else if (error instanceof jwt.NotBeforeError) {
+      throw new Error('Refresh token not active yet');
+    }
+    // Re-throw if it's our custom error or unknown error
+    throw error;
+  }
 };

@@ -1,6 +1,6 @@
 /**
  * Unit Tests: Order Service
- * 
+ *
  * Tests order service functions in isolation.
  */
 
@@ -193,9 +193,7 @@ describe('Order Service', () => {
     it('should handle G2A API failures gracefully', async () => {
       // Mock G2A API failure
       const g2aService = await import('../../services/g2a.service.js');
-      (g2aService.validateGameStock as any).mockRejectedValueOnce(
-        new Error('G2A API error')
-      );
+      (g2aService.validateGameStock as any).mockRejectedValueOnce(new Error('G2A API error'));
 
       // Create order with non-G2A game (should still work)
       const orderData: CreateOrderRequest = {

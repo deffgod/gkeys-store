@@ -24,7 +24,10 @@ export const getWishlistController = async (
 
     // Debug in test environment
     if (process.env.NODE_ENV === 'test') {
-      console.log(`[Wishlist Controller] getWishlist: userId=${userId}, sessionId=${sessionId}, req.user=`, req.user);
+      console.log(
+        `[Wishlist Controller] getWishlist: userId=${userId}, sessionId=${sessionId}, req.user=`,
+        req.user
+      );
     }
 
     const wishlist = await getWishlist(userId, sessionId);

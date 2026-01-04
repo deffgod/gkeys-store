@@ -69,11 +69,13 @@ export default function ProfileBalancePage() {
     const loadBalance = async () => {
       try {
         setLoadingBalance(true);
-        const response = await apiClient.get('/api/users/balance');
-        setCurrentBalance(response.data.balance);
+        const response = await apiClient.get('/api/user/balance');
+        const balance = response.success ? response.data.balance : (response.data?.balance || 0);
+        setCurrentBalance(balance);
       } catch (err) {
         console.error('Failed to load balance:', err);
         setError(err instanceof Error ? err.message : 'Failed to load balance');
+        setCurrentBalance(0);
       } finally {
         setLoadingBalance(false);
       }

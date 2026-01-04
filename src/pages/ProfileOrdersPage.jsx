@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import ProfileLayout from '../components/profile/ProfileLayout';
 import { orderApi } from '../services/orderApi';
 
@@ -86,9 +86,20 @@ const formatDate = (dateString) => {
 };
 
 export default function ProfileOrdersPage() {
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [orderCreated, setOrderCreated] = useState(false);
+
+  useEffect(() => {
+    // Check if we just created an order
+    if (location.state?.orderCreated) {
+      setOrderCreated(true);
+      // Clear the state after showing message
+      setTimeout(() => setOrderCreated(false), 5000);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -144,6 +155,26 @@ export default function ProfileOrdersPage() {
 
   return (
     <ProfileLayout>
+      {/* Success message for newly created order */}
+      {orderCreated && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          style={{
+            padding: '16px 24px',
+            backgroundColor: 'rgba(0, 200, 194, 0.15)',
+            border: `1px solid ${theme.colors.primary}`,
+            borderRadius: '8px',
+            color: theme.colors.primary,
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '24px',
+          }}
+        >
+          ✅ Order created successfully! Your game keys will be sent to your email.
+        </motion.div>
+      )}
       <motion.div
         variants={containerVariants}
         initial="hidden"

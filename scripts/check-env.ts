@@ -6,9 +6,9 @@
  * для frontend и backend приложения.
  */
 
-import dotenv from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync, existsSync } from 'fs';
 
 // Get current directory in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -18,12 +18,72 @@ const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
 const backendDir = resolve(rootDir, 'backend');
 
-// Load backend .env first (has priority)
-dotenv.config({ path: resolve(backendDir, '.env') });
-// Load root .env if exists
-dotenv.config({ path: resolve(rootDir, '.env') });
-// Load frontend .env.local if exists
-dotenv.config({ path: resolve(rootDir, '.env.local') });
+// Function to load .env file manually
+function loadEnvFile(filePath: string): void {
+  if (!existsSync(filePath)) {
+    return;
+  }
+  
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Skip comments and empty lines
+      if (!trimmed || trimmed.startsWith('#')) {
+        continue;
+      }
+      
+      // Parse KEY=VALUE format
+      const match = trimmed.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        let value = match[2].trim();
+        
+        // Remove quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        
+        // Only set if not already in process.env (respect existing values)
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  } catch (error) {
+    // Silently ignore errors reading .env files
+  }
+}
+
+// Try to load dotenv, but don't fail if it's not available
+async function loadEnvironmentVariables() {
+  let dotenv: typeof import('dotenv') | null = null;
+  
+  try {
+    const dotenvModule = await import('dotenv');
+    dotenv = dotenvModule.default || dotenvModule;
+  } catch (error) {
+    // dotenv not available, use manual loading
+  }
+  
+  if (dotenv) {
+    // Use dotenv if available (preferred method)
+    dotenv.config({ path: resolve(backendDir, '.env') });
+    dotenv.config({ path: resolve(rootDir, '.env') });
+    dotenv.config({ path: resolve(rootDir, '.env.local') });
+  } else {
+    // Fallback: load manually
+    loadEnvFile(resolve(backendDir, '.env'));
+    loadEnvFile(resolve(rootDir, '.env'));
+    loadEnvFile(resolve(rootDir, '.env.local'));
+  }
+}
+
+// Load environment variables before proceeding
+await loadEnvironmentVariables();
 
 type DeploymentType = 'monolithic' | 'separate-frontend' | 'separate-backend';
 
@@ -276,7 +336,10 @@ function printSummary(results: CheckResult[]): void {
   }
 }
 
-function main(): void {
+async function main(): Promise<void> {
+  // Load environment variables first
+  await loadEnvironmentVariables();
+  
   // Parse command line arguments for deployment type
   const deploymentTypeArg = process.argv.find(arg => 
     arg.startsWith('--deployment-type=') || arg.startsWith('--type=')
@@ -305,7 +368,10 @@ function main(): void {
 
 // Run if executed directly (ES module check)
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  main().catch((error) => {
+    console.error('❌ Ошибка выполнения скрипта:', error);
+    process.exit(1);
+  });
 }
 
 export { checkEnvironmentVariables, REQUIRED_VARS, type DeploymentType };

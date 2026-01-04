@@ -33,17 +33,20 @@ const theme = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '12px 16px',
+  padding: '14px 16px', // Increased for better touch targets
   backgroundColor: theme.colors.surfaceLight,
   border: `1px solid ${theme.colors.border}`,
   borderRadius: '8px',
   color: theme.colors.text,
-  fontSize: '14px',
+  fontSize: '16px', // Prevent zoom on iOS (minimum 16px)
   outline: 'none',
+  minHeight: '44px', // Minimum touch target size for mobile
+  boxSizing: 'border-box' as const,
+  WebkitAppearance: 'none' as const,
 };
 
 const buttonStyle: React.CSSProperties = {
-  padding: '12px 24px',
+  padding: '14px 24px', // Increased for better touch targets
   borderRadius: '8px',
   border: 'none',
   cursor: 'pointer',
@@ -53,6 +56,10 @@ const buttonStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: '8px',
   transition: 'all 0.2s',
+  minHeight: '44px', // Minimum touch target size for mobile
+  minWidth: '44px',
+  WebkitTapHighlightColor: 'transparent',
+  userSelect: 'none' as const,
 };
 
 interface GameFormData {
@@ -282,7 +289,7 @@ const GamesPage: React.FC = () => {
 
       {/* Search */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ position: 'relative', maxWidth: '400px' }}>
+        <div className="admin-search-input" style={{ position: 'relative', maxWidth: '400px', width: '100%' }}>
           <FiSearch 
             style={{ 
               position: 'absolute', 
@@ -336,8 +343,8 @@ const GamesPage: React.FC = () => {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="admin-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead>
                 <tr style={{ backgroundColor: theme.colors.surfaceLight }}>
                   <th style={{ 
@@ -623,6 +630,7 @@ const GamesPage: React.FC = () => {
             onClick={() => setShowModal(false)}
           >
             <motion.div
+              className="admin-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -636,7 +644,7 @@ const GamesPage: React.FC = () => {
                 overflow: 'auto',
               }}
             >
-              <div style={{
+              <div className="admin-modal-content" style={{
                 padding: '24px',
                 borderBottom: `1px solid ${theme.colors.border}`,
                 display: 'flex',
@@ -649,20 +657,25 @@ const GamesPage: React.FC = () => {
                 <button
                   onClick={() => setShowModal(false)}
                   style={{
-                    padding: '8px',
+                    padding: '12px',
                     borderRadius: '6px',
                     border: 'none',
                     backgroundColor: 'transparent',
                     color: theme.colors.textSecondary,
                     cursor: 'pointer',
+                    minHeight: '44px',
+                    minWidth: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
                   <FiX size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
-                <div style={{ display: 'grid', gap: '20px' }}>
+              <form onSubmit={handleSubmit} className="admin-modal-content" style={{ padding: '24px' }}>
+                <div className="admin-form-grid" style={{ display: 'grid', gap: '20px' }}>
                   <div>
                     <label style={{ 
                       display: 'block', 

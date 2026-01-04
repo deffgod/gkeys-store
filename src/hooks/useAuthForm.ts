@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react';
 import { validateLoginForm, validateRegisterForm, type ValidationResult } from '../utils/authValidation';
 import { getAuthErrorMessage, getGeneralErrorMessage } from '../utils/authErrors';
 
+
 export interface AuthFormState {
   email: string;
   password: string;

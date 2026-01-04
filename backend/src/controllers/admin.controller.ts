@@ -59,6 +59,12 @@ import {
   deleteTag,
 } from '../services/admin.service.js';
 import {
+  getEmailTemplates,
+  getEmailTemplate,
+  updateEmailTemplate,
+  getTemplateMetadata,
+} from '../services/email-template.service.js';
+import {
   UserSearchFilters,
   TransactionFilters,
   PaymentTransactionFilters,
@@ -1459,6 +1465,172 @@ export const deleteTagController = async (req: AuthRequest, res: Response, next:
     res.status(200).json({
       success: true,
       message: 'Tag deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Email Templates
+export const getEmailTemplatesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const templates = await getEmailTemplates();
+    res.status(200).json({
+      success: true,
+      data: templates,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEmailTemplateController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name } = req.params;
+    const template = await getEmailTemplate(name);
+    
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: template,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEmailTemplateController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name } = req.params;
+    const { content } = req.body;
+
+    if (!content || typeof content !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Content is required',
+      });
+    }
+
+    await updateEmailTemplate(name, content);
+    res.status(200).json({
+      success: true,
+      message: 'Template updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEmailTemplateMetadataController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const metadata = getEmailTemplateMetadata();
+    res.json({ success: true, data: metadata });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// G2A Settings Controllers
+export const getG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const settings = await getG2ASettings();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const settings = await getAllG2ASettings();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateG2AApiKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { clientId, email, clientSecret } = req.body;
+
+    if (!clientId || !email || !clientSecret) {
+      return res.status(400).json({
+        success: false,
+        error: 'ClientId, Email, and ClientSecret are required',
+      });
+    }
+
+    const apiKey = generateG2AApiKey(clientId, email, clientSecret);
+    res.json({ success: true, data: { apiKey } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const upsertG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { clientId, email, clientSecret, apiKey, isActive } = req.body;
+
+    if (!clientId || !email || !clientSecret) {
+      return res.status(400).json({
+        success: false,
+        error: 'ClientId, Email, and ClientSecret are required',
+      });
+    }
+
+    const settings = await upsertG2ASettings({
+      clientId,
+      email,
+      clientSecret,
+      apiKey,
+      isActive,
+    });
+
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { clientId, email, clientSecret, apiKey, isActive } = req.body;
+
+    const settings = await updateG2ASettings(id, {
+      ...(clientId && { clientId }),
+      ...(email && { email }),
+      ...(clientSecret && { clientSecret }),
+      ...(apiKey && { apiKey }),
+      ...(isActive !== undefined && { isActive }),
+    });
+
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await deleteG2ASettings(id);
+    res.json({ success: true, message: 'G2A settings deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+  try {
+    const metadata = getTemplateMetadata();
+    res.status(200).json({
+      success: true,
+      data: metadata,
     });
   } catch (error) {
     next(error);

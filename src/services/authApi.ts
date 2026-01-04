@@ -1,5 +1,5 @@
 import apiClient from './api';
-
+import { useAuth } from '../context/AuthContext';
 
 export interface LoginRequest {
   email: string;
@@ -54,7 +54,7 @@ export const authApi = {
         console.log('🔐 Attempting login for:', credentials.email);
       }
       
-      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/api/auth/login', credentials);
       
       // Check if response has success wrapper
       const authData = response.success ? response.data : response as unknown as AuthResponse;
@@ -111,7 +111,7 @@ export const authApi = {
         console.log('📤 Sending registration request:', { email: requestData.email, hasNickname: !!requestData.nickname });
       }
 
-      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/register', requestData);
+      const response = await apiClient.post<{ success: boolean; data: AuthResponse }>('/api/auth/register', requestData);
       
       // Check if response has success wrapper
       const authData = response.success ? response.data : response as unknown as AuthResponse;
@@ -155,7 +155,7 @@ export const authApi = {
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/auth/logout');
+      await apiClient.post('/api/auth/logout');
       
       // Clear token from API client
       apiClient.setToken(null);
@@ -169,7 +169,7 @@ export const authApi = {
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
     try {
-      const response = await apiClient.post<{ success: boolean; data: RefreshTokenResponse }>('/auth/refresh', {
+      const response = await apiClient.post<{ success: boolean; data: RefreshTokenResponse }>('/api/auth/refresh', {
         refreshToken,
       });
       
@@ -177,39 +177,96 @@ export const authApi = {
       const tokenData = response.success ? response.data : response as unknown as RefreshTokenResponse;
       
       // Update token in API client
-      apiClient.setToken(tokenData.token);
+      if (tokenData.token) {
+        apiClient.setToken(tokenData.token);
+      }
       
       return tokenData;
     } catch (error) {
       console.error('Refresh token error:', error);
-      throw error;
+      // Clear token on refresh failure
+      apiClient.setToken(null);
+      
+      if (error instanceof Error) {
+        let message = error.message;
+        if (message.includes('HTTP 401') || message.includes('HTTP 403')) {
+          message = 'Session expired. Please log in again.';
+        } else if (message.includes('HTTP 400')) {
+          message = 'Invalid refresh token. Please log in again.';
+        } else if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+          message = 'Network error. Please check your internet connection and try again.';
+        } else if (!message.includes('HTTP')) {
+          message = `Failed to refresh token: ${message}`;
+        }
+        throw new Error(message);
+      }
+      throw new Error('Failed to refresh token. Please log in again.');
     }
   },
 
   async forgotPassword(data: ForgotPasswordRequest): Promise<{ message: string }> {
     try {
-      return await apiClient.post(AUTH_URL + '/forgot-password', data);
+      return await apiClient.post<{ success: boolean; message: string }>('/api/auth/forgot-password', data);
     } catch (error) {
       console.error('Forgot password error:', error);
-      throw error;
+      if (error instanceof Error) {
+        let message = error.message;
+        if (message.includes('HTTP 404')) {
+          message = 'Forgot password endpoint is not available. Please contact support.';
+        } else if (message.includes('HTTP 400')) {
+          message = 'Invalid email address. Please check your email and try again.';
+        } else if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+          message = 'Network error. Please check your internet connection and try again.';
+        } else if (!message.includes('HTTP')) {
+          message = `Failed to send password reset email: ${message}`;
+        }
+        throw new Error(message);
+      }
+      throw new Error('Failed to send password reset email. Please try again.');
     }
   },
 
   async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
     try {
-      return await apiClient.post('/auth/reset-password', data);
+      return await apiClient.post<{ success: boolean; message: string }>('/api/auth/reset-password', data);
     } catch (error) {
       console.error('Reset password error:', error);
-      throw error;
+      if (error instanceof Error) {
+        let message = error.message;
+        if (message.includes('HTTP 400')) {
+          message = 'Invalid or expired reset token. Please request a new password reset.';
+        } else if (message.includes('HTTP 404')) {
+          message = 'Reset password endpoint is not available. Please contact support.';
+        } else if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+          message = 'Network error. Please check your internet connection and try again.';
+        } else if (!message.includes('HTTP')) {
+          message = `Failed to reset password: ${message}`;
+        }
+        throw new Error(message);
+      }
+      throw new Error('Failed to reset password. Please try again.');
     }
   },
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     try {
-      return await apiClient.post(AUTH_URL + '/verify-email', { token });
+      return await apiClient.post<{ success: boolean; message: string }>('/api/auth/verify-email', { token });
     } catch (error) {
       console.error('Verify email error:', error);
-      throw error;
+      if (error instanceof Error) {
+        let message = error.message;
+        if (message.includes('HTTP 400')) {
+          message = 'Invalid or expired verification token. Please request a new verification email.';
+        } else if (message.includes('HTTP 404')) {
+          message = 'Email verification endpoint is not available. Please contact support.';
+        } else if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+          message = 'Network error. Please check your internet connection and try again.';
+        } else if (!message.includes('HTTP')) {
+          message = `Failed to verify email: ${message}`;
+        }
+        throw new Error(message);
+      }
+      throw new Error('Failed to verify email. Please try again.');
     }
   },
 
@@ -231,7 +288,7 @@ export const authApi = {
         lastName?: string;
         avatar?: string;
         role: string;
-      } }>('/auth/me');
+      } }>('/api/auth/me');
       
       // Check if response has success wrapper
       const userData = response.success ? response.data : response as unknown as {

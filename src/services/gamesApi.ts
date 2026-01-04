@@ -1,7 +1,8 @@
 import apiClient from './api';
 
+
 // Check if we're in development mode
-const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const isDevelopment = import.meta.env.DEV;
 
 export interface Game {
   id: string;
@@ -137,7 +138,7 @@ const mockGamesFromG2A: Game[] = [
     tags: ['Crime', 'Multiplayer', 'GTA Online'],
     isBestSeller: true,
     isNew: false,
-    isPreorder: false,
+    isPreorder: true,
     developer: 'Rockstar North',
     publisher: 'Rockstar Games',
     qty: 370,
@@ -220,7 +221,7 @@ const mockGamesFromG2A: Game[] = [
     genres: ['Action', 'Adventure', 'Stealth'],
     tags: ['Historical', 'Parkour', 'Open World'],
     isBestSeller: false,
-    isNew: false,
+    isNew: true,
     isPreorder: false,
     developer: 'Ubisoft Sofia',
     publisher: 'Ubisoft',
@@ -359,7 +360,7 @@ const mockGamesFromG2A: Game[] = [
     platforms: ['Uplay', 'PC'],
     genres: ['Action', 'Adventure', 'Stealth'],
     tags: ['Historical', 'Parkour', 'Open World'],
-    isBestSeller: false,
+    isBestSeller: true,
     isNew: false,
     isPreorder: false,
     developer: 'Ubisoft Montreal',

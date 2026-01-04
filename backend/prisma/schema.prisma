@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgres"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -353,6 +352,20 @@ model FAQ {
 
   @@index([category, order])
   @@map("faqs")
+}
+
+model G2ASettings {
+  id            String   @id @default(uuid())
+  clientId      String
+  email         String
+  clientSecret  String   @db.Text
+  apiKey        String?  @db.Text
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([clientId])
+  @@map("g2a_settings")
 }
 
 model LoginHistory {

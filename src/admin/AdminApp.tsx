@@ -14,11 +14,14 @@ import WishlistManagementPage from './pages/WishlistManagementPage';
 import FAQManagementPage from './pages/FAQManagementPage';
 import G2AOffersPage from './pages/G2AOffersPage';
 import G2AReservationsPage from './pages/G2AReservationsPage';
+import G2AEnvSetupPage from './pages/G2AEnvSetupPage';
+import G2AKeyManagerPage from './pages/G2AKeyManagerPage';
 import CacheManagementPage from './pages/CacheManagementPage';
 import CategoriesPage from './pages/CategoriesPage';
 import GenresPage from './pages/GenresPage';
 import PlatformsPage from './pages/PlatformsPage';
 import TagsPage from './pages/TagsPage';
+import EmailTemplatesPage from './pages/EmailTemplatesPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -37,11 +40,14 @@ const AdminApp: React.FC = () => {
         <Route path="g2a" element={<G2ASyncPage />} />
         <Route path="g2a/offers" element={<G2AOffersPage />} />
         <Route path="g2a/reservations" element={<G2AReservationsPage />} />
+        <Route path="g2a/env-setup" element={<G2AEnvSetupPage />} />
+        <Route path="g2a/key-manager" element={<G2AKeyManagerPage />} />
         <Route path="cache" element={<CacheManagementPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="genres" element={<GenresPage />} />
         <Route path="platforms" element={<PlatformsPage />} />
         <Route path="tags" element={<TagsPage />} />
+        <Route path="email-templates" element={<EmailTemplatesPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
     </Routes>

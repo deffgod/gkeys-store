@@ -85,7 +85,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
       }
       try {
         const response = await apiClient.get<{ success: boolean; data: { balance: number; currency: string } }>(
-          '/api/users/balance'
+          '/api/user/balance'
         );
         setUserBalance(response.data.balance);
       } catch (err) {

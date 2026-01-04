@@ -53,6 +53,7 @@ import ComponentShowcase from './pages/ComponentShowcase';
 
 
 
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -208,7 +209,7 @@ function AnimatedRoutes() {
           }
         />
         <Route
-          path="/login"
+          path="/login" 
           element={
             <PageTransition>
               <LoginPage />
@@ -256,11 +257,31 @@ function AppRoutes() {
   const location = useLocation();
   const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(location.pathname);
   const isShowcaseRoute = location.pathname === '/component-showcase';
+  const isProfileRoute = location.pathname.startsWith('/profile');
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   // Auth pages and showcase don't need the main layout
   if (isAuthRoute || isShowcaseRoute) {
     return (
       <AnimatedRoutes />
+    );
+  }
+
+  // Profile pages don't need Header/Footer (they use ProfileLayout)
+  if (isProfileRoute) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0D0D0D' }}>
+        <AnimatedRoutes />
+      </div>
+    );
+  }
+
+  // Admin pages don't need Header/Footer (they use AdminLayout)
+  if (isAdminRoute) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0D0D0D' }}>
+        <AnimatedRoutes />
+      </div>
     );
   }
 

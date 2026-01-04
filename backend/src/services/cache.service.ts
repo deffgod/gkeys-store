@@ -1,7 +1,6 @@
 import redisClient from '../config/redis.js';
 import prisma from '../config/database.js';
 
-
 // Cache TTLs
 const CACHE_TTL = {
   BEST_SELLERS: 7 * 24 * 60 * 60, // 7 days (updates weekly)

@@ -26,7 +26,8 @@ export const registerValidator: ValidationChain[] = [
 export const loginValidator: ValidationChain[] = [
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password')
-    .notEmpty().withMessage('Password is required')
+    .notEmpty()
+    .withMessage('Password is required')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)

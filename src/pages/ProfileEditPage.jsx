@@ -179,26 +179,41 @@ export default function ProfileEditPage() {
   };
 
   const handleProfileSubmit = async () => {
+    // Validation
+    if (!profileForm.nickname || profileForm.nickname.trim() === '' || profileForm.nickname === 'Newbie Guy') {
+      setProfileMessage({ type: 'error', text: 'Please enter a valid nickname' });
+      return;
+    }
+
     setIsProfileSubmitting(true);
     setProfileMessage(null);
 
     try {
-      await userApi.updateProfile({
-        nickname: profileForm.nickname || undefined,
-        firstName: profileForm.firstName || undefined,
-        lastName: profileForm.lastName || undefined,
+      const updatedProfile = await userApi.updateProfile({
+        nickname: profileForm.nickname.trim() || undefined,
+        firstName: profileForm.firstName?.trim() || undefined,
+        lastName: profileForm.lastName?.trim() || undefined,
       });
       
-      // Reload profile to get updated data
-      const updatedProfile = await userApi.getProfile();
+      // Update local state
       setProfile(updatedProfile);
+      setProfileForm({
+        nickname: updatedProfile.nickname || 'Newbie Guy',
+        firstName: updatedProfile.firstName || '',
+        lastName: updatedProfile.lastName || '',
+        email: updatedProfile.email || '',
+      });
       
       setProfileMessage({ type: 'success', text: 'Profile updated successfully!' });
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setProfileMessage(null), 3000);
     } catch (err) {
       console.error('Failed to update profile:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
       setProfileMessage({ 
         type: 'error', 
-        text: err instanceof Error ? err.message : 'Failed to update profile' 
+        text: errorMessage
       });
     } finally {
       setIsProfileSubmitting(false);
@@ -207,12 +222,20 @@ export default function ProfileEditPage() {
 
   const handlePasswordSubmit = async () => {
     // Validation
+    if (!passwordForm.oldPassword) {
+      setPasswordMessage({ type: 'error', text: 'Please enter your current password' });
+      return;
+    }
+    if (!passwordForm.newPassword) {
+      setPasswordMessage({ type: 'error', text: 'Please enter a new password' });
+      return;
+    }
     if (passwordForm.newPassword !== passwordForm.repeatPassword) {
       setPasswordMessage({ type: 'error', text: 'Passwords do not match!' });
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters!' });
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters!' });
       return;
     }
 
@@ -227,11 +250,15 @@ export default function ProfileEditPage() {
       
       setPasswordMessage({ type: 'success', text: 'Password changed successfully!' });
       setPasswordForm({ oldPassword: '', newPassword: '', repeatPassword: '' });
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setPasswordMessage(null), 3000);
     } catch (err) {
       console.error('Failed to change password:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to change password';
       setPasswordMessage({ 
         type: 'error', 
-        text: err instanceof Error ? err.message : 'Failed to change password' 
+        text: errorMessage
       });
     } finally {
       setIsPasswordSubmitting(false);

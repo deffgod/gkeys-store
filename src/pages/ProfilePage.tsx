@@ -32,7 +32,24 @@ export default function ProfilePage() {
         setProfile(profileData);
       } catch (err) {
         console.error('Failed to load profile:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load profile');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load profile';
+        setError(errorMessage);
+        // Set default profile data to prevent UI breaking
+        setProfile({
+          id: '',
+          email: '',
+          nickname: 'Newbie Guy',
+          firstName: null,
+          lastName: null,
+          avatar: null,
+          createdAt: new Date().toISOString(),
+          stats: {
+            gamesPurchased: 0,
+            totalSaved: 0,
+            daysSinceRegistration: 0,
+            emptyFieldsCount: 0,
+          },
+        });
       } finally {
         setLoading(false);
       }

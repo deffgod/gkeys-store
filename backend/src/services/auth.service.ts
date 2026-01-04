@@ -3,24 +3,10 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateAccessToken, generateRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
-import redisClient from '../config/redis.js';
 
-if (!redisClient || !redisClient.isOpen) {
-  throw new AppError('Redis client not initialized', 500);
-}
-
-if (!prisma || !prisma.$connect || !prisma.$disconnect) {
-  throw new AppError('Prisma client not initialized', 500);
-}
-
-if (!redisClient.isOpen) {
-  throw new AppError('Redis client not connected', 500);
-}
-
-if (!prisma.$connect) {
-  throw new AppError('Prisma client not connected', 500);
-} else {
-  console.log('Prisma client connected');
+// Verify Prisma client is available (non-blocking check)
+if (!prisma) {
+  console.error('⚠️  Prisma client not initialized');
 }
 
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
@@ -30,52 +16,78 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
 
   const { email, password, nickname, firstName, lastName } = data;
 
+  // Normalize email to lowercase for consistency
+  const normalizedEmail = email.toLowerCase().trim();
+
   // Use transaction to ensure atomicity of user creation and token generation
-  const result = await prisma.$transaction(async (tx) => {
-    // Check if user already exists (within transaction)
-    const existingUser = await tx.user.findUnique({
-      where: { email },
-    });
+  let result;
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      // Check if user already exists (within transaction)
+      let existingUser;
+      try {
+        existingUser = await tx.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+      } catch (dbError) {
+        console.error('Database error during user lookup:', dbError);
+        throw new AppError('Database connection error. Please try again later.', 503);
+      }
 
-    if (existingUser) {
-      throw new AppError('User with this email already exists', 409);
+      if (existingUser) {
+        throw new AppError('User with this email already exists', 409);
+      }
+
+      // Hash password
+      let passwordHash: string;
+      try {
+        passwordHash = await hashPassword(password);
+      } catch (hashError) {
+        console.error('Password hashing error:', hashError);
+        throw new AppError('Password processing error. Please try again.', 500);
+      }
+
+      // Create user (within transaction)
+      const user = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          nickname: nickname || 'Newbie Guy',
+          firstName,
+          lastName,
+        },
+        select: {
+          id: true,
+          email: true,
+          nickname: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          role: true,
+        },
+      });
+
+      // Generate tokens (synchronous, fast operation - safe to include in transaction context)
+      const tokenPayload: TokenPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      };
+
+      const token = generateAccessToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload);
+
+      return { user, token, refreshToken };
+    });
+  } catch (error) {
+    // Re-throw AppError as-is
+    if (error instanceof AppError) {
+      throw error;
     }
-
-    // Hash password
-    const passwordHash = await hashPassword(password);
-
-    // Create user (within transaction)
-    const user = await tx.user.create({
-      data: {
-        email,
-        passwordHash,
-        nickname: nickname || 'Newbie Guy',
-        firstName,
-        lastName,
-      },
-      select: {
-        id: true,
-        email: true,
-        nickname: true,
-        firstName: true,
-        lastName: true,
-        avatar: true,
-        role: true,
-      },
-    });
-
-    // Generate tokens (synchronous, fast operation - safe to include in transaction context)
-    const tokenPayload: TokenPayload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const token = generateAccessToken(tokenPayload);
-    const refreshToken = generateRefreshToken(tokenPayload);
-
-    return { user, token, refreshToken };
-  });
+    // Handle unexpected errors
+    console.error('Unexpected error during registration:', error);
+    throw new AppError('Registration failed. Please try again later.', 500);
+  }
 
   // Send registration email (non-blocking, fire-and-forget)
   // Email failures should not block registration
@@ -107,19 +119,58 @@ export const login = async (
 
   const { email, password } = data;
 
+  // Normalize email to lowercase
+  const normalizedEmail = email?.toLowerCase().trim();
+
   // Find user
-  const user = await prisma.user.findUnique({
-    where: { email: email?.toLowerCase() },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+  } catch (dbError) {
+    console.error('Database error during login:', dbError);
+    throw new AppError('Database connection error. Please try again later.', 503);
+  }
+
+  // Record failed login attempt if user not found or password invalid
+  const recordFailedLogin = async (userId?: string) => {
+    try {
+      // Only record if we have a userId (user exists but password wrong)
+      if (userId) {
+        await prisma.loginHistory.create({
+          data: {
+            userId,
+            ipAddress: ipAddress || undefined,
+            userAgent: userAgent || undefined,
+            success: false,
+          },
+        });
+      }
+      // Note: We don't record failed logins for non-existent users to avoid information leakage
+    } catch (loginHistoryError) {
+      // Non-blocking - log but don't fail
+      console.warn('Failed to record login history:', loginHistoryError);
+    }
+  };
 
   if (!user) {
+    // Don't record failed login for non-existent users (security best practice)
     throw new AppError('Invalid email or password', 401);
   }
 
   // Verify password
-  const isValidPassword = await comparePassword(password, user.passwordHash);
+  let isValidPassword = false;
+  try {
+    isValidPassword = await comparePassword(password, user.passwordHash);
+  } catch (compareError) {
+    console.error('Password comparison error:', compareError);
+    await recordFailedLogin(user.id);
+    throw new AppError('Invalid email or password', 401);
+  }
 
   if (!isValidPassword) {
+    await recordFailedLogin(user.id);
     throw new AppError('Invalid email or password', 401);
   }
 
@@ -130,10 +181,17 @@ export const login = async (
     role: user.role,
   };
 
-  const token = generateAccessToken(tokenPayload);
-  const refreshToken = generateRefreshToken(tokenPayload);
+  let token: string;
+  let refreshToken: string;
+  try {
+    token = generateAccessToken(tokenPayload);
+    refreshToken = generateRefreshToken(tokenPayload);
+  } catch (tokenError) {
+    console.error('Token generation error:', tokenError);
+    throw new AppError('Authentication error. Please try again.', 500);
+  }
 
-  // Record login history (non-blocking)
+  // Record successful login history (non-blocking)
   try {
     await prisma.loginHistory.create({
       data: {
@@ -196,17 +254,28 @@ export const refreshToken = async (
   try {
     // Verify refresh token
     const { verifyRefreshToken } = await import('../utils/jwt.js');
-    const decoded = verifyRefreshToken(refreshTokenString);
+    let decoded: TokenPayload;
+    try {
+      decoded = verifyRefreshToken(refreshTokenString);
+    } catch (jwtError) {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
 
     // Find user to ensure they still exist
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+        },
+      });
+    } catch (dbError) {
+      console.error('Database error during token refresh:', dbError);
+      throw new AppError('Database connection error. Please try again later.', 503);
+    }
 
     if (!user) {
       throw new AppError('User not found', 401);
@@ -219,8 +288,15 @@ export const refreshToken = async (
       role: user.role,
     };
 
-    const newToken = generateAccessToken(tokenPayload);
-    const newRefreshToken = generateRefreshToken(tokenPayload);
+    let newToken: string;
+    let newRefreshToken: string;
+    try {
+      newToken = generateAccessToken(tokenPayload);
+      newRefreshToken = generateRefreshToken(tokenPayload);
+    } catch (tokenError) {
+      console.error('Token generation error during refresh:', tokenError);
+      throw new AppError('Authentication error. Please try again.', 500);
+    }
 
     return {
       token: newToken,
@@ -231,6 +307,8 @@ export const refreshToken = async (
     if (error instanceof AppError) {
       throw error;
     }
+    // Log unexpected errors for debugging
+    console.error('Unexpected error during token refresh:', error);
     throw new AppError('Invalid refresh token', 401);
   }
 };

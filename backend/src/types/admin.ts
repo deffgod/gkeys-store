@@ -129,7 +129,7 @@ export interface BlogPostCreateInput {
   category: string;
   tags: string[];
   published?: boolean;
-  readTime?: number;  
+  readTime?: number;
   publishedAt?: string;
 }
 

@@ -152,21 +152,19 @@ export const getDashboardStats = async (): Promise<AdminDashboardStats> => {
   });
 
   const topGamesWithDetails = await Promise.all(
-    topSellingGames.map(
-      async (item) => {
-        const game = await prisma.game.findUnique({
-          where: { id: item.gameId },
-          select: { id: true, title: true, slug: true },
-        });
-        return {
-          id: item.gameId,
-          title: game?.title || 'Unknown',
-          slug: game?.slug || '',
-          salesCount: item._count?.gameId || 0,
-          revenue: Number(item._sum?.price || 0),
-        };
-      }
-    )
+    topSellingGames.map(async (item) => {
+      const game = await prisma.game.findUnique({
+        where: { id: item.gameId },
+        select: { id: true, title: true, slug: true },
+      });
+      return {
+        id: item.gameId,
+        title: game?.title || 'Unknown',
+        slug: game?.slug || '',
+        salesCount: item._count?.gameId || 0,
+        revenue: Number(item._sum?.price || 0),
+      };
+    })
   );
 
   // Get recent orders
@@ -2568,11 +2566,11 @@ export const createCategory = async (data: { name: string; description?: string 
     console.warn('[Category Create] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-    };
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+  };
 };
 
 export const updateCategory = async (id: string, data: { name?: string; description?: string }) => {
@@ -2611,11 +2609,11 @@ export const updateCategory = async (id: string, data: { name?: string; descript
     console.warn('[Category Update] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-    };
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+  };
 };
 
 export const deleteCategory = async (id: string) => {
@@ -2696,11 +2694,11 @@ export const createGenre = async (data: { name: string; description?: string }) 
     console.warn('[Genre Create] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: genre.id,
-      name: genre.name,
-      slug: genre.slug,
-    };
+  return {
+    id: genre.id,
+    name: genre.name,
+    slug: genre.slug,
+  };
 };
 
 export const updateGenre = async (id: string, data: { name?: string; description?: string }) => {
@@ -2739,11 +2737,11 @@ export const updateGenre = async (id: string, data: { name?: string; description
     console.warn('[Genre Update] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: genre.id,
-      name: genre.name,
-      slug: genre.slug,
-    };
+  return {
+    id: genre.id,
+    name: genre.name,
+    slug: genre.slug,
+  };
 };
 
 export const deleteGenre = async (id: string) => {
@@ -2824,11 +2822,11 @@ export const createPlatform = async (data: { name: string; description?: string 
     console.warn('[Platform Create] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: platform.id,
-      name: platform.name,
-      slug: platform.slug,
-    };
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+  };
 };
 
 export const updatePlatform = async (id: string, data: { name?: string; description?: string }) => {
@@ -2867,11 +2865,11 @@ export const updatePlatform = async (id: string, data: { name?: string; descript
     console.warn('[Platform Update] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: platform.id,
-      name: platform.name,
-      slug: platform.slug,
-    };
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+  };
 };
 
 export const deletePlatform = async (id: string) => {
@@ -2952,11 +2950,11 @@ export const createTag = async (data: { name: string }) => {
     console.warn('[Tag Create] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: tag.id,
-      name: tag.name,
-      slug: tag.slug,
-    };
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+  };
 };
 
 export const updateTag = async (id: string, data: { name?: string }) => {
@@ -2993,11 +2991,11 @@ export const updateTag = async (id: string, data: { name?: string }) => {
     console.warn('[Tag Update] Failed to invalidate cache:', cacheError);
   }
 
-    return {
-      id: tag.id,
-      name: tag.name,
-      slug: tag.slug,
-    };
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+  };
 };
 
 export const deleteTag = async (id: string) => {

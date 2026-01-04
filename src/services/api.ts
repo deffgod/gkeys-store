@@ -1,10 +1,22 @@
 // API Configuration
 // Vite loads .env.local with higher priority than .env
 // Ensure we handle empty strings correctly
-const envApiUrl = import.meta.env.VITE_API_BASE_URL || 'https://gkeys2.vercel.app';
-const API_BASE_URL = (envApiUrl && envApiUrl.trim() !== '') 
-  ? envApiUrl.trim()
-  : (import.meta.env.DEV ? envApiUrl + '/api' : '');
+const getEnvApiUrl = (): string => {
+  // In development mode, prefer localhost unless explicitly overridden
+  if (import.meta.env.DEV) {
+    const envUrl = import.meta.env.VITE_API_BASE_URL;
+    // If VITE_API_BASE_URL is set and contains localhost, use it
+    if (envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+      return envUrl.trim();
+    }
+    // Otherwise, default to localhost in dev mode
+    return 'https://localhost$PORT';
+  }
+  // In production, use the env variable or fallback to production URL
+  return import.meta.env.VITE_API_BASE_URL || 'https://gkeys2.vercel.app/api/';
+};
+
+const envApiUrl = getEnvApiUrl();
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -17,16 +29,19 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(_baseURL: string) {
-    // In production, try to auto-detect base URL if not set
+    // In development, always use localhost unless explicitly set
     let finalBaseURL = envApiUrl;
+    
     // Debug: log the baseURL value
     if (import.meta.env.DEV) {
       console.log('🔍 API Client Debug:', {
+        'import.meta.env.DEV': import.meta.env.DEV,
         'import.meta.env.VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
-        'baseURL parameter': envApiUrl,
         'finalBaseURL': finalBaseURL,
       });
     }
+    
+    // In production, try to auto-detect base URL if not set
     if (!finalBaseURL && !import.meta.env.DEV) {
       // Auto-detect from current origin
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -43,15 +58,18 @@ class ApiClient {
       }
     }
     
-    // Ensure baseURL always ends with /api (unless it's localhost dev)
+    // Ensure baseURL always ends with /api for production (not localhost)
     if (finalBaseURL && !finalBaseURL.includes('localhost') && !finalBaseURL.endsWith('/api') && !finalBaseURL.endsWith('/api/')) {
       finalBaseURL = finalBaseURL.replace(/\/+$/, '') + '/api';
       console.warn(`⚠️ VITE_API_BASE_URL missing /api suffix, auto-corrected to: ${finalBaseURL}`);
     }
     
-    if (!finalBaseURL) {
-      finalBaseURL = 'http://localhost:3001/api';
-      console.warn('⚠️ Using development fallback: http://localhost:3001/api');
+    // Final fallback to localhost in dev (without /api, endpoints will add it)
+    if (!finalBaseURL || (import.meta.env.DEV && !finalBaseURL.includes('localhost'))) {
+      finalBaseURL = 'https://localhost:3001';
+      if (import.meta.env.DEV) {
+        console.log('✅ Using development API: https://localhost:3001');
+      }
     }
     
     this.baseURL = this.normalizeBaseURL(finalBaseURL);
@@ -117,11 +135,35 @@ class ApiClient {
   }
 
   private loadToken() {
-    this.token = localStorage.getItem('gkeys_auth_token');
+    try {
+      this.token = localStorage.getItem('gkeys_auth_token');
+      if (this.token && import.meta.env.DEV) {
+        console.log('✅ Token loaded from localStorage');
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to load token from localStorage:', error);
+      this.token = null;
+    }
   }
 
   public setToken(token: string | null) {
     this.token = token;
+    try {
+      if (token) {
+        localStorage.setItem('gkeys_auth_token', token);
+        if (import.meta.env.DEV) {
+          console.log('✅ Token saved to localStorage');
+        }
+      } else {
+        localStorage.removeItem('gkeys_auth_token');
+        if (import.meta.env.DEV) {
+          console.log('✅ Token removed from localStorage');
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to save token to localStorage:', error);
+      // Continue even if localStorage fails (e.g., in private browsing mode)
+    }
   }
 
   public getToken(): string | null {
@@ -141,14 +183,29 @@ class ApiClient {
   }
 
   private buildURL(endpoint: string, params?: Record<string, string>): string {
-    // Ensure endpoint starts with /
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    // Remove leading slash from endpoint if present
+    let normalizedEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     
     // Use baseURL as-is (it's already normalized in constructor)
     const baseURL = this.baseURL;
     
-    // Build full URL
-    const url = new URL(normalizedEndpoint, baseURL);
+    // Add /api prefix if baseURL doesn't contain /api (for localhost dev)
+    const isLocalhost = baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
+    if (isLocalhost && !normalizedEndpoint.startsWith('api/')) {
+      normalizedEndpoint = 'api/' + normalizedEndpoint;
+    }
+    
+    // Remove /api prefix from endpoint if baseURL already contains /api (for production)
+    // This prevents double /api/api/ in URLs
+    if (!isLocalhost && normalizedEndpoint.startsWith('api/')) {
+      normalizedEndpoint = normalizedEndpoint.slice(4);
+    }
+    
+    // Ensure baseURL ends with / for proper URL joining
+    const baseURLWithSlash = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+    
+    // Build full URL by joining baseURL and endpoint
+    const url = new URL(normalizedEndpoint, baseURLWithSlash);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -319,7 +376,7 @@ class ApiClient {
 }
 
 // Create and export a singleton instance
-export const apiClient = new ApiClient(API_BASE_URL);
+export const apiClient = new ApiClient(envApiUrl);
 
 export default apiClient;
 

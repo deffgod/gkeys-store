@@ -1,6 +1,6 @@
 /**
  * Unit Tests: Cart Service
- * 
+ *
  * Tests cart service functions in isolation.
  */
 
@@ -61,7 +61,7 @@ describe('Cart Service', () => {
       expect(cart.items).toHaveLength(1);
       expect(cart.items[0].gameId).toBe(gameId);
       expect(cart.items[0].quantity).toBe(1);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });
@@ -146,7 +146,7 @@ describe('Cart Service', () => {
       const cart = await getCart(guestUser.id);
       expect(cart.items).toHaveLength(1);
       expect(cart.items[0].gameId).toBe(gameId);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });
@@ -182,7 +182,7 @@ describe('Cart Service', () => {
     it('should migrate guest cart to user cart atomically', async () => {
       // For guest sessions, create a temporary user since schema requires userId
       const guestUser = await createTestUser();
-      
+
       // Add items to guest cart
       await addToCart(gameId, 2, guestUser.id);
 
@@ -214,7 +214,7 @@ describe('Cart Service', () => {
       const cart = await getCart(userId);
       expect(cart.items).toHaveLength(1);
       expect(cart.items[0].quantity).toBe(5); // 2 + 3
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });

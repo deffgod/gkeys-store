@@ -1,9 +1,10 @@
 import prisma from '../config/database.js';
 import { CreateOrderRequest, OrderResponse } from '../types/order.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { purchaseGameKey, validateGameStock } from './g2a.service.js';
-import { G2AError, G2AErrorCode } from '../types/g2a.js';
+import { validateGameStock } from './g2a.service.js';
+import { G2AError, G2AErrorCode } from '../lib/g2a/errors/G2AError.js';
 import { sendGameKeyEmail } from './email.service.js';
+import { G2AIntegrationClient } from '../lib/g2a/G2AIntegrationClient.js';
 
 export const createOrder = async (
   userId: string,
@@ -239,7 +240,7 @@ export const createOrder = async (
     console.warn(`[Order] Failed to invalidate cache after order creation:`, cacheError);
   }
 
-  // Purchase keys from G2A and send emails
+  // Purchase keys from G2A using Orders API (create -> pay -> get key)
   const gameKeys: Array<{
     id: string;
     gameId: string;
@@ -249,28 +250,98 @@ export const createOrder = async (
     activationDate: Date | null;
     createdAt: Date;
   }> = [];
-  const purchaseErrors: Array<{ gameId: string; error: string }> = [];
+  const purchaseErrors: Array<{ gameId: string; error: string; g2aOrderId?: string }> = [];
+  const g2aOrderIds: string[] = []; // Track G2A order IDs for this order
+
+  // Get G2A client instance
+  let g2aClient: G2AIntegrationClient | null = null;
+  try {
+    // Get G2A config from environment
+    const { getG2AConfig } = await import('../config/g2a.js');
+    const g2aConfig = getG2AConfig();
+    
+    if (g2aConfig.apiKey && g2aConfig.apiHash) {
+      const { getDefaultConfig } = await import('../lib/g2a/config/defaults.js');
+      const defaultConfig = getDefaultConfig(g2aConfig.env || 'sandbox');
+      
+      g2aClient = await G2AIntegrationClient.getInstance({
+        env: g2aConfig.env || 'sandbox',
+        apiKey: g2aConfig.apiKey,
+        apiHash: g2aConfig.apiHash,
+        email: process.env.G2A_EMAIL || 'Welcome@nalytoo.com',
+        baseUrl: g2aConfig.baseUrl || defaultConfig.baseUrl,
+        timeoutMs: g2aConfig.timeoutMs || defaultConfig.timeoutMs,
+      });
+    }
+  } catch (error) {
+    console.error('Failed to get G2A client:', error);
+    // Continue without G2A if client unavailable (for non-G2A games)
+  }
 
   for (const item of items) {
     const game = games.find((g) => g.id === item.gameId)!;
 
-    if (game.g2aProductId) {
-      try {
-        // Purchase keys from G2A (returns array of keys)
-        const g2aKeys = await purchaseGameKey(game.g2aProductId, item.quantity);
+    if (game.g2aProductId && g2aClient) {
+      // Process each quantity as a separate G2A order (G2A API creates one order per product)
+      for (let qty = 0; qty < item.quantity; qty++) {
+        try {
+          // Step 1: Create G2A order
+          const g2aOrder = await g2aClient.orders.create({
+            product_id: game.g2aProductId,
+            currency: 'EUR',
+            max_price: Number(game.price), // Max price per item
+          });
 
-        // Create game key records for all keys received
-        // NOTE: Game keys are currently stored in plain text in the database.
-        // For production, consider implementing encryption at rest:
-        // - Use AES-256 encryption for key field
-        // - Store encryption key in secure key management service
-        // - Decrypt keys only when needed for delivery
-        // This is a security consideration documented per task T046
-        for (const g2aKey of g2aKeys) {
+          const g2aOrderId = g2aOrder.order_id;
+          g2aOrderIds.push(g2aOrderId);
+
+          console.log(`G2A order created: ${g2aOrderId} for game ${game.id} (item ${qty + 1}/${item.quantity})`);
+
+          // Step 2: Pay for the G2A order
+          let paymentResult;
+          try {
+            paymentResult = await g2aClient.orders.pay(g2aOrderId);
+            console.log(`G2A order paid: ${g2aOrderId}, transaction: ${paymentResult.transaction_id}`);
+          } catch (payError) {
+            // Handle payment errors
+            if (payError instanceof G2AError && payError.code === G2AErrorCode.G2A_INVALID_REQUEST) {
+              // Check if it's a retryable error (ORD03 - payment not ready yet)
+              const errorCode = payError.metadata?.errorCode;
+              if (errorCode === 'ORD03' && payError.metadata?.retryable) {
+                // Payment not ready yet - retry after delay
+                console.warn(`Payment not ready for order ${g2aOrderId}, will retry...`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                try {
+                  paymentResult = await g2aClient.orders.pay(g2aOrderId);
+                } catch (retryError) {
+                  // Retry failed, throw original error
+                  throw payError;
+                }
+              } else {
+                throw payError;
+              }
+            } else {
+              throw payError;
+            }
+          }
+
+          // Step 3: Get order key (can only be downloaded once)
+          // Wait a bit for order to be processed after payment
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const keyResponse = await g2aClient.orders.getKey(g2aOrderId);
+          const gameKeyValue = keyResponse.key;
+
+          // Create game key record
+          // NOTE: Game keys are currently stored in plain text in the database.
+          // For production, consider implementing encryption at rest:
+          // - Use AES-256 encryption for key field
+          // - Store encryption key in secure key management service
+          // - Decrypt keys only when needed for delivery
           const gameKey = await prisma.gameKey.create({
             data: {
               gameId: game.id,
-              key: g2aKey.key, // TODO: Consider encrypting this field for production
+              key: gameKeyValue, // TODO: Consider encrypting this field for production
               orderId: order.id,
               activated: false,
             },
@@ -281,73 +352,87 @@ export const createOrder = async (
           try {
             await sendGameKeyEmail(user.email, {
               gameTitle: game.title,
-              key: g2aKey.key,
+              key: gameKeyValue,
               platform: game.platforms[0]?.platform.name || 'PC',
             });
           } catch (emailError) {
             console.error(`Failed to send email for key ${gameKey.id}:`, emailError);
             // Don't fail order if email fails - key is still delivered
           }
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof G2AError
-            ? error.message
-            : error instanceof Error
+        } catch (error) {
+          // If error occurs for one item, log but continue with next item
+          const errorMessage =
+            error instanceof G2AError
               ? error.message
-              : 'Unknown error';
+              : error instanceof Error
+                ? error.message
+                : 'Unknown error';
 
-        purchaseErrors.push({
-          gameId: game.id,
-          error: errorMessage,
-        });
-
-        console.error(`Failed to purchase key for game ${game.id}:`, error);
-
-        // If it's a critical error (out of stock, API error), mark order as failed
-        if (
-          error instanceof G2AError &&
-          (error.code === G2AErrorCode.G2A_OUT_OF_STOCK ||
-            error.code === G2AErrorCode.G2A_AUTH_FAILED ||
-            error.code === G2AErrorCode.G2A_API_ERROR)
-        ) {
-          // Mark order as failed
-          await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              status: 'FAILED',
-              paymentStatus: 'FAILED',
-            },
+          purchaseErrors.push({
+            gameId: game.id,
+            error: errorMessage,
           });
 
-          // Refund user balance
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              balance: {
-                increment: total,
+          console.error(`Failed to purchase key for game ${game.id} (item ${qty + 1}/${item.quantity}):`, error);
+          
+          // If it's a critical error, break the loop for this game
+          if (
+            error instanceof G2AError &&
+            (error.code === G2AErrorCode.G2A_OUT_OF_STOCK ||
+              error.code === G2AErrorCode.G2A_AUTH_FAILED ||
+              error.code === G2AErrorCode.G2A_API_ERROR)
+          ) {
+            // Mark order as failed
+            await prisma.order.update({
+              where: { id: order.id },
+              data: {
+                status: 'FAILED',
+                paymentStatus: 'FAILED',
               },
-            },
-          });
+            });
 
-          // Create refund transaction
-          await prisma.transaction.create({
-            data: {
-              userId,
-              orderId: order.id,
-              type: 'REFUND',
-              amount: total,
-              currency: 'EUR',
-              status: 'COMPLETED',
-              description: `Refund for failed order ${order.id}`,
-            },
-          });
+            // Refund user balance
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                balance: {
+                  increment: total,
+                },
+              },
+            });
 
-          throw new AppError(`Order failed: ${errorMessage}. Balance has been refunded.`, 400);
+            // Create refund transaction
+            await prisma.transaction.create({
+              data: {
+                userId,
+                orderId: order.id,
+                type: 'REFUND',
+                amount: total,
+                currency: 'EUR',
+                status: 'COMPLETED',
+                description: `Refund for failed order ${order.id}`,
+              },
+            });
+
+            throw new AppError(`Order failed: ${errorMessage}. Balance has been refunded.`, 400);
+          }
+          // For other errors, continue with next item
         }
-        // For other errors, continue with other games
       }
+    } else {
+      // Non-G2A game - skip processing (manual processing required)
+      console.log(`Game ${game.id} does not have G2A product ID, skipping G2A processing`);
     }
+  }
+
+  // Store G2A order IDs in externalOrderId (comma-separated if multiple)
+  if (g2aOrderIds.length > 0) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        externalOrderId: g2aOrderIds.join(','), // Store all G2A order IDs
+      },
+    });
   }
 
   // Update order status based on results
@@ -358,7 +443,7 @@ export const createOrder = async (
   });
 
   let finalStatus: 'COMPLETED' | 'FAILED' | 'PENDING' = 'PENDING';
-  
+
   if (hasG2AGames) {
     // Only process status if there are G2A games
     finalStatus = 'COMPLETED';
@@ -377,7 +462,8 @@ export const createOrder = async (
     where: { id: order.id },
     data: {
       status: finalStatus,
-      paymentStatus: finalStatus === 'COMPLETED' ? 'COMPLETED' : finalStatus === 'FAILED' ? 'FAILED' : 'PENDING',
+      paymentStatus:
+        finalStatus === 'COMPLETED' ? 'COMPLETED' : finalStatus === 'FAILED' ? 'FAILED' : 'PENDING',
       completedAt: finalStatus === 'COMPLETED' ? new Date() : null,
     },
     include: {

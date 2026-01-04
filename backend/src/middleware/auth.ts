@@ -41,19 +41,53 @@ export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction)
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        error: { message: 'No token provided' },
+        error: { message: 'Authentication required. Please provide a valid token.' },
       });
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyAccessToken(token);
+
+    if (!token || token.trim() === '') {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Invalid token format. Please provide a valid token.' },
+      });
+    }
+
+    let decoded: TokenPayload;
+    try {
+      decoded = verifyAccessToken(token);
+    } catch (jwtError) {
+      // Check if it's a token expiration error
+      if (jwtError instanceof Error && jwtError.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          error: { message: 'Token has expired. Please refresh your token or login again.' },
+        });
+      }
+      // Other JWT errors (invalid signature, malformed token, etc.)
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Invalid or expired token. Please login again.' },
+      });
+    }
+
+    // Verify decoded token has required fields
+    if (!decoded.userId || !decoded.email || !decoded.role) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Invalid token payload. Please login again.' },
+      });
+    }
 
     req.user = decoded;
     next();
-  } catch {
+  } catch (error) {
+    // Unexpected errors
+    console.error('Unexpected error in requireAuth middleware:', error);
     return res.status(401).json({
       success: false,
-      error: { message: 'Invalid or expired token' },
+      error: { message: 'Authentication error. Please try again.' },
     });
   }
 };

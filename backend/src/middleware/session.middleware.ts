@@ -1,23 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import prisma from '../config/database.js';
-import { AppError } from './errorHandler.js';
 import redisClient from '../config/redis.js';
 
-if (!redisClient || !redisClient.isOpen) {
-  throw new AppError('Redis client not initialized', 500);
-}
-
-if (!prisma || !prisma.$connect || !prisma.$disconnect) {
-  throw new AppError('Prisma client not initialized', 500);
-}
-
-if (!redisClient.isOpen) {
-  throw new AppError('Redis client not connected', 500);
-}
-
-if (!prisma.$connect) {
-  throw new AppError('Prisma client not connected', 500);
+// Lazy validation - check on first use, not at module load
+function validateDependencies() {
+  if (!redisClient) {
+    console.warn('⚠️  Redis client not initialized, session middleware will work without Redis');
+  }
+  
+  if (!prisma) {
+    console.warn('⚠️  Prisma client not initialized, session middleware will work without database');
+  }
 }
 
 export interface SessionRequest extends Request {
@@ -30,6 +24,9 @@ export interface SessionRequest extends Request {
  */
 export const sessionMiddleware = async (req: SessionRequest, res: Response, next: NextFunction) => {
   try {
+    // Validate dependencies on first use
+    validateDependencies();
+    
     // Always try to get/create session for guest users
     // Even authenticated users might need session for cart/wishlist migration
 

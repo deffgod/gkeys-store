@@ -119,7 +119,7 @@ export default function UserDropdown({ userName, userAvatar, onLogout }: UserDro
     { icon: <Icons.ShoppingBag />, label: 'Orders', path: '/profile/orders' },
     { icon: <Icons.Heart />, label: 'Wishlist', path: '/wishlist' },
     { icon: <Icons.Wallet />, label: 'Balance', path: '/profile/balance' },
-    { icon: <Icons.Settings />, label: 'Settings', path: '/profile/settings' },
+    // Settings button removed - page is empty
   ];
 
   return (

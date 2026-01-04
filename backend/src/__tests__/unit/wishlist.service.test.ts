@@ -1,6 +1,6 @@
 /**
  * Unit Tests: Wishlist Service
- * 
+ *
  * Tests wishlist service functions in isolation.
  */
 
@@ -58,7 +58,7 @@ describe('Wishlist Service', () => {
 
       expect(wishlist.items).toHaveLength(1);
       expect(wishlist.items[0].gameId).toBe(gameId);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });
@@ -107,7 +107,7 @@ describe('Wishlist Service', () => {
 
       const wishlist = await getWishlist(guestUser.id);
       expect(wishlist.items).toHaveLength(1);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });
@@ -159,7 +159,7 @@ describe('Wishlist Service', () => {
       // For guest sessions, we need to create a temporary user
       // since the schema requires userId as foreign key
       const guestUser = await createTestUser();
-      
+
       // Add to guest wishlist using guest user ID
       await addToWishlist(gameId, guestUser.id);
 
@@ -187,7 +187,7 @@ describe('Wishlist Service', () => {
       // Verify no duplicate
       const wishlist = await getWishlist(userId);
       expect(wishlist.items).toHaveLength(1);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });
@@ -195,16 +195,16 @@ describe('Wishlist Service', () => {
     it('should skip non-existent games during migration', async () => {
       // Create guest user
       const guestUser = await createTestUser();
-      
+
       // Add valid game to guest wishlist
       await addToWishlist(gameId, guestUser.id);
-      
+
       // Migrate
       await migrateSessionWishlistToUser(guestUser.id, userId);
 
       const wishlist = await getWishlist(userId);
       expect(wishlist.items).toHaveLength(1);
-      
+
       // Cleanup
       await cleanupTestUser(guestUser.id);
     });

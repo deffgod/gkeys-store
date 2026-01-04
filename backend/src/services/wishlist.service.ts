@@ -103,7 +103,9 @@ export const getWishlist = async (
 
   // Debug: log wishlist query result
   if (process.env.NODE_ENV === 'test') {
-    console.log(`[Wishlist Debug] getWishlist called with userId=${userId}, sessionId=${sessionId}, identifier=${identifier}, found ${wishlistItems.length} items`);
+    console.log(
+      `[Wishlist Debug] getWishlist called with userId=${userId}, sessionId=${sessionId}, identifier=${identifier}, found ${wishlistItems.length} items`
+    );
   }
 
   const result: WishlistResponse = {
@@ -357,14 +359,18 @@ export const migrateSessionWishlistToUser = async (
             },
           });
           migrated++;
-          console.log(`[Wishlist Migration] Created wishlist item for user ${userId}, game ${sessionItem.gameId}`);
+          console.log(
+            `[Wishlist Migration] Created wishlist item for user ${userId}, game ${sessionItem.gameId}`
+          );
         } catch (createError: any) {
           console.error(`[Wishlist Migration] Failed to create wishlist item:`, createError);
           // If creation fails, skip this item but continue migration
           continue;
         }
       } else {
-        console.log(`[Wishlist Migration] User ${userId} already has game ${sessionItem.gameId} in wishlist, skipping`);
+        console.log(
+          `[Wishlist Migration] User ${userId} already has game ${sessionItem.gameId} in wishlist, skipping`
+        );
       }
 
       // Delete session item
@@ -377,10 +383,15 @@ export const migrateSessionWishlistToUser = async (
             },
           },
         });
-        console.log(`[Wishlist Migration] Deleted session wishlist item for session ${sessionId}, game ${sessionItem.gameId}`);
+        console.log(
+          `[Wishlist Migration] Deleted session wishlist item for session ${sessionId}, game ${sessionItem.gameId}`
+        );
       } catch (deleteError: any) {
         // If delete fails, log but continue (item might already be deleted)
-        console.warn(`[Wishlist Migration] Failed to delete session item (may already be deleted):`, deleteError);
+        console.warn(
+          `[Wishlist Migration] Failed to delete session item (may already be deleted):`,
+          deleteError
+        );
       }
     }
 
@@ -389,7 +400,9 @@ export const migrateSessionWishlistToUser = async (
 
   // Log migration result
   if (migratedCount > 0) {
-    console.log(`[Wishlist Migration] Successfully migrated ${migratedCount} item(s) from session ${sessionId} to user ${userId}`);
+    console.log(
+      `[Wishlist Migration] Successfully migrated ${migratedCount} item(s) from session ${sessionId} to user ${userId}`
+    );
   }
 
   // Invalidate both session and user wishlist caches
@@ -397,7 +410,7 @@ export const migrateSessionWishlistToUser = async (
   await invalidateWishlistCache(undefined, sessionId);
   // Invalidate user cache - ensure we pass userId correctly
   await invalidateWishlistCache(userId, undefined);
-  
+
   // Force clear user cache to ensure fresh data after migration
   try {
     if (redisClient.isOpen) {

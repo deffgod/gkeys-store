@@ -122,7 +122,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } catch (error) {
             console.error('Token verification failed:', error);
             // Token invalid, try to refresh
-            await refreshToken();
+            try {
+              await refreshToken();
+            } catch (refreshError) {
+              // If refresh also fails, clear auth completely
+              console.error('Token refresh also failed:', refreshError);
+              clearAuth();
+            }
           }
         } else {
           // Token expired, try to refresh
@@ -232,6 +238,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setToken(response.token);
         apiClient.setToken(response.token);
         localStorage.setItem(TOKEN_KEY, response.token);
+        localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
         localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
         
         return;
@@ -253,13 +260,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log('🔄 Refreshing token...');
     
     // Create refresh promise and store it
-    refreshPromiseRef.current = authApi.refreshToken(storedRefreshToken).then((response) => {
-      return {
-        token: response.token,
-        refreshToken: response.refreshToken,
-        expiresIn: response.expiresIn,
-      };
-    });
+    refreshPromiseRef.current = authApi.refreshToken(storedRefreshToken)
+      .then((response) => {
+        return {
+          token: response.token,
+          refreshToken: response.refreshToken,
+          expiresIn: response.expiresIn,
+        };
+      })
+      .catch((error) => {
+        // Clear promise reference on error to allow retry
+        refreshPromiseRef.current = null;
+        throw error;
+      });
 
     try {
       const response = await refreshPromiseRef.current;
@@ -277,8 +290,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toISOString());
       
+      // Refresh user data after token refresh to ensure isAuthenticated is true
+      try {
+        const currentUser = await authApi.getCurrentUser();
+        const transformedUser = transformUser(currentUser);
+        setUser(transformedUser);
+        localStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+      } catch (userError) {
+        console.warn('Failed to refresh user data after token refresh:', userError);
+        // Don't fail token refresh if user fetch fails
+      }
+      
       console.log('✅ Token refreshed successfully');
     } catch (error) {
+      // Clear the promise reference on error (in case it wasn't cleared in catch above)
+      refreshPromiseRef.current = null;
+      
       console.error('❌ Token refresh failed:', error);
       clearAuth();
       throw error;
