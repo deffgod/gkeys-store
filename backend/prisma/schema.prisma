@@ -360,6 +360,7 @@ model G2ASettings {
   email         String
   clientSecret  String   @db.Text
   apiKey        String?  @db.Text
+  environment   String   @default("sandbox") // "sandbox" or "production"
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

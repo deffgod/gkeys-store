@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import GameCard from './GameCard';
@@ -89,22 +89,50 @@ export default function GameSection({
 
   // For Best Sellers, don't filter on client - data comes from API
   // For other sections, keep client-side filtering as fallback
-  const filteredGames = (title === 'Best Sellers' || sectionId === 'best-sellers')
-    ? games // Best Sellers: games already filtered by API
-    : (activeTab && activeTab !== 'All' 
-        ? games.filter(game => {
-            // Check if game has matching genre in genres array
-            if (game.genres && Array.isArray(game.genres)) {
-              return game.genres.some(genre => 
-                typeof genre === 'string' 
-                  ? genre.toLowerCase() === activeTab.toLowerCase()
-                  : (genre.name || genre).toLowerCase() === activeTab.toLowerCase()
-              );
-            }
-            // Fallback to old structure
-            return game.genre === activeTab || game.tags?.includes(activeTab);
-          })
-        : games);
+  const filteredGames = useMemo(() => {
+    if (title === 'Best Sellers' || sectionId === 'best-sellers') {
+      // Best Sellers: games already filtered by API
+      return games;
+    }
+    
+    // For other sections, filter by active tab
+    if (!activeTab || activeTab === 'All') {
+      return games;
+    }
+
+    return games.filter(game => {
+      // Normalize the active tab name for comparison
+      const normalizedTab = activeTab.toLowerCase().trim();
+      
+      // Check if game has matching genre in genres array
+      if (game.genres && Array.isArray(game.genres)) {
+        return game.genres.some(genre => {
+          if (typeof genre === 'string') {
+            return genre.toLowerCase().trim() === normalizedTab;
+          }
+          // Handle object format { name: string, slug: string }
+          if (genre && typeof genre === 'object') {
+            const genreName = genre.name || genre;
+            return String(genreName).toLowerCase().trim() === normalizedTab;
+          }
+          return false;
+        });
+      }
+      
+      // Fallback to old structure (single genre field or tags)
+      if (game.genre) {
+        return String(game.genre).toLowerCase().trim() === normalizedTab;
+      }
+      
+      if (game.tags && Array.isArray(game.tags)) {
+        return game.tags.some(tag => 
+          String(tag).toLowerCase().trim() === normalizedTab
+        );
+      }
+      
+      return false;
+    });
+  }, [games, activeTab, title, sectionId]);
 
   // Show empty state if no games and not loading
   if (!loading && filteredGames.length === 0 && !error) {

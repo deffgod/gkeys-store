@@ -354,13 +354,13 @@ export default function HomePage() {
 
   // Handle tab change for sections (especially Best Sellers)
   const handleTabChange = async (sectionId, tab) => {
-    // Update active tab in state
+    // Update active tab in state for all sections
     setSectionStates((prev) => ({
       ...prev,
       [sectionId]: {
         ...prev[sectionId],
         activeTab: tab,
-        loading: true,
+        loading: sectionId === 'best-sellers', // Only show loading for Best Sellers
       },
     }));
 
@@ -391,6 +391,8 @@ export default function HomePage() {
         }));
       }
     }
+    // For other sections, filtering happens client-side in GameSection component
+    // No need to fetch new data - just update activeTab state
   };
 
   // Fetch data for all sections in parallel

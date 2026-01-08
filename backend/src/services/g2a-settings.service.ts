@@ -1,14 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import axios from 'axios';
 import { AppError } from '../middleware/errorHandler.js';
 
 const prisma = new PrismaClient();
+
+export type G2AEnvironment = 'sandbox' | 'production';
 
 export interface G2ASettingsData {
   clientId: string;
   email: string;
   clientSecret: string;
   apiKey?: string;
+  environment?: G2AEnvironment;
   isActive?: boolean;
 }
 
@@ -18,9 +22,16 @@ export interface G2ASettingsResponse {
   email: string;
   clientSecret: string;
   apiKey: string | null;
+  environment: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface G2ATokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
 }
 
 /**
@@ -39,6 +50,56 @@ export function generateG2AApiKey(
 }
 
 /**
+ * Get OAuth2 token for G2A API
+ * @param settings - G2A settings to use for authentication
+ * @returns Token response with access_token and expires_in
+ */
+export async function getG2AToken(
+  settings: G2ASettingsResponse
+): Promise<G2ATokenResponse> {
+  const isSandbox = settings.environment === 'sandbox';
+  const baseUrl = isSandbox
+    ? 'https://sandboxapi.g2a.com'
+    : 'https://api.g2a.com';
+
+  const tokenHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (isSandbox) {
+    // Sandbox uses simple Authorization header format: "hash, key"
+    tokenHeaders.Authorization = `${settings.clientSecret}, ${settings.clientId}`;
+  } else {
+    // Production uses hash-based authentication
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const hash = crypto
+      .createHash('sha256')
+      .update(settings.clientSecret + settings.clientId + timestamp)
+      .digest('hex');
+
+    tokenHeaders['X-API-HASH'] = settings.clientSecret;
+    tokenHeaders['X-API-KEY'] = settings.clientId;
+    tokenHeaders['X-G2A-Timestamp'] = timestamp;
+    tokenHeaders['X-G2A-Hash'] = hash;
+  }
+
+  try {
+    const response = await axios.get<G2ATokenResponse>(`${baseUrl}/v1/token`, {
+      headers: tokenHeaders,
+      timeout: 10000,
+    });
+
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Failed to obtain G2A token';
+    throw new AppError(`G2A token error: ${errorMessage}`, error.response?.status || 500);
+  }
+}
+
+/**
  * Get current G2A settings
  */
 export async function getG2ASettings(): Promise<G2ASettingsResponse | null> {
@@ -47,7 +108,7 @@ export async function getG2ASettings(): Promise<G2ASettingsResponse | null> {
     orderBy: { updatedAt: 'desc' },
   });
 
-  return settings;
+  return settings as G2ASettingsResponse | null;
 }
 
 /**
@@ -58,7 +119,7 @@ export async function getAllG2ASettings(): Promise<G2ASettingsResponse[]> {
     orderBy: { updatedAt: 'desc' },
   });
 
-  return settings;
+  return settings as G2ASettingsResponse[];
 }
 
 /**
@@ -69,6 +130,7 @@ export async function upsertG2ASettings(
 ): Promise<G2ASettingsResponse> {
   // Generate API key if not provided
   const apiKey = data.apiKey || generateG2AApiKey(data.clientId, data.email, data.clientSecret);
+  const environment = data.environment || 'sandbox';
 
   // Deactivate all existing settings if this one should be active
   if (data.isActive !== false) {
@@ -91,11 +153,12 @@ export async function upsertG2ASettings(
         email: data.email,
         clientSecret: data.clientSecret,
         apiKey,
+        environment,
         isActive: data.isActive !== undefined ? data.isActive : true,
       },
     });
 
-    return updated;
+    return updated as G2ASettingsResponse;
   } else {
     // Create new settings
     const created = await prisma.g2ASettings.create({
@@ -104,11 +167,12 @@ export async function upsertG2ASettings(
         email: data.email,
         clientSecret: data.clientSecret,
         apiKey,
+        environment,
         isActive: data.isActive !== undefined ? data.isActive : true,
       },
     });
 
-    return created;
+    return created as G2ASettingsResponse;
   }
 }
 
@@ -151,11 +215,12 @@ export async function updateG2ASettings(
       ...(data.email && { email: data.email }),
       ...(data.clientSecret && { clientSecret: data.clientSecret }),
       ...(apiKey && { apiKey }),
+      ...(data.environment && { environment: data.environment }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     },
   });
 
-  return updated;
+  return updated as G2ASettingsResponse;
 }
 
 /**

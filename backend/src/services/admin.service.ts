@@ -1265,7 +1265,7 @@ export const getOrderDetails = async (id: string) => {
   }
 
   // Map keys to items by gameId
-  const keysByGameId = new Map(order.keys.map((k) => [k.gameId, k]));
+  const keysByGameId = new Map<string, any>(order.keys.map((k: any) => [k.gameId, k]));
 
   return {
     id: order.id,
@@ -1287,16 +1287,19 @@ export const getOrderDetails = async (id: string) => {
     externalOrderId: order.externalOrderId || undefined,
     createdAt: order.createdAt.toISOString(),
     completedAt: order.completedAt?.toISOString(),
-    items: order.items.map((item) => ({
-      id: item.id,
-      gameId: item.gameId,
-      game: item.game,
-      quantity: item.quantity,
-      price: Number(item.price),
-      discount: Number(item.discount),
-      key: keysByGameId.get(item.gameId)?.key || undefined,
-      keyActivated: keysByGameId.get(item.gameId)?.activated || false,
-    })),
+    items: order.items.map((item) => {
+      const key = keysByGameId.get(item.gameId);
+      return {
+        id: item.id,
+        gameId: item.gameId,
+        game: item.game,
+        quantity: item.quantity,
+        price: Number(item.price),
+        discount: Number(item.discount),
+        key: key?.key || undefined,
+        keyActivated: key?.activated || false,
+      };
+    }),
     transaction: order.transaction
       ? {
           id: order.transaction.id,
@@ -3831,9 +3834,17 @@ export const updateGameKey = async (id: string, data: GameKeyUpdateInput): Promi
   }
 
   const updateData: Prisma.GameKeyUpdateInput = {};
-  if (data.gameId !== undefined) updateData.gameId = data.gameId;
+  if (data.gameId !== undefined) {
+    updateData.game = { connect: { id: data.gameId } };
+  }
   if (data.key !== undefined) updateData.key = data.key;
-  if (data.orderId !== undefined) updateData.orderId = data.orderId;
+  if (data.orderId !== undefined) {
+    if (data.orderId === null) {
+      updateData.order = { disconnect: true };
+    } else {
+      updateData.order = { connect: { id: data.orderId } };
+    }
+  }
   if (data.activated !== undefined) {
     updateData.activated = data.activated;
     // Set activation date if activating

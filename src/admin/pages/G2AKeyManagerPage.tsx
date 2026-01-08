@@ -45,6 +45,7 @@ const G2AKeyManagerPage: React.FC = () => {
     email: '',
     clientSecret: '',
     apiKey: '',
+    environment: 'sandbox' as 'sandbox' | 'production',
   });
 
   // Generated API key state
@@ -53,6 +54,11 @@ const G2AKeyManagerPage: React.FC = () => {
   // Testing state
   const [testingKey, setTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Token state
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenData, setTokenData] = useState<G2ATokenResponse | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -74,6 +80,7 @@ const G2AKeyManagerPage: React.FC = () => {
           email: current.email,
           clientSecret: current.clientSecret,
           apiKey: current.apiKey || '',
+          environment: (current.environment as 'sandbox' | 'production') || 'sandbox',
         });
       }
     } catch (err: any) {
@@ -119,6 +126,7 @@ const G2AKeyManagerPage: React.FC = () => {
         email: formData.email,
         clientSecret: formData.clientSecret,
         apiKey: formData.apiKey || undefined,
+        environment: formData.environment,
         isActive: true,
       });
       setSettings(result);
@@ -144,6 +152,7 @@ const G2AKeyManagerPage: React.FC = () => {
       email: setting.email,
       clientSecret: setting.clientSecret,
       apiKey: setting.apiKey || '',
+      environment: (setting.environment as 'sandbox' | 'production') || 'sandbox',
     });
     setGeneratedApiKey(null);
   };
@@ -364,6 +373,20 @@ const G2AKeyManagerPage: React.FC = () => {
                 placeholder="Enter client secret"
                 style={adminInputStyle}
               />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', color: theme.colors.textSecondary }}>
+                Environment
+              </label>
+              <select
+                value={formData.environment}
+                onChange={(e) => setFormData(prev => ({ ...prev, environment: e.target.value as 'sandbox' | 'production' }))}
+                style={adminInputStyle}
+              >
+                <option value="sandbox">Sandbox (https://sandboxapi.g2a.com)</option>
+                <option value="production">Production (https://api.g2a.com)</option>
+              </select>
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -606,7 +629,88 @@ const G2AKeyManagerPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', color: theme.colors.textSecondary, fontSize: '12px' }}>
+                Environment
+              </label>
+              <div style={{ 
+                display: 'inline-block',
+                padding: '4px 12px',
+                borderRadius: '6px',
+                backgroundColor: settings.environment === 'production' ? theme.colors.success + '20' : theme.colors.warning + '20',
+                color: settings.environment === 'production' ? theme.colors.success : theme.colors.warning,
+                fontSize: '12px',
+                fontWeight: '600',
+              }}>
+                {settings.environment === 'production' ? 'Production' : 'Sandbox'}
+              </div>
+            </div>
           </div>
+
+          {/* Token Display */}
+          {tokenData && (
+            <div style={{
+              marginTop: '24px',
+              padding: '16px',
+              backgroundColor: theme.colors.background,
+              borderRadius: '8px',
+              border: `1px solid ${theme.colors.border}`,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: theme.colors.text }}>
+                  OAuth2 Token
+                </h3>
+                <button
+                  onClick={() => handleCopy(tokenData.access_token, 'token')}
+                  style={{ background: 'none', border: 'none', color: theme.colors.primary, cursor: 'pointer' }}
+                >
+                  {copied === 'token' ? <FiCheck size={16} /> : <FiCopy size={16} />}
+                </button>
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', color: theme.colors.textSecondary, fontSize: '12px' }}>
+                  Access Token
+                </label>
+                <div style={{ fontFamily: 'monospace', color: theme.colors.text, fontSize: '12px', wordBreak: 'break-all', padding: '8px', backgroundColor: theme.colors.surface, borderRadius: '4px' }}>
+                  {tokenData.access_token}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', color: theme.colors.textSecondary }}>
+                    Expires In
+                  </label>
+                  <div style={{ color: theme.colors.text }}>
+                    {tokenData.expires_in} seconds ({Math.floor(tokenData.expires_in / 60)} minutes)
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', color: theme.colors.textSecondary }}>
+                    Expires At
+                  </label>
+                  <div style={{ color: theme.colors.text }}>
+                    {new Date(tokenData.expiresAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tokenError && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: theme.colors.error + '20',
+              border: `1px solid ${theme.colors.error}`,
+              borderRadius: '8px',
+              color: theme.colors.error,
+              fontSize: '13px',
+            }}>
+              <FiAlertCircle size={16} style={{ marginRight: '8px', display: 'inline' }} />
+              {tokenError}
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -659,12 +763,40 @@ const G2AKeyManagerPage: React.FC = () => {
                         ACTIVE
                       </span>
                     )}
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        backgroundColor: setting.environment === 'production' ? theme.colors.success + '20' : theme.colors.warning + '20',
+                        color: setting.environment === 'production' ? theme.colors.success : theme.colors.warning,
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {setting.environment === 'production' ? 'PROD' : 'SANDBOX'}
+                    </span>
                   </div>
                   <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
                     {setting.email} • Updated: {new Date(setting.updatedAt).toLocaleString()}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => handleGetToken(setting.id)}
+                    disabled={tokenLoading}
+                    style={{
+                      padding: '8px',
+                      backgroundColor: theme.colors.primary + '20',
+                      border: `1px solid ${theme.colors.primary}`,
+                      borderRadius: '6px',
+                      color: theme.colors.primary,
+                      cursor: tokenLoading ? 'not-allowed' : 'pointer',
+                      opacity: tokenLoading ? 0.5 : 1,
+                    }}
+                    title="Get Token"
+                  >
+                    <FiRefreshCw size={16} />
+                  </button>
                   <button
                     onClick={() => handleEdit(setting)}
                     style={{

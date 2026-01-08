@@ -83,6 +83,7 @@ import {
   updateG2ASettings,
   deleteG2ASettings,
   generateG2AApiKey,
+  getG2AToken,
 } from '../services/g2a-settings.service.js';
 import {
   UserSearchFilters,
@@ -1743,7 +1744,7 @@ export const generateG2AApiKeyController = async (req: AuthRequest, res: Respons
 
 export const upsertG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { clientId, email, clientSecret, apiKey, isActive } = req.body;
+    const { clientId, email, clientSecret, apiKey, environment, isActive } = req.body;
 
     if (!clientId || !email || !clientSecret) {
       return res.status(400).json({
@@ -1757,6 +1758,7 @@ export const upsertG2ASettingsController = async (req: AuthRequest, res: Respons
       email,
       clientSecret,
       apiKey,
+      environment,
       isActive,
     });
 
@@ -1769,17 +1771,57 @@ export const upsertG2ASettingsController = async (req: AuthRequest, res: Respons
 export const updateG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { clientId, email, clientSecret, apiKey, isActive } = req.body;
+    const { clientId, email, clientSecret, apiKey, environment, isActive } = req.body;
 
     const settings = await updateG2ASettings(id, {
       ...(clientId && { clientId }),
       ...(email && { email }),
       ...(clientSecret && { clientSecret }),
       ...(apiKey && { apiKey }),
+      ...(environment && { environment }),
       ...(isActive !== undefined && { isActive }),
     });
 
     res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getG2ATokenController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    
+    // Get settings by ID or use active settings
+    let settings;
+    if (id) {
+      const allSettings = await getAllG2ASettings();
+      settings = allSettings.find(s => s.id === id);
+      if (!settings) {
+        return res.status(404).json({
+          success: false,
+          error: 'G2A settings not found',
+        });
+      }
+    } else {
+      settings = await getG2ASettings();
+      if (!settings) {
+        return res.status(404).json({
+          success: false,
+          error: 'No active G2A settings found',
+        });
+      }
+    }
+
+    const tokenResponse = await getG2AToken(settings);
+    res.json({ 
+      success: true, 
+      data: {
+        ...tokenResponse,
+        environment: settings.environment,
+        expiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString(),
+      }
+    });
   } catch (error) {
     next(error);
   }

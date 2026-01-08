@@ -1,51 +1,34 @@
 import { PrismaClient } from '@prisma/client';
+import { withAccelerate } from '@prisma/extension-accelerate';
 
-let prisma: PrismaClient | null = null;
+let prisma: PrismaClient | ReturnType<typeof createPrismaClient> | null = null;
 
-function createPrismaClient(): PrismaClient {
+function createPrismaClient() {
   // Always prefer DIRECT_URL if available (especially for Vercel/serverless)
   // Prisma Accelerate can have connection issues on serverless environments
   const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
   const isProduction = process.env.NODE_ENV === 'production';
   const hasDirectUrl = !!process.env.DIRECT_URL;
-  const hasPrismaAccelerate = process.env.DATABASE_URL?.includes('prisma.io');
+  const databaseUrl = process.env.DATABASE_URL || '';
+  const hasPrismaAccelerate = databaseUrl.startsWith('prisma://') || databaseUrl.startsWith('prisma+postgres://');
 
   // Use direct connection if:
   // 1. We're on Vercel (serverless)
-  // 2. We're in production
-  // 3. DIRECT_URL is explicitly provided
-  // 4. DATABASE_URL points to Prisma Accelerate (which can be unreliable)
+  // 2. DIRECT_URL is explicitly provided (bypasses Accelerate)
+  // 3. FORCE_DIRECT_DB is set
   const useDirectConnection =
     isVercel ||
-    isProduction ||
     hasDirectUrl ||
-    hasPrismaAccelerate ||
     process.env.FORCE_DIRECT_DB === 'true';
 
-  const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+  const dbUrl = process.env.DIRECT_URL || databaseUrl;
 
   if (!dbUrl) {
     console.error('❌ DATABASE_URL or DIRECT_URL must be set');
     throw new Error('Database connection URL is required');
   }
 
-  if (useDirectConnection) {
-    // Use direct connection (bypass Accelerate)
-    console.log(`🔗 Using direct database connection${isVercel ? ' (Vercel/serverless)' : ''}`);
-
-    return new PrismaClient({
-      datasources: {
-        db: {
-          url: dbUrl,
-        },
-      },
-      log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'info'],
-    });
-  }
-
-  // Use standard PrismaClient for local development (without Accelerate to avoid type issues)
-  console.log('🔗 Using standard Prisma Client (development mode)');
-  return new PrismaClient({
+  const baseClient = new PrismaClient({
     datasources: {
       db: {
         url: dbUrl,
@@ -53,6 +36,23 @@ function createPrismaClient(): PrismaClient {
     },
     log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'info'],
   });
+
+  // Use Accelerate extension if DATABASE_URL is an Accelerate connection string
+  // and we're not forcing direct connection
+  if (hasPrismaAccelerate && !useDirectConnection) {
+    console.log('🚀 Using Prisma Accelerate with caching enabled');
+    return baseClient.$extends(withAccelerate()) as any;
+  }
+
+  if (useDirectConnection) {
+    // Use direct connection (bypass Accelerate)
+    console.log(`🔗 Using direct database connection${isVercel ? ' (Vercel/serverless)' : ''}`);
+    return baseClient;
+  }
+
+  // Use standard PrismaClient for local development
+  console.log('🔗 Using standard Prisma Client (development mode)');
+  return baseClient;
 }
 
 /**
@@ -112,4 +112,5 @@ try {
 
 // Export with proper type - prisma is guaranteed to be initialized
 // or the process would have exited in production
-export default prisma as PrismaClient;
+// Using 'any' type to handle both PrismaClient and Accelerate extension
+export default prisma as any;

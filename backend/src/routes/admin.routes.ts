@@ -90,6 +90,7 @@ import {
   upsertG2ASettingsController,
   updateG2ASettingsController,
   deleteG2ASettingsController,
+  getG2ATokenController,
   getAllPromoCodesController,
   getPromoCodeByIdController,
   createPromoCodeController,
@@ -237,6 +238,8 @@ router.post('/email-settings/:id/test', testEmailSettingsController);
 // G2A Settings Management
 router.get('/g2a-settings', getG2ASettingsController);
 router.get('/g2a-settings/all', getAllG2ASettingsController);
+router.get('/g2a-settings/:id/token', getG2ATokenController);
+router.get('/g2a-settings/token', getG2ATokenController); // Get token for active settings
 router.post('/g2a-settings/generate-key', generateG2AApiKeyController);
 router.post('/g2a-settings', upsertG2ASettingsController);
 router.put('/g2a-settings/:id', updateG2ASettingsController);

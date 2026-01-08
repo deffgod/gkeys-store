@@ -1754,6 +1754,7 @@ export const adminApi = {
       email: string;
       clientSecret: string;
       apiKey: string | null;
+      environment: string;
       isActive: boolean;
       createdAt: string;
       updatedAt: string;
@@ -1768,6 +1769,7 @@ export const adminApi = {
       email: string;
       clientSecret: string;
       apiKey: string | null;
+      environment: string;
       isActive: boolean;
       createdAt: string;
       updatedAt: string;
@@ -1785,6 +1787,7 @@ export const adminApi = {
     email: string;
     clientSecret: string;
     apiKey?: string;
+    environment?: 'sandbox' | 'production';
     isActive?: boolean;
   }) => {
     const response = await apiClient.post<{ success: boolean; data: {
@@ -1793,6 +1796,7 @@ export const adminApi = {
       email: string;
       clientSecret: string;
       apiKey: string | null;
+      environment: string;
       isActive: boolean;
       createdAt: string;
       updatedAt: string;
@@ -1805,6 +1809,7 @@ export const adminApi = {
     email?: string;
     clientSecret?: string;
     apiKey?: string;
+    environment?: 'sandbox' | 'production';
     isActive?: boolean;
   }) => {
     const response = await apiClient.put<{ success: boolean; data: {
@@ -1813,6 +1818,7 @@ export const adminApi = {
       email: string;
       clientSecret: string;
       apiKey: string | null;
+      environment: string;
       isActive: boolean;
       createdAt: string;
       updatedAt: string;
@@ -1822,6 +1828,20 @@ export const adminApi = {
 
   deleteG2ASettings: async (id: string) => {
     const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/admin/g2a-settings/${id}`);
+    return response.data;
+  },
+
+  getG2AToken: async (id?: string) => {
+    const url = id 
+      ? `/api/admin/g2a-settings/${id}/token`
+      : '/api/admin/g2a-settings/token';
+    const response = await apiClient.get<{ success: boolean; data: {
+      access_token: string;
+      expires_in: number;
+      token_type: string;
+      environment: string;
+      expiresAt: string;
+    } }>(url);
     return response.data;
   },
 

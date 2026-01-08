@@ -118,21 +118,43 @@ const getCachedOrFetch = async <T>(
  * - Graceful degradation: operations continue if Redis is unavailable
  * - Consistent cache key patterns ensure reliable invalidation
  */
-export const invalidateCache = async (pattern: string): Promise<void> => {
+/**
+ * Invalidate Accelerate cache by tags
+ */
+const invalidateAccelerateCache = async (tags: string[]): Promise<void> => {
   try {
-    const available = await isRedisAvailable();
-    if (!available) {
-      console.warn(`[Cache] Redis not available, skipping invalidation for pattern: ${pattern}`);
-      return; // Graceful degradation - don't throw
+    // Check if prisma has $accelerate method (Accelerate extension)
+    if (prisma && typeof (prisma as any).$accelerate?.invalidate === 'function') {
+      await (prisma as any).$accelerate.invalidate({ tags });
+      console.log(`[Accelerate Cache] Invalidated tags: ${tags.join(', ')}`);
     }
+  } catch (error) {
+    console.error('[Accelerate Cache] Error invalidating cache:', error);
+    // Don't throw - graceful degradation
+  }
+};
 
-    const keys = await redisClient.keys(pattern);
-    if (keys.length > 0) {
-      await redisClient.del(keys);
-      console.log(`[Cache] Invalidated ${keys.length} keys matching pattern: ${pattern}`);
+export const invalidateCache = async (pattern: string, tags?: string[]): Promise<void> => {
+  try {
+    // Invalidate Redis cache
+    const available = await isRedisAvailable();
+    if (available) {
+      const keys = await redisClient.keys(pattern);
+      if (keys.length > 0) {
+        await redisClient.del(keys);
+        console.log(`[Cache] Invalidated ${keys.length} keys matching pattern: ${pattern}`);
+      } else {
+        console.log(`[Cache] No keys found matching pattern: ${pattern}`);
+      }
     } else {
-      console.log(`[Cache] No keys found matching pattern: ${pattern}`);
+      console.warn(`[Cache] Redis not available, skipping invalidation for pattern: ${pattern}`);
     }
+    
+    // Invalidate Accelerate cache if tags provided
+    if (tags && tags.length > 0) {
+      await invalidateAccelerateCache(tags);
+    }
+    // Don't throw - graceful degradation
   } catch (err) {
     // Non-blocking error handling - log but don't throw
     // This ensures cache failures don't block critical operations
@@ -167,7 +189,7 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       };
     }
 
-    // Get top selling games
+    // Get top selling games (cached with Accelerate)
     const topGames = await prisma.orderItem.groupBy({
       by: ['gameId'],
       _count: { gameId: true },
@@ -179,6 +201,11 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       },
       orderBy: { _count: { gameId: 'desc' } },
       take: 50,
+      cacheStrategy: {
+        ttl: 3600, // Cache for 1 hour
+        swr: 300, // Serve stale for 5 minutes while revalidating
+        tags: ['best-sellers', 'order-items'],
+      },
     });
 
     let gameIds = topGames.map((g: any) => g.gameId);
@@ -193,11 +220,16 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
         take: 20 - gameIds.length,
         orderBy: { createdAt: 'desc' },
         select: { id: true },
+        cacheStrategy: {
+          ttl: 1800, // Cache for 30 minutes
+          swr: 180, // Serve stale for 3 minutes
+          tags: ['games', 'best-sellers'],
+        },
       });
       gameIds = [...gameIds, ...additionalGames.map((g) => g.id)];
     }
 
-    // Fetch full game data
+    // Fetch full game data (cached with Accelerate)
     const games = await prisma.game.findMany({
       where: { id: { in: gameIds } },
       include: {
@@ -216,6 +248,11 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
             tag: true,
           },
         },
+      },
+      cacheStrategy: {
+        ttl: 3600, // Cache for 1 hour
+        swr: 300, // Serve stale for 5 minutes while revalidating
+        tags: ['games', 'best-sellers', genre ? `genre:${genre}` : 'all'],
       },
     });
 
@@ -254,6 +291,11 @@ export const getNewInCatalog = async (): Promise<CachedGame[]> => {
           },
         },
       },
+      cacheStrategy: {
+        ttl: 3600, // Cache for 1 hour
+        swr: 300, // Serve stale for 5 minutes
+        tags: ['games', 'new-in-catalog'],
+      },
     });
 
     return games.map((g) => ({
@@ -291,6 +333,11 @@ export const getPreorderGames = async (): Promise<CachedGame[]> => {
             tag: true,
           },
         },
+      },
+      cacheStrategy: {
+        ttl: 1800, // Cache for 30 minutes
+        swr: 180, // Serve stale for 3 minutes
+        tags: ['games', 'preorders'],
       },
     });
 
@@ -331,6 +378,11 @@ export const getNewGames = async (): Promise<CachedGame[]> => {
           },
         },
       },
+      cacheStrategy: {
+        ttl: 1800, // Cache for 30 minutes
+        swr: 180, // Serve stale for 3 minutes
+        tags: ['games', 'new-games'],
+      },
     });
 
     return games.map((g) => ({
@@ -364,6 +416,11 @@ export const getRandomGames = async (count: number = 10): Promise<CachedGame[]> 
           tag: true,
         },
       },
+    },
+    cacheStrategy: {
+      ttl: 60, // Cache for 1 minute (short TTL for randomness)
+      swr: 30, // Serve stale for 30 seconds
+      tags: ['games', 'random'],
     },
   });
 
@@ -411,6 +468,11 @@ export const getGamesByGenre = async (genre: string, count: number = 20): Promis
           },
         },
       },
+      cacheStrategy: {
+        ttl: 21600, // Cache for 6 hours
+        swr: 1800, // Serve stale for 30 minutes
+        tags: ['games', 'genre', `genre:${genre.toLowerCase()}`],
+      },
     });
 
     return games.map(mapGameToCache);
@@ -443,6 +505,11 @@ export const getCachedGame = async (slug: string): Promise<CachedGame | null> =>
           },
         },
       },
+      cacheStrategy: {
+        ttl: 3600, // Cache for 1 hour
+        swr: 300, // Serve stale for 5 minutes
+        tags: ['games', `game:${slug}`],
+      },
     });
 
     return game ? mapGameToCache(game) : null;
@@ -472,6 +539,11 @@ export const getFilterOptions = async (): Promise<{
         },
         select: { name: true },
         distinct: ['name'],
+        cacheStrategy: {
+          ttl: 3600, // Cache for 1 hour
+          swr: 300, // Serve stale for 5 minutes
+          tags: ['filter-options', 'platforms'],
+        },
       }),
       prisma.genre.findMany({
         where: {
@@ -485,16 +557,31 @@ export const getFilterOptions = async (): Promise<{
         },
         select: { name: true },
         distinct: ['name'],
+        cacheStrategy: {
+          ttl: 3600, // Cache for 1 hour
+          swr: 300, // Serve stale for 5 minutes
+          tags: ['filter-options', 'genres'],
+        },
       }),
       prisma.game.findMany({
         where: { inStock: true, publisher: { not: null } },
         select: { publisher: true },
         distinct: ['publisher'],
+        cacheStrategy: {
+          ttl: 3600, // Cache for 1 hour
+          swr: 300, // Serve stale for 5 minutes
+          tags: ['filter-options', 'publishers'],
+        },
       }),
       prisma.game.aggregate({
         where: { inStock: true },
         _min: { price: true },
         _max: { price: true },
+        cacheStrategy: {
+          ttl: 3600, // Cache for 1 hour
+          swr: 300, // Serve stale for 5 minutes
+          tags: ['filter-options', 'price-range'],
+        },
       }),
     ]);
 
