@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   FiMail, 
   FiEdit2, 
@@ -59,7 +59,7 @@ const EmailTemplatesPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const response = await adminApi.getEmailTemplates();
-      setTemplates(response.data || []);
+      setTemplates(Array.isArray(response) ? response : (response as any).data || []);
     } catch (err) {
       console.error('Failed to load templates:', err);
       setError('Failed to load email templates');
@@ -72,7 +72,7 @@ const EmailTemplatesPage: React.FC = () => {
     try {
       setError(null);
       const response = await adminApi.getEmailTemplate(template.name);
-      const fullTemplate = response.data;
+      const fullTemplate = (response as any).data || response;
       setSelectedTemplate(fullTemplate);
       setEditingContent(fullTemplate.content);
       setIsEditing(false);
@@ -98,7 +98,7 @@ const EmailTemplatesPage: React.FC = () => {
       
       // Update selected template
       const response = await adminApi.getEmailTemplate(selectedTemplate.name);
-      setSelectedTemplate(response.data);
+      setSelectedTemplate((response as any).data || response);
       
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
@@ -126,7 +126,10 @@ const EmailTemplatesPage: React.FC = () => {
       key: 'XXXX-XXXX-XXXX-XXXX',
       platform: 'Steam',
       amount: '50.00',
+      currency: 'EUR',
       newBalance: '150.00',
+      date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.'),
+      paymentMethod: 'Trustly',
       newPassword: 'NewSecurePass123!',
       verificationCode: '123456',
     };
@@ -135,17 +138,7 @@ const EmailTemplatesPage: React.FC = () => {
       previewContent = previewContent.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
 
-    return (
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          padding: '20px',
-          borderRadius: '8px',
-          minHeight: '400px',
-        }}
-        dangerouslySetInnerHTML={{ __html: previewContent }}
-      />
-    );
+    return previewContent;
   };
 
   if (isLoading) {
@@ -252,6 +245,7 @@ const EmailTemplatesPage: React.FC = () => {
               Templates
             </h2>
             <button
+              type="button"
               onClick={loadTemplates}
               style={{
                 padding: '6px',
@@ -272,6 +266,7 @@ const EmailTemplatesPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {templates.map((template) => (
               <button
+                type="button"
                 key={template.name}
                 onClick={() => handleSelectTemplate(template)}
                 style={{
@@ -373,6 +368,7 @@ const EmailTemplatesPage: React.FC = () => {
                 {!isEditing && (
                   <>
                     <button
+                      type="button"
                       onClick={() => setIsEditing(true)}
                       style={{
                         padding: '8px 16px',
@@ -392,6 +388,7 @@ const EmailTemplatesPage: React.FC = () => {
                       Edit
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPreviewMode(!previewMode)}
                       style={{
                         padding: '8px 16px',
@@ -415,6 +412,7 @@ const EmailTemplatesPage: React.FC = () => {
                 {isEditing && (
                   <>
                     <button
+                      type="button"
                       onClick={handleSave}
                       disabled={isSaving}
                       style={{
@@ -436,6 +434,7 @@ const EmailTemplatesPage: React.FC = () => {
                       {isSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
+                      type="button"
                       onClick={handleCancel}
                       style={{
                         padding: '8px 16px',
@@ -464,68 +463,144 @@ const EmailTemplatesPage: React.FC = () => {
               <div style={{
                 backgroundColor: '#f5f5f5',
                 borderRadius: '8px',
-                padding: '20px',
-                overflow: 'auto',
+                padding: '0',
+                overflow: 'hidden',
                 maxHeight: '600px',
+                border: `1px solid ${theme.colors.border}`,
+                position: 'relative',
               }}>
-                {renderPreview(selectedTemplate.content || '')}
+                <iframe
+                  srcDoc={renderPreview(selectedTemplate.content || '')}
+                  style={{
+                    width: '100%',
+                    height: '600px',
+                    border: 'none',
+                    backgroundColor: '#ffffff',
+                  }}
+                  title="Email Preview"
+                />
               </div>
             ) : (
-              <textarea
-                value={editingContent}
-                onChange={(e) => setEditingContent(e.target.value)}
-                disabled={!isEditing}
-                style={{
-                  width: '100%',
-                  minHeight: '500px',
-                  padding: '16px',
-                  backgroundColor: isEditing ? theme.colors.surfaceLight : theme.colors.background,
-                  border: `1px solid ${theme.colors.border}`,
-                  borderRadius: '8px',
-                  color: theme.colors.text,
-                  fontSize: '14px',
-                  fontFamily: 'monospace',
-                  resize: 'vertical',
-                  outline: 'none',
-                  cursor: isEditing ? 'text' : 'default',
-                }}
-                placeholder="Template content..."
-              />
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  disabled={!isEditing}
+                  style={{
+                    width: '100%',
+                    minHeight: '500px',
+                    padding: '16px',
+                    backgroundColor: isEditing ? theme.colors.surfaceLight : theme.colors.background,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: '8px',
+                    color: theme.colors.text,
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    resize: 'vertical',
+                    outline: 'none',
+                    cursor: isEditing ? 'text' : 'default',
+                    lineHeight: '1.6',
+                    tabSize: 2,
+                  }}
+                  placeholder="Template content..."
+                  spellCheck={false}
+                />
+                {isEditing && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    fontSize: '11px',
+                    color: theme.colors.textMuted,
+                    backgroundColor: theme.colors.surface,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                  }}>
+                    {editingContent.split('\n').length} lines
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Variables Help */}
             {selectedTemplate.variables.length > 0 && (
               <div style={{
-                padding: '12px',
+                padding: '16px',
                 backgroundColor: theme.colors.surfaceLight,
                 borderRadius: '8px',
                 border: `1px solid ${theme.colors.border}`,
               }}>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '13px',
                   fontWeight: '600',
-                  color: theme.colors.textSecondary,
-                  marginBottom: '8px',
+                  color: theme.colors.text,
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}>
+                  <FiCode size={16} />
                   Available Variables:
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                   {selectedTemplate.variables.map((variable) => (
                     <code
                       key={variable}
+                      onClick={() => {
+                        if (isEditing) {
+                          const textarea = document.querySelector('textarea');
+                          if (textarea) {
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const text = textarea.value;
+                            const before = text.substring(0, start);
+                            const after = text.substring(end);
+                            const newText = before + `{{${variable}}}` + after;
+                            setEditingContent(newText);
+                            setTimeout(() => {
+                              textarea.focus();
+                              const newPos = start + variable.length + 4;
+                              textarea.setSelectionRange(newPos, newPos);
+                            }, 0);
+                          }
+                        }
+                      }}
                       style={{
-                        padding: '4px 8px',
+                        padding: '6px 10px',
                         backgroundColor: theme.colors.background,
-                        borderRadius: '4px',
+                        borderRadius: '6px',
                         fontSize: '12px',
                         color: theme.colors.primary,
                         fontFamily: 'monospace',
+                        border: `1px solid ${theme.colors.border}`,
+                        cursor: isEditing ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
                       }}
+                      onMouseEnter={(e) => {
+                        if (isEditing) {
+                          e.currentTarget.style.backgroundColor = theme.colors.primary + '20';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isEditing) {
+                          e.currentTarget.style.backgroundColor = theme.colors.background;
+                        }
+                      }}
+                      title={isEditing ? 'Click to insert' : undefined}
                     >
                       {`{{${variable}}}`}
                     </code>
                   ))}
                 </div>
+                {isEditing && (
+                  <div style={{
+                    fontSize: '11px',
+                    color: theme.colors.textMuted,
+                    fontStyle: 'italic',
+                  }}>
+                    💡 Click on a variable to insert it into the template
+                  </div>
+                )}
               </div>
             )}
           </div>

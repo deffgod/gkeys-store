@@ -205,7 +205,7 @@ const GameCard = ({ game }: { game: Game }) => {
       </div>
     </motion.div>
   </Link>
-  );
+);
 };
 
 export default function ProfileWishlistPage() {
@@ -227,7 +227,7 @@ export default function ProfileWishlistPage() {
         setError(err instanceof Error ? err.message : 'Failed to load wishlist');
         setWishlist([]);
       } finally {
-        setIsLoading(false);
+      setIsLoading(false);
       }
     };
 
@@ -518,21 +518,21 @@ export default function ProfileWishlistPage() {
               ))}
             </div>
           ) : suggestedGames.length > 0 ? (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '20px',
-              }}
-              className="suggested-games-grid"
-            >
-              {suggestedGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </motion.div>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '20px',
+            }}
+            className="suggested-games-grid"
+          >
+            {suggestedGames.map((game) => (
+              <GameCard key={game.id} game={game} />
+            ))}
+          </motion.div>
           ) : (
             <div
               style={{

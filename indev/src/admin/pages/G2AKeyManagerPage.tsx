@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiKey, FiCopy, FiCheck, FiSave, FiTrash2, FiEdit2, FiAlertCircle, FiRefreshCw, FiDownload, FiInfo, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiKey, FiCopy, FiCheck, FiSave, FiTrash2, FiEdit2, FiAlertCircle } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
 import { adminInputStyle, adminButtonStyle } from '../styles/adminStyles';
 
@@ -49,10 +49,6 @@ const G2AKeyManagerPage: React.FC = () => {
 
   // Generated API key state
   const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
-  
-  // Testing state
-  const [testingKey, setTestingKey] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -161,76 +157,6 @@ const G2AKeyManagerPage: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Failed to delete G2A settings');
     }
-  };
-
-  const handleTestKey = async () => {
-    if (!formData.clientId || !formData.email || !formData.clientSecret) {
-      setError('Please fill in all required fields to test the API key');
-      return;
-    }
-
-    try {
-      setTestingKey(true);
-      setError(null);
-      setTestResult(null);
-      
-      // Generate key first
-      const result = await adminApi.generateG2AApiKey({
-        clientId: formData.clientId,
-        email: formData.email,
-        clientSecret: formData.clientSecret,
-      });
-
-      // Test the key by making a simple API call (this would need a backend endpoint)
-      // For now, we'll just validate the key format
-      const apiKey = result.apiKey;
-      if (apiKey && apiKey.length === 64 && /^[a-f0-9]+$/.test(apiKey)) {
-        setTestResult({
-          success: true,
-          message: 'API key format is valid (64 character hex string)',
-        });
-      } else {
-        setTestResult({
-          success: false,
-          message: 'API key format is invalid',
-        });
-      }
-    } catch (err: any) {
-      setTestResult({
-        success: false,
-        message: err.message || 'Failed to test API key',
-      });
-    } finally {
-      setTestingKey(false);
-    }
-  };
-
-  const handleExportSettings = () => {
-    if (!settings) {
-      setError('No settings to export');
-      return;
-    }
-
-    const exportData = {
-      clientId: settings.clientId,
-      email: settings.email,
-      apiKey: settings.apiKey,
-      createdAt: settings.createdAt,
-      updatedAt: settings.updatedAt,
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `g2a-settings-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    setSuccess('Settings exported successfully!');
-    setTimeout(() => setSuccess(null), 3000);
   };
 
   if (loading) {
@@ -366,53 +292,18 @@ const G2AKeyManagerPage: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={handleGenerateKey}
-                disabled={!formData.clientId || !formData.email || !formData.clientSecret}
-                style={{
-                  ...adminButtonStyle,
-                  backgroundColor: theme.colors.primary,
-                  opacity: (!formData.clientId || !formData.email || !formData.clientSecret) ? 0.5 : 1,
-                  flex: 1,
-                }}
-              >
-                <FiKey size={18} style={{ marginRight: '8px' }} />
-                Generate API Key
-              </button>
-              <button
-                onClick={handleTestKey}
-                disabled={testingKey || !formData.clientId || !formData.email || !formData.clientSecret}
-                style={{
-                  ...adminButtonStyle,
-                  backgroundColor: theme.colors.info || '#3B82F6',
-                  opacity: (testingKey || !formData.clientId || !formData.email || !formData.clientSecret) ? 0.5 : 1,
-                  flex: 1,
-                }}
-              >
-                <FiRefreshCw size={18} style={{ marginRight: '8px' }} />
-                {testingKey ? 'Testing...' : 'Test Key'}
-              </button>
-            </div>
-
-            {testResult && (
-              <div
-                style={{
-                  padding: '12px',
-                  backgroundColor: testResult.success ? theme.colors.success + '20' : theme.colors.error + '20',
-                  border: `1px solid ${testResult.success ? theme.colors.success : theme.colors.error}`,
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: testResult.success ? theme.colors.success : theme.colors.error,
-                  fontSize: '13px',
-                }}
-              >
-                {testResult.success ? <FiCheckCircle size={16} /> : <FiXCircle size={16} />}
-                {testResult.message}
-              </div>
-            )}
+            <button
+              onClick={handleGenerateKey}
+              disabled={!formData.clientId || !formData.email || !formData.clientSecret}
+              style={{
+                ...adminButtonStyle,
+                backgroundColor: theme.colors.primary,
+                opacity: (!formData.clientId || !formData.email || !formData.clientSecret) ? 0.5 : 1,
+              }}
+            >
+              <FiKey size={18} style={{ marginRight: '8px' }} />
+              Generate API Key
+            </button>
 
             {generatedApiKey && (
               <div
@@ -486,24 +377,8 @@ const G2AKeyManagerPage: React.FC = () => {
               />
             </div>
 
-            <div style={{ 
-              padding: '12px', 
-              backgroundColor: theme.colors.background, 
-              borderRadius: '8px', 
-              fontSize: '12px', 
-              color: theme.colors.textSecondary,
-              border: `1px solid ${theme.colors.border}`,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <FiInfo size={14} />
-                <strong>Formula:</strong>
-              </div>
-              <div style={{ fontFamily: 'monospace', marginLeft: '22px', color: theme.colors.text }}>
-                SHA256(ClientId + Email + ClientSecret)
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '11px', color: theme.colors.textMuted }}>
-                The generated key is a 64-character hexadecimal string used in the Authorization header.
-              </div>
+            <div style={{ padding: '12px', backgroundColor: theme.colors.background, borderRadius: '8px', fontSize: '12px', color: theme.colors.textSecondary }}>
+              <strong>Formula:</strong> SHA256(ClientId + Email + ClientSecret)
             </div>
 
             <button
@@ -535,23 +410,9 @@ const G2AKeyManagerPage: React.FC = () => {
             marginBottom: '32px',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', color: theme.colors.text }}>
-              Current Active Settings
-            </h2>
-            <button
-              onClick={handleExportSettings}
-              style={{
-                ...adminButtonStyle,
-                backgroundColor: 'transparent',
-                border: `1px solid ${theme.colors.border}`,
-                padding: '8px 16px',
-              }}
-            >
-              <FiDownload size={16} style={{ marginRight: '8px' }} />
-              Export
-            </button>
-          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', color: theme.colors.text, marginBottom: '24px' }}>
+            Current Active Settings
+          </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
             <div>

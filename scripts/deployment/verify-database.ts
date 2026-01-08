@@ -32,7 +32,16 @@ export async function verifyDatabaseConnectivity(): Promise<VerificationCheck> {
     
     const duration = Date.now() - startTime;
     
-    if (stderr && !stderr.includes('warning')) {
+    // Filter out Prisma warnings - they're informational, not errors
+    const isWarning = stderr && (
+      stderr.toLowerCase().includes('warning') ||
+      stderr.includes('WARNING') ||
+      stderr.includes('enriched with') ||
+      stderr.includes('@@map')
+    );
+    
+    // Only fail on actual errors, not warnings
+    if (stderr && !isWarning && stderr.trim().length > 0) {
       return createVerificationCheck(
         'database-connectivity',
         'Database Connectivity',
@@ -106,7 +115,7 @@ export async function verifyMigrations(): Promise<VerificationCheck> {
     const execAsync = promisify(exec);
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    const rootDir = resolve(__dirname, '../../..');
+    const rootDir = resolve(__dirname, '../..');
     const backendDir = resolve(rootDir, 'backend');
     
     // Check if migrations directory exists

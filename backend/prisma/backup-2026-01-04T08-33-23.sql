@@ -1,0 +1,30 @@
+-- Database Backup
+-- Exported at: 2026-01-04T08:33:29.113Z
+-- Database: postgres://622724651a30379a731ac50cfb1d0cc133fb97ea8c06a4a5862a145a96c7350d:****@db.prisma.io:5432/postgres?sslmode=require
+
+-- This is a summary backup. Full data is in the JSON file.
+-- To restore, use the JSON backup file with Prisma.
+
+-- Table: users - 170 records
+-- Table: games - 105 records
+-- Table: categories - 5 records
+-- Table: genres - 5 records
+-- Table: platforms - 9 records
+-- Table: tags - 3 records
+-- Table: gameCategories - 28 records
+-- Table: gameGenres - 56 records
+-- Table: gamePlatforms - 28 records
+-- Table: gameTags - 28 records
+-- Table: orders - 0 records
+-- Table: orderItems - 0 records
+-- Table: gameKeys - 80 records
+-- Table: transactions - 0 records
+-- Table: cartItems - 7 records
+-- Table: wishlistItems - 4 records
+-- Table: promoCodes - 1 records
+-- Table: articles - 7 records
+-- Table: paymentMethods - 0 records
+-- Table: paymentForms - 0 records
+-- Table: sessions - 2089 records
+-- Table: faqs - 19 records
+-- Table: loginHistory - 11 records

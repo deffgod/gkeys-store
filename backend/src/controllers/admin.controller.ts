@@ -65,6 +65,14 @@ import {
   getTemplateMetadata,
 } from '../services/email-template.service.js';
 import {
+  getG2ASettings,
+  getAllG2ASettings,
+  upsertG2ASettings,
+  updateG2ASettings,
+  deleteG2ASettings,
+  generateG2AApiKey,
+} from '../services/g2a-settings.service.js';
+import {
   UserSearchFilters,
   TransactionFilters,
   PaymentTransactionFilters,
@@ -1529,7 +1537,7 @@ export const updateEmailTemplateController = async (req: AuthRequest, res: Respo
 
 export const getEmailTemplateMetadataController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const metadata = getEmailTemplateMetadata();
+    const metadata = getTemplateMetadata();
     res.json({ success: true, data: metadata });
   } catch (error) {
     next(error);
@@ -1622,16 +1630,6 @@ export const deleteG2ASettingsController = async (req: AuthRequest, res: Respons
     const { id } = req.params;
     await deleteG2ASettings(id);
     res.json({ success: true, message: 'G2A settings deleted successfully' });
-  } catch (error) {
-    next(error);
-  }
-};
-  try {
-    const metadata = getTemplateMetadata();
-    res.status(200).json({
-      success: true,
-      data: metadata,
-    });
   } catch (error) {
     next(error);
   }

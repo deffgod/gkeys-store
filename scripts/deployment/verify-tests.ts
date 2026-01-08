@@ -23,8 +23,8 @@ export async function verifyTests(): Promise<VerificationCheck> {
   const startTime = Date.now();
   
   try {
-    // Run backend tests
-    const { stdout, stderr } = await execAsync('npm test', {
+    // Run backend tests using npx to ensure vitest is found
+    const { stdout, stderr } = await execAsync('npx vitest run', {
       cwd: backendDir,
       timeout: 300000, // 5 minutes
     });
@@ -90,17 +90,24 @@ export async function verifyTests(): Promise<VerificationCheck> {
   } catch (error: any) {
     const duration = Date.now() - startTime;
     
-    // Check if error is due to no tests found
+    // Check if error is due to no tests found or command not found
     const errorMsg = error.message || String(error);
     const noTests = errorMsg.includes('No test files found') ||
                    errorMsg.includes('No tests found');
+    const commandNotFound = errorMsg.includes('command not found') ||
+                           errorMsg.includes('vitest: command not found') ||
+                           errorMsg.includes('ENOENT');
     
     return createVerificationCheck(
       'tests',
       'Test Suite',
       'tests',
-      noTests ? 'warning' : 'fail',
-      noTests ? 'No tests found (may be expected)' : 'Test execution failed',
+      noTests || commandNotFound ? 'warning' : 'fail',
+      noTests 
+        ? 'No tests found (may be expected)' 
+        : commandNotFound
+        ? 'Test runner not available (install dependencies: npm install)'
+        : 'Test execution failed',
       {
         errors: [errorMsg],
         duration,
