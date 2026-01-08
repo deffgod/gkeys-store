@@ -161,7 +161,7 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       where.genres = {
         some: {
           genre: {
-            name: { contains: genre, mode: 'insensitive' },
+            name: { equals: genre, mode: 'insensitive' },
           },
         },
       };

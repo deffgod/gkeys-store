@@ -317,6 +317,7 @@ export default function HomePage() {
         loading: true,
         error: null,
         lastFetched: null,
+        activeTab: null, // Track active tab for sections with tabs
       };
     });
     // Add random picks section state
@@ -332,6 +333,65 @@ export default function HomePage() {
 
   const [randomPicks, setRandomPicks] = useState([]);
   const [randomPicksLoading, setRandomPicksLoading] = useState(true);
+  const [bestSellersTabs, setBestSellersTabs] = useState<string[]>(['All']);
+
+  // Load genres for Best Sellers tabs
+  useEffect(() => {
+    const loadGenres = async () => {
+      try {
+        const genres = await gamesApi.getAllGenres();
+        // Create tabs: 'All' + genre names
+        const genreNames = genres.map(g => g.name);
+        setBestSellersTabs(['All', ...genreNames]);
+      } catch (error) {
+        console.error('Failed to load genres for Best Sellers tabs:', error);
+        // Fallback to default tabs
+        setBestSellersTabs(['All', 'Adventure', 'Action', 'Sci-Fi', 'Open World', 'Horror', 'RPG', 'Battle Royale']);
+      }
+    };
+    loadGenres();
+  }, []);
+
+  // Handle tab change for sections (especially Best Sellers)
+  const handleTabChange = async (sectionId: string, tab: string) => {
+    // Update active tab in state
+    setSectionStates((prev) => ({
+      ...prev,
+      [sectionId]: {
+        ...prev[sectionId],
+        activeTab: tab,
+        loading: true,
+      },
+    }));
+
+    // For Best Sellers, fetch new data with genre filter
+    if (sectionId === 'best-sellers') {
+      try {
+        const genre = tab === 'All' ? undefined : tab;
+        const games = await gamesApi.getBestSellers(genre);
+        setSectionStates((prev) => ({
+          ...prev,
+          [sectionId]: {
+            ...prev[sectionId],
+            games,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+      } catch (error) {
+        console.error(`Error fetching Best Sellers for genre ${tab}:`, error);
+        setSectionStates((prev) => ({
+          ...prev,
+          [sectionId]: {
+            ...prev[sectionId],
+            loading: false,
+            error: error?.message || 'Failed to load games',
+          },
+        }));
+      }
+    }
+  };
 
   // Fetch data for all sections in parallel
   useEffect(() => {
@@ -477,15 +537,21 @@ export default function HomePage() {
         const sectionState = sectionStates[section.id];
         const games = sectionState?.games || [];
 
+        // Use dynamic tabs for Best Sellers (from DB), otherwise use section.tabs
+        const tabs = section.id === 'best-sellers' && bestSellersTabs.length > 1
+          ? bestSellersTabs
+          : section.tabs;
+
         // Always render section, even if empty (GameSection will handle loading/empty states)
         return (
           <GameSection
             key={section.id}
+            sectionId={section.id}
             title={section.title}
             subtitle={section.subtitle}
             description={section.description}
             games={games}
-            tabs={section.tabs}
+            tabs={tabs}
             showCheckAll={section.display.showCheckAll}
             checkAllLink={section.display.checkAllLink}
             checkAllText={section.display.checkAllText || 'Check all'}
@@ -493,6 +559,7 @@ export default function HomePage() {
             carousel={section.display.carousel}
             loading={sectionState?.loading}
             error={sectionState?.error}
+            onTabChange={handleTabChange}
           />
         );
       })}

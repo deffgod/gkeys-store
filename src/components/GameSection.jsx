@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import GameCard from './GameCard';
@@ -66,13 +66,45 @@ export default function GameSection({
   sectionStyle = {},
   loading = false,
   error = null,
+  onTabChange,
+  sectionId,
 }) {
   const [activeTab, setActiveTab] = useState(tabs?.[0] || null);
   const scrollRef = useRef(null);
 
-  const filteredGames = activeTab && activeTab !== 'All' 
-    ? games.filter(game => game.genre === activeTab || game.tags?.includes(activeTab))
-    : games;
+  // Update activeTab when tabs change (e.g., when genres load from DB)
+  useEffect(() => {
+    if (tabs && tabs.length > 0 && (!activeTab || !tabs.includes(activeTab))) {
+      setActiveTab(tabs[0]);
+    }
+  }, [tabs, activeTab]);
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (onTabChange && sectionId) {
+      onTabChange(sectionId, tab);
+    }
+  };
+
+  // For Best Sellers, don't filter on client - data comes from API
+  // For other sections, keep client-side filtering as fallback
+  const filteredGames = (title === 'Best Sellers' || sectionId === 'best-sellers')
+    ? games // Best Sellers: games already filtered by API
+    : (activeTab && activeTab !== 'All' 
+        ? games.filter(game => {
+            // Check if game has matching genre in genres array
+            if (game.genres && Array.isArray(game.genres)) {
+              return game.genres.some(genre => 
+                typeof genre === 'string' 
+                  ? genre.toLowerCase() === activeTab.toLowerCase()
+                  : (genre.name || genre).toLowerCase() === activeTab.toLowerCase()
+              );
+            }
+            // Fallback to old structure
+            return game.genre === activeTab || game.tags?.includes(activeTab);
+          })
+        : games);
 
   // Show empty state if no games and not loading
   if (!loading && filteredGames.length === 0 && !error) {
@@ -217,7 +249,7 @@ export default function GameSection({
                     key={tab}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabChange(tab)}
                     style={{
                       padding: '8px 16px',
                       backgroundColor: activeTab === tab ? theme.colors.primary : theme.colors.surface,
@@ -438,7 +470,7 @@ export default function GameSection({
                     key={tab}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabChange(tab)}
                     style={{
                       padding: '8px 16px',
                       backgroundColor: activeTab === tab ? theme.colors.primary : theme.colors.surface,

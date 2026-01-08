@@ -1,6 +1,4 @@
 import type { SectionConfig } from '../types/sections';
-import { bestSellersTabs } from '../data/gamesData';
-import { gamesApi } from '../services/gamesApi';
 
 /**
  * Homepage Section Configurations
@@ -22,7 +20,8 @@ export const homepageSections: SectionConfig[] = [
       showCheckAll: true,
       checkAllLink: '/catalog?sort=best-sellers',
     },
-    tabs: bestSellersTabs || ['All', 'Adventure', 'Action', 'Sci-Fi', 'Open World', 'Horror', 'RPG', 'Battle Royale'],
+    // Tabs will be loaded dynamically from database in HomePage
+    tabs: undefined, // Will be set dynamically from DB genres
   },
 
   // 2. New in the Catalog
