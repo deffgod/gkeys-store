@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import PageTransition from './components/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminApp from './admin/AdminApp';
+import { Toaster } from './components/ui/sonner';
 
 // @ts-ignore
 import HomePage from './pages/HomePage';
@@ -299,6 +300,7 @@ function App() {
         <WishlistProvider>
           <Router>
             <AppRoutes />
+            <Toaster position="top-right" richColors />
           </Router>
         </WishlistProvider>
       </CartProvider>

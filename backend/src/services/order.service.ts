@@ -6,11 +6,74 @@ import { G2AError, G2AErrorCode } from '../lib/g2a/errors/G2AError.js';
 import { sendGameKeyEmail } from './email.service.js';
 import { G2AIntegrationClient } from '../lib/g2a/G2AIntegrationClient.js';
 
+/**
+ * Structured logger for Order operations with audit logging
+ */
+const orderLogger = {
+  info: (message: string, data?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[Order] [${timestamp}] [INFO] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
+  },
+  error: (message: string, error?: unknown, context?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    const errorData = {
+      message,
+      timestamp,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+            }
+          : error,
+      context,
+    };
+    console.error(`[Order] [${timestamp}] [ERROR] ${JSON.stringify(errorData, null, 2)}`);
+  },
+  warn: (message: string, data?: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString();
+    console.warn(
+      `[Order] [${timestamp}] [WARN] ${message}`,
+      data ? JSON.stringify(data, null, 2) : ''
+    );
+  },
+  /**
+   * Audit log for order operations
+   */
+  audit: (
+    operation: string,
+    userId: string,
+    orderId: string,
+    data?: Record<string, unknown>
+  ) => {
+    const timestamp = new Date().toISOString();
+    const auditData = {
+      timestamp,
+      operation,
+      userId,
+      orderId,
+      data: data || {},
+    };
+    console.log(`[Order] [${timestamp}] [AUDIT] ${JSON.stringify(auditData, null, 2)}`);
+  },
+};
+
 export const createOrder = async (
   userId: string,
   data: CreateOrderRequest
 ): Promise<OrderResponse> => {
   const { items, promoCode } = data;
+
+  // Audit log: Order creation started
+  orderLogger.audit('ORDER_CREATE_START', userId, 'pending', {
+    itemsCount: items.length,
+    gameIds: items.map(i => i.gameId),
+    promoCode: promoCode || null,
+  });
 
   // Get user with balance
   const user = await prisma.user.findUnique({
@@ -18,6 +81,7 @@ export const createOrder = async (
   });
 
   if (!user) {
+    orderLogger.error('User not found during order creation', undefined, { userId });
     throw new AppError('User not found', 404);
   }
 
@@ -55,10 +119,11 @@ export const createOrder = async (
         }
       } catch (error) {
         // If G2A validation fails, log but don't block order (graceful degradation)
-        console.warn(
-          `G2A stock check failed for ${game.g2aProductId}, proceeding with local stock check:`,
-          error
-        );
+        orderLogger.warn('G2A stock check failed, proceeding with local stock check', {
+          gameId: game.id,
+          g2aProductId: game.g2aProductId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -113,6 +178,12 @@ export const createOrder = async (
 
   // Check balance
   if (Number(user.balance) < total) {
+    orderLogger.audit('ORDER_CREATE_FAILED', userId, 'failed', {
+      reason: 'INSUFFICIENT_BALANCE',
+      userBalance: Number(user.balance),
+      orderTotal: total,
+      difference: total - Number(user.balance),
+    });
     throw new AppError('Insufficient balance', 400);
   }
 
@@ -153,6 +224,13 @@ export const createOrder = async (
 
   // Create order, deduct balance, and create transaction atomically
   const order = await prisma.$transaction(async (tx) => {
+    orderLogger.info('Starting order transaction', {
+      userId,
+      total,
+      itemsCount: items.length,
+      promoCode: promoCode || null,
+    });
+
     // Create order with PENDING status initially
     const newOrder = await tx.order.create({
       data: {
@@ -226,7 +304,24 @@ export const createOrder = async (
       });
     }
 
+    orderLogger.info('Order transaction completed successfully', {
+      orderId: newOrder.id,
+      userId,
+      total,
+      status: newOrder.status,
+    });
+
     return newOrder;
+  });
+
+  // Audit log: Order created successfully
+  orderLogger.audit('ORDER_CREATED', userId, order.id, {
+    total,
+    subtotal,
+    discount,
+    itemsCount: items.length,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
   });
 
   // Invalidate cache after order creation
@@ -234,13 +329,86 @@ export const createOrder = async (
     const { invalidateCache } = await import('./cache.service.js');
     await invalidateCache(`user:${userId}:orders`);
     await invalidateCache(`user:${userId}:cart`);
-    console.log(`[Order] Cache invalidated for user ${userId} after order creation`);
+    orderLogger.info('Cache invalidated after order creation', { userId, orderId: order.id });
   } catch (cacheError) {
     // Non-blocking - log but don't fail order creation
-    console.warn(`[Order] Failed to invalidate cache after order creation:`, cacheError);
+    orderLogger.warn('Failed to invalidate cache after order creation', {
+      userId,
+      orderId: order.id,
+      error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+    });
+  }
+
+  // Try to add order to processing queue (if available)
+  // If queue is not available, process synchronously
+  try {
+    const { addOrderToQueue, isQueueAvailable } = await import('../queues/order-processing.queue.js');
+    
+    if (isQueueAvailable()) {
+      const queueData = {
+        orderId: order.id,
+        userId,
+        userEmail: user.email,
+        items: order.items.map((item) => ({
+          gameId: item.gameId,
+          gameTitle: item.game.title,
+          quantity: item.quantity,
+          g2aProductId: item.game.g2aProductId,
+          price: Number(item.price),
+          platforms: item.game.platforms || [],
+        })),
+        total,
+      };
+
+      const addedToQueue = await addOrderToQueue(queueData);
+      if (addedToQueue) {
+        orderLogger.info('Order added to processing queue', {
+          orderId: order.id,
+          userId,
+        });
+        
+        // Update order status to PROCESSING
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'PROCESSING',
+          },
+        });
+
+        // Return order immediately (processing happens in background)
+        return {
+          id: order.id,
+          userId: order.userId,
+          status: 'PROCESSING',
+          subtotal: Number(order.subtotal),
+          discount: Number(order.discount),
+          total: Number(order.total),
+          paymentMethod: order.paymentMethod || undefined,
+          paymentStatus: order.paymentStatus || undefined,
+          promoCode: order.promoCode || undefined,
+          createdAt: order.createdAt.toISOString(),
+          completedAt: order.completedAt?.toISOString(),
+          items: order.items.map((item) => ({
+            id: item.id,
+            gameId: item.gameId,
+            game: item.game,
+            quantity: item.quantity,
+            price: Number(item.price),
+            discount: Number(item.discount),
+          })),
+          keys: [],
+        };
+      }
+    }
+  } catch (queueError) {
+    orderLogger.warn('Failed to add order to queue, processing synchronously', {
+      orderId: order.id,
+      error: queueError instanceof Error ? queueError.message : String(queueError),
+    });
   }
 
   // Purchase keys from G2A using Orders API (create -> pay -> get key)
+  // This runs synchronously if queue is not available or failed
   const gameKeys: Array<{
     id: string;
     gameId: string;
@@ -272,9 +440,17 @@ export const createOrder = async (
         baseUrl: g2aConfig.baseUrl || defaultConfig.baseUrl,
         timeoutMs: g2aConfig.timeoutMs || defaultConfig.timeoutMs,
       });
+      
+      orderLogger.info('G2A client initialized for order processing', {
+        orderId: order.id,
+        env: g2aConfig.env,
+      });
     }
   } catch (error) {
-    console.error('Failed to get G2A client:', error);
+    orderLogger.warn('Failed to get G2A client, continuing without G2A', {
+      orderId: order.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Continue without G2A if client unavailable (for non-G2A games)
   }
 
@@ -295,13 +471,23 @@ export const createOrder = async (
           const g2aOrderId = g2aOrder.order_id;
           g2aOrderIds.push(g2aOrderId);
 
-          console.log(`G2A order created: ${g2aOrderId} for game ${game.id} (item ${qty + 1}/${item.quantity})`);
+          orderLogger.info('G2A order created', {
+            orderId: order.id,
+            g2aOrderId,
+            gameId: game.id,
+            itemNumber: qty + 1,
+            totalItems: item.quantity,
+          });
 
           // Step 2: Pay for the G2A order
           let paymentResult;
           try {
             paymentResult = await g2aClient.orders.pay(g2aOrderId);
-            console.log(`G2A order paid: ${g2aOrderId}, transaction: ${paymentResult.transaction_id}`);
+            orderLogger.info('G2A order paid', {
+              orderId: order.id,
+              g2aOrderId,
+              transactionId: paymentResult.transaction_id,
+            });
           } catch (payError) {
             // Handle payment errors
             if (payError instanceof G2AError && payError.code === G2AErrorCode.G2A_INVALID_REQUEST) {
@@ -309,7 +495,11 @@ export const createOrder = async (
               const errorCode = payError.metadata?.errorCode;
               if (errorCode === 'ORD03' && payError.metadata?.retryable) {
                 // Payment not ready yet - retry after delay
-                console.warn(`Payment not ready for order ${g2aOrderId}, will retry...`);
+                orderLogger.warn('G2A payment not ready, retrying', {
+                  orderId: order.id,
+                  g2aOrderId,
+                  errorCode: 'ORD03',
+                });
                 await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
                 try {
                   paymentResult = await g2aClient.orders.pay(g2aOrderId);
@@ -355,8 +545,19 @@ export const createOrder = async (
               key: gameKeyValue,
               platform: game.platforms[0]?.platform.name || 'PC',
             });
+            orderLogger.info('Game key email sent', {
+              orderId: order.id,
+              gameId: game.id,
+              keyId: gameKey.id,
+              userEmail: user.email,
+            });
           } catch (emailError) {
-            console.error(`Failed to send email for key ${gameKey.id}:`, emailError);
+            orderLogger.error('Failed to send game key email', emailError, {
+              orderId: order.id,
+              gameId: game.id,
+              keyId: gameKey.id,
+              userEmail: user.email,
+            });
             // Don't fail order if email fails - key is still delivered
           }
         } catch (error) {
@@ -373,45 +574,61 @@ export const createOrder = async (
             error: errorMessage,
           });
 
-          console.error(`Failed to purchase key for game ${game.id} (item ${qty + 1}/${item.quantity}):`, error);
+          orderLogger.error('Failed to purchase G2A key', error, {
+            orderId: order.id,
+            gameId: game.id,
+            itemNumber: qty + 1,
+            totalItems: item.quantity,
+            g2aOrderId: g2aOrderIds[g2aOrderIds.length - 1],
+          });
           
-          // If it's a critical error, break the loop for this game
+          // If it's a critical error, handle refund in transaction
           if (
             error instanceof G2AError &&
             (error.code === G2AErrorCode.G2A_OUT_OF_STOCK ||
               error.code === G2AErrorCode.G2A_AUTH_FAILED ||
               error.code === G2AErrorCode.G2A_API_ERROR)
           ) {
-            // Mark order as failed
-            await prisma.order.update({
-              where: { id: order.id },
-              data: {
-                status: 'FAILED',
-                paymentStatus: 'FAILED',
-              },
-            });
-
-            // Refund user balance
-            await prisma.user.update({
-              where: { id: userId },
-              data: {
-                balance: {
-                  increment: total,
+            // Use transaction to ensure atomic refund
+            await prisma.$transaction(async (tx) => {
+              // Mark order as failed
+              await tx.order.update({
+                where: { id: order.id },
+                data: {
+                  status: 'FAILED',
+                  paymentStatus: 'FAILED',
                 },
-              },
+              });
+
+              // Refund user balance
+              await tx.user.update({
+                where: { id: userId },
+                data: {
+                  balance: {
+                    increment: total,
+                  },
+                },
+              });
+
+              // Create refund transaction
+              await tx.transaction.create({
+                data: {
+                  userId,
+                  orderId: order.id,
+                  type: 'REFUND',
+                  amount: total,
+                  currency: 'EUR',
+                  status: 'COMPLETED',
+                  description: `Refund for failed order ${order.id}`,
+                },
+              });
             });
 
-            // Create refund transaction
-            await prisma.transaction.create({
-              data: {
-                userId,
-                orderId: order.id,
-                type: 'REFUND',
-                amount: total,
-                currency: 'EUR',
-                status: 'COMPLETED',
-                description: `Refund for failed order ${order.id}`,
-              },
+            // Audit log: Order failed and refunded
+            orderLogger.audit('ORDER_FAILED_REFUNDED', userId, order.id, {
+              reason: errorMessage,
+              errorCode: error instanceof G2AError ? error.code : 'UNKNOWN',
+              refundAmount: total,
             });
 
             throw new AppError(`Order failed: ${errorMessage}. Balance has been refunded.`, 400);
@@ -421,7 +638,11 @@ export const createOrder = async (
       }
     } else {
       // Non-G2A game - skip processing (manual processing required)
-      console.log(`Game ${game.id} does not have G2A product ID, skipping G2A processing`);
+      orderLogger.info('Non-G2A game, skipping G2A processing', {
+        orderId: order.id,
+        gameId: game.id,
+        gameTitle: game.title,
+      });
     }
   }
 
@@ -453,7 +674,12 @@ export const createOrder = async (
     } else if (purchaseErrors.length > 0) {
       // Partial success - some keys purchased, some failed
       // Order is completed but with errors logged
-      console.warn(`Order ${order.id} completed with ${purchaseErrors.length} errors`);
+      orderLogger.warn('Order completed with partial errors', {
+        orderId: order.id,
+        errorsCount: purchaseErrors.length,
+        keysPurchased: gameKeys.length,
+        errors: purchaseErrors,
+      });
     }
   }
   // If no G2A games, keep status as PENDING (set in transaction)
@@ -466,6 +692,11 @@ export const createOrder = async (
         finalStatus === 'COMPLETED' ? 'COMPLETED' : finalStatus === 'FAILED' ? 'FAILED' : 'PENDING',
       completedAt: finalStatus === 'COMPLETED' ? new Date() : null,
     },
+  });
+
+  // Get completed order with all relations
+  const completedOrderWithRelations = await prisma.order.findUnique({
+    where: { id: order.id },
     include: {
       items: {
         include: {
@@ -483,19 +714,31 @@ export const createOrder = async (
     },
   });
 
+  if (!completedOrderWithRelations) {
+    throw new AppError('Order not found after processing', 404);
+  }
+
+  // Audit log: Order completion
+  orderLogger.audit('ORDER_COMPLETED', userId, order.id, {
+    finalStatus,
+    keysCount: gameKeys.length,
+    errorsCount: purchaseErrors.length,
+    g2aOrderIds: g2aOrderIds.length > 0 ? g2aOrderIds : null,
+  });
+
   return {
-    id: completedOrder.id,
-    userId: completedOrder.userId,
-    status: completedOrder.status,
-    subtotal: Number(completedOrder.subtotal),
-    discount: Number(completedOrder.discount),
-    total: Number(completedOrder.total),
-    paymentMethod: completedOrder.paymentMethod || undefined,
-    paymentStatus: completedOrder.paymentStatus || undefined,
-    promoCode: completedOrder.promoCode || undefined,
-    createdAt: completedOrder.createdAt.toISOString(),
-    completedAt: completedOrder.completedAt?.toISOString(),
-    items: completedOrder.items.map((item) => ({
+    id: completedOrderWithRelations.id,
+    userId: completedOrderWithRelations.userId,
+    status: completedOrderWithRelations.status,
+    subtotal: Number(completedOrderWithRelations.subtotal),
+    discount: Number(completedOrderWithRelations.discount),
+    total: Number(completedOrderWithRelations.total),
+    paymentMethod: completedOrderWithRelations.paymentMethod || undefined,
+    paymentStatus: completedOrderWithRelations.paymentStatus || undefined,
+    promoCode: completedOrderWithRelations.promoCode || undefined,
+    createdAt: completedOrderWithRelations.createdAt.toISOString(),
+    completedAt: completedOrderWithRelations.completedAt?.toISOString(),
+    items: completedOrderWithRelations.items.map((item) => ({
       id: item.id,
       gameId: item.gameId,
       game: item.game,
@@ -503,7 +746,7 @@ export const createOrder = async (
       price: Number(item.price),
       discount: Number(item.discount),
     })),
-    keys: completedOrder.keys.map((key) => ({
+    keys: completedOrderWithRelations.keys.map((key) => ({
       id: key.id,
       gameId: key.gameId,
       key: key.key,

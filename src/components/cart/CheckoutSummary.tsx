@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/api';
 import type { CartResponse } from '../../services/cartApi';
@@ -75,6 +76,7 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'balance' | 'card'>('balance');
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load user balance
   useEffect(() => {
@@ -129,13 +131,34 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
     if (!onCreateOrder) return;
 
     setProcessing(true);
+    setError(null);
     try {
       await onCreateOrder(promoApplied ? promoCode : undefined);
-      // Navigate to orders page on success
-      navigate('/profile/orders');
+      // Navigation is handled by onCreateOrder in CheckoutPage
     } catch (err) {
       console.error('Failed to create order:', err);
-      // Error handling - could show toast notification
+      // Extract user-friendly error message
+      let errorMessage = 'Failed to create order. Please try again.';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Handle specific error cases
+        if (err.message.includes('Insufficient balance')) {
+          errorMessage = 'Insufficient balance. Please top up your account.';
+        } else if (err.message.includes('out of stock')) {
+          errorMessage = 'One or more games are out of stock. Please remove them from your cart.';
+        } else if (err.message.includes('not found')) {
+          errorMessage = 'One or more games are no longer available. Please refresh your cart.';
+        } else if (err.message.includes('Invalid promo code')) {
+          errorMessage = 'Invalid promo code. Please check and try again.';
+        }
+      }
+      setError(errorMessage);
+      
+      // Show error toast
+      toast.error('Failed to create order', {
+        description: errorMessage,
+        duration: 5000,
+      });
     } finally {
       setProcessing(false);
     }
@@ -399,6 +422,24 @@ export const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({
           </a>{' '}
           or use another payment method.
         </p>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div
+          style={{
+            background: '#FF444420',
+            border: '1px solid #FF4444',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginTop: '16px',
+            color: '#FF4444',
+            fontSize: '13px',
+            textAlign: 'center',
+          }}
+        >
+          ⚠️ {error}
+        </div>
       )}
     </div>
   );

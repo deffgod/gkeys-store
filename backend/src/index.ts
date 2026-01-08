@@ -297,6 +297,20 @@ if (!isVercel && !isServerless && !isTest) {
         startG2ASyncJob();
         startStockCheckJob();
         console.log('⏰ Scheduled jobs started');
+        
+        // Initialize order processing queue (if Redis is available)
+        (async () => {
+          try {
+            const { isQueueAvailable } = await import('./queues/order-processing.queue.js');
+            if (isQueueAvailable()) {
+              console.log('✅ Order processing queue initialized');
+            } else {
+              console.log('⚠️  Order processing queue not available (Redis may not be configured). Orders will be processed synchronously.');
+            }
+          } catch (error) {
+            console.warn('⚠️  Failed to initialize order processing queue:', error);
+          }
+        })();
       }
     });
   }

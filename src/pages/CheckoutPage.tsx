@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../context/AuthContext';
 import { CartItem as CartItemComponent } from '../components/cart/CartItem';
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const [promoCode, setPromoCode] = useState('');
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -81,6 +83,7 @@ export default function CheckoutPage() {
     if (!cart || cart.items.length === 0) return;
 
     setProcessing(true);
+    setError(null);
     try {
       const orderData = {
         items: cart.items.map(item => ({
@@ -91,6 +94,12 @@ export default function CheckoutPage() {
       };
 
       const order = await orderApi.createOrder(orderData);
+      
+      // Show success toast
+      toast.success('Order created successfully!', {
+        description: `Order #${order.id.slice(0, 8)} has been placed.`,
+        duration: 3000,
+      });
       
       // Clear cart after successful order creation
       try {
@@ -113,6 +122,29 @@ export default function CheckoutPage() {
       });
     } catch (err) {
       console.error('Failed to create order:', err);
+      // Extract user-friendly error message
+      let errorMessage = 'Failed to create order. Please try again.';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Handle specific error cases
+        if (err.message.includes('Insufficient balance')) {
+          errorMessage = 'Insufficient balance. Please top up your account or use another payment method.';
+        } else if (err.message.includes('out of stock')) {
+          errorMessage = 'One or more games are out of stock. Please remove them from your cart.';
+        } else if (err.message.includes('not found')) {
+          errorMessage = 'One or more games are no longer available. Please refresh your cart.';
+        } else if (err.message.includes('Invalid promo code')) {
+          errorMessage = 'Invalid promo code. Please check and try again.';
+        }
+      }
+      setError(errorMessage);
+      
+      // Show error toast
+      toast.error('Failed to create order', {
+        description: errorMessage,
+        duration: 5000,
+      });
+      
       throw err;
     } finally {
       setProcessing(false);
@@ -212,6 +244,27 @@ export default function CheckoutPage() {
           >
             {cart.items.length} {cart.items.length === 1 ? 'item' : 'items'} in your cart
           </p>
+
+          {/* Error Message */}
+          {error && (
+            <div
+              style={{
+                background: '#FF444420',
+                border: '1px solid #FF4444',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '24px',
+                color: '#FF4444',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
 
           <div className="checkout-layout">
             {/* Cart Items */}
