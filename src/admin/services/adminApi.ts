@@ -1824,5 +1824,100 @@ export const adminApi = {
     const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/admin/g2a-settings/${id}`);
     return response.data;
   },
+
+  // Promo Codes
+  getPromoCodes: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Array<{
+      id: string;
+      code: string;
+      discount: number;
+      maxUses: number | null;
+      usedCount: number;
+      validFrom: string;
+      validUntil: string;
+      active: boolean;
+      createdAt: string;
+    }> }>('/api/admin/promo-codes');
+    return response.data;
+  },
+
+  getPromoCodeById: async (id: string) => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      code: string;
+      discount: number;
+      maxUses: number | null;
+      usedCount: number;
+      validFrom: string;
+      validUntil: string;
+      active: boolean;
+      createdAt: string;
+    } }>(`/api/admin/promo-codes/${id}`);
+    return response.data;
+  },
+
+  createPromoCode: async (data: {
+    code: string;
+    discount: number;
+    maxUses?: number | null;
+    validFrom: string;
+    validUntil: string;
+    active?: boolean;
+  }) => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      code: string;
+      discount: number;
+      maxUses: number | null;
+      usedCount: number;
+      validFrom: string;
+      validUntil: string;
+      active: boolean;
+      createdAt: string;
+    } }>('/api/admin/promo-codes', data);
+    return response.data;
+  },
+
+  updatePromoCode: async (id: string, data: {
+    code?: string;
+    discount?: number;
+    maxUses?: number | null;
+    validFrom?: string;
+    validUntil?: string;
+    active?: boolean;
+  }) => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      code: string;
+      discount: number;
+      maxUses: number | null;
+      usedCount: number;
+      validFrom: string;
+      validUntil: string;
+      active: boolean;
+      createdAt: string;
+    } }>(`/api/admin/promo-codes/${id}`, data);
+    return response.data;
+  },
+
+  deletePromoCode: async (id: string) => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/admin/promo-codes/${id}`);
+    return response.data;
+  },
+
+  getPromoCodeStatistics: async () => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      totalCodes: number;
+      activeCodes: number;
+      expiredCodes: number;
+      totalUses: number;
+      totalDiscountGiven: number;
+      mostUsedCode: {
+        code: string;
+        uses: number;
+      } | null;
+    } }>('/api/admin/promo-codes/statistics');
+    return response.data;
+  },
 };
 

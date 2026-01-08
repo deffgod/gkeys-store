@@ -90,6 +90,12 @@ import {
   upsertG2ASettingsController,
   updateG2ASettingsController,
   deleteG2ASettingsController,
+  getAllPromoCodesController,
+  getPromoCodeByIdController,
+  createPromoCodeController,
+  updatePromoCodeController,
+  deletePromoCodeController,
+  getPromoCodeStatisticsController,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin, requireAuth } from '../middleware/auth.js';
 import { sessionMiddleware } from '../middleware/session.middleware.js';
@@ -229,5 +235,13 @@ router.post('/g2a-settings/generate-key', generateG2AApiKeyController);
 router.post('/g2a-settings', upsertG2ASettingsController);
 router.put('/g2a-settings/:id', updateG2ASettingsController);
 router.delete('/g2a-settings/:id', deleteG2ASettingsController);
+
+// Promo Codes Management
+router.get('/promo-codes', getAllPromoCodesController);
+router.get('/promo-codes/statistics', getPromoCodeStatisticsController);
+router.get('/promo-codes/:id', getPromoCodeByIdController);
+router.post('/promo-codes', createPromoCodeController);
+router.put('/promo-codes/:id', updatePromoCodeController);
+router.delete('/promo-codes/:id', deletePromoCodeController);
 
 export default router;

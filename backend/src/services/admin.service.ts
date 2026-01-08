@@ -3143,3 +3143,277 @@ export const getUserActivityForAdmin = async (
     })),
   };
 };
+
+// Promo Codes Management
+export interface PromoCode {
+  id: string;
+  code: string;
+  discount: number;
+  maxUses: number | null;
+  usedCount: number;
+  validFrom: Date;
+  validUntil: Date;
+  active: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface PromoCodeCreateInput {
+  code: string;
+  discount: number;
+  maxUses?: number | null;
+  validFrom: string | Date;
+  validUntil: string | Date;
+  active?: boolean;
+}
+
+export interface PromoCodeUpdateInput {
+  code?: string;
+  discount?: number;
+  maxUses?: number | null;
+  validFrom?: string | Date;
+  validUntil?: string | Date;
+  active?: boolean;
+}
+
+export interface PromoCodeStatistics {
+  totalCodes: number;
+  activeCodes: number;
+  expiredCodes: number;
+  totalUses: number;
+  totalDiscountGiven: number;
+  mostUsedCode: {
+    code: string;
+    uses: number;
+  } | null;
+}
+
+export const getAllPromoCodes = async (): Promise<PromoCode[]> => {
+  const promoCodes = await prisma.promoCode.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return promoCodes.map((pc) => ({
+    id: pc.id,
+    code: pc.code,
+    discount: Number(pc.discount),
+    maxUses: pc.maxUses,
+    usedCount: pc.usedCount,
+    validFrom: pc.validFrom,
+    validUntil: pc.validUntil,
+    active: pc.active,
+    createdAt: pc.createdAt,
+  }));
+};
+
+export const getPromoCodeById = async (id: string): Promise<PromoCode | null> => {
+  const promoCode = await prisma.promoCode.findUnique({
+    where: { id },
+  });
+
+  if (!promoCode) {
+    return null;
+  }
+
+  return {
+    id: promoCode.id,
+    code: promoCode.code,
+    discount: Number(promoCode.discount),
+    maxUses: promoCode.maxUses,
+    usedCount: promoCode.usedCount,
+    validFrom: promoCode.validFrom,
+    validUntil: promoCode.validUntil,
+    active: promoCode.active,
+    createdAt: promoCode.createdAt,
+  };
+};
+
+export const createPromoCode = async (data: PromoCodeCreateInput): Promise<PromoCode> => {
+  // Check if code already exists
+  const existing = await prisma.promoCode.findUnique({
+    where: { code: data.code },
+  });
+
+  if (existing) {
+    throw new AppError('Promo code already exists', 400);
+  }
+
+  // Validate discount
+  if (data.discount <= 0 || data.discount > 100) {
+    throw new AppError('Discount must be between 1 and 100', 400);
+  }
+
+  // Validate dates
+  const validFrom = typeof data.validFrom === 'string' ? new Date(data.validFrom) : data.validFrom;
+  const validUntil = typeof data.validUntil === 'string' ? new Date(data.validUntil) : data.validUntil;
+
+  if (validFrom >= validUntil) {
+    throw new AppError('Valid until date must be after valid from date', 400);
+  }
+
+  const promoCode = await prisma.promoCode.create({
+    data: {
+      code: data.code.toUpperCase(),
+      discount: data.discount,
+      maxUses: data.maxUses ?? null,
+      validFrom,
+      validUntil,
+      active: data.active ?? true,
+      usedCount: 0,
+    },
+  });
+
+  adminLogger.audit('PROMO_CODE_CREATED', 'system', 'create', {
+    promoCodeId: promoCode.id,
+    code: promoCode.code,
+    discount: promoCode.discount,
+  });
+
+  return {
+    id: promoCode.id,
+    code: promoCode.code,
+    discount: Number(promoCode.discount),
+    maxUses: promoCode.maxUses,
+    usedCount: promoCode.usedCount,
+    validFrom: promoCode.validFrom,
+    validUntil: promoCode.validUntil,
+    active: promoCode.active,
+    createdAt: promoCode.createdAt,
+  };
+};
+
+export const updatePromoCode = async (id: string, data: PromoCodeUpdateInput): Promise<PromoCode> => {
+  const existing = await prisma.promoCode.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    throw new AppError('Promo code not found', 404);
+  }
+
+  // Check if code is being changed and new code already exists
+  if (data.code && data.code !== existing.code) {
+    const codeExists = await prisma.promoCode.findUnique({
+      where: { code: data.code.toUpperCase() },
+    });
+
+    if (codeExists) {
+      throw new AppError('Promo code already exists', 400);
+    }
+  }
+
+  // Validate discount if provided
+  if (data.discount !== undefined && (data.discount <= 0 || data.discount > 100)) {
+    throw new AppError('Discount must be between 1 and 100', 400);
+  }
+
+  // Validate dates if provided
+  const validFrom = data.validFrom
+    ? typeof data.validFrom === 'string'
+      ? new Date(data.validFrom)
+      : data.validFrom
+    : existing.validFrom;
+  const validUntil = data.validUntil
+    ? typeof data.validUntil === 'string'
+      ? new Date(data.validUntil)
+      : data.validUntil
+    : existing.validUntil;
+
+  if (validFrom >= validUntil) {
+    throw new AppError('Valid until date must be after valid from date', 400);
+  }
+
+  const updateData: Prisma.PromoCodeUpdateInput = {};
+  if (data.code !== undefined) updateData.code = data.code.toUpperCase();
+  if (data.discount !== undefined) updateData.discount = data.discount;
+  if (data.maxUses !== undefined) updateData.maxUses = data.maxUses;
+  if (data.validFrom !== undefined) updateData.validFrom = validFrom;
+  if (data.validUntil !== undefined) updateData.validUntil = validUntil;
+  if (data.active !== undefined) updateData.active = data.active;
+
+  const promoCode = await prisma.promoCode.update({
+    where: { id },
+    data: updateData,
+  });
+
+  adminLogger.audit('PROMO_CODE_UPDATED', 'system', 'update', {
+    promoCodeId: promoCode.id,
+    code: promoCode.code,
+  });
+
+  return {
+    id: promoCode.id,
+    code: promoCode.code,
+    discount: Number(promoCode.discount),
+    maxUses: promoCode.maxUses,
+    usedCount: promoCode.usedCount,
+    validFrom: promoCode.validFrom,
+    validUntil: promoCode.validUntil,
+    active: promoCode.active,
+    createdAt: promoCode.createdAt,
+  };
+};
+
+export const deletePromoCode = async (id: string): Promise<void> => {
+  const promoCode = await prisma.promoCode.findUnique({
+    where: { id },
+  });
+
+  if (!promoCode) {
+    throw new AppError('Promo code not found', 404);
+  }
+
+  await prisma.promoCode.delete({
+    where: { id },
+  });
+
+  adminLogger.audit('PROMO_CODE_DELETED', 'system', 'delete', {
+    promoCodeId: id,
+    code: promoCode.code,
+  });
+};
+
+export const getPromoCodeStatistics = async (): Promise<PromoCodeStatistics> => {
+  const allCodes = await prisma.promoCode.findMany();
+  const now = new Date();
+
+  const totalCodes = allCodes.length;
+  const activeCodes = allCodes.filter(
+    (pc) => pc.active && pc.validFrom <= now && pc.validUntil >= now
+  ).length;
+  const expiredCodes = allCodes.filter((pc) => pc.validUntil < now).length;
+  const totalUses = allCodes.reduce((sum, pc) => sum + pc.usedCount, 0);
+
+  // Calculate total discount given (approximate - based on average order value)
+  // In real scenario, you'd sum actual discounts from orders
+  const ordersWithPromo = await prisma.order.findMany({
+    where: {
+      promoCode: { not: null },
+    },
+    select: {
+      discount: true,
+    },
+  });
+
+  const totalDiscountGiven = ordersWithPromo.reduce((sum, order) => sum + Number(order.discount || 0), 0);
+
+  // Find most used code
+  const mostUsed = allCodes.reduce(
+    (max, pc) => (pc.usedCount > (max?.usedCount || 0) ? pc : max),
+    null as typeof allCodes[0] | null
+  );
+
+  return {
+    totalCodes,
+    activeCodes,
+    expiredCodes,
+    totalUses,
+    totalDiscountGiven,
+    mostUsedCode: mostUsed
+      ? {
+          code: mostUsed.code,
+          uses: mostUsed.usedCount,
+        }
+      : null,
+  };
+};

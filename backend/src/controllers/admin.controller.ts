@@ -57,6 +57,12 @@ import {
   createTag,
   updateTag,
   deleteTag,
+  getAllPromoCodes,
+  getPromoCodeById,
+  createPromoCode,
+  updatePromoCode,
+  deletePromoCode,
+  getPromoCodeStatistics,
 } from '../services/admin.service.js';
 import {
   getEmailTemplates,
@@ -1778,6 +1784,72 @@ export const deleteG2ASettingsController = async (req: AuthRequest, res: Respons
     const { id } = req.params;
     await deleteG2ASettings(id);
     res.json({ success: true, message: 'G2A settings deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Promo Codes Controllers
+export const getAllPromoCodesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const promoCodes = await getAllPromoCodes();
+    res.json({ success: true, data: promoCodes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPromoCodeByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const promoCode = await getPromoCodeById(id);
+    
+    if (!promoCode) {
+      return res.status(404).json({
+        success: false,
+        message: 'Promo code not found',
+      });
+    }
+    
+    res.json({ success: true, data: promoCode });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createPromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const promoCode = await createPromoCode(req.body);
+    res.status(201).json({ success: true, data: promoCode });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const promoCode = await updatePromoCode(id, req.body);
+    res.json({ success: true, data: promoCode });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await deletePromoCode(id);
+    res.json({ success: true, message: 'Promo code deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPromoCodeStatisticsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const statistics = await getPromoCodeStatistics();
+    res.json({ success: true, data: statistics });
   } catch (error) {
     next(error);
   }
