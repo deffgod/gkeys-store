@@ -353,7 +353,7 @@ export default function HomePage() {
   }, []);
 
   // Handle tab change for sections (especially Best Sellers)
-  const handleTabChange = async (sectionId: string, tab: string) => {
+  const handleTabChange = async (sectionId, tab) => {
     // Update active tab in state
     setSectionStates((prev) => ({
       ...prev,
