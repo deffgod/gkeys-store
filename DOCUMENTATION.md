@@ -113,6 +113,8 @@ createdb gkeys_store
 
 #### Шаг 4: Настройка переменных окружения
 
+**📖 Полное руководство**: См. [docs/ENVIRONMENT_VARIABLES.md](../docs/ENVIRONMENT_VARIABLES.md) для детальной документации по всем переменным окружения.
+
 **Frontend** (`.env` в корне проекта):
 
 ```env
@@ -131,7 +133,7 @@ PORT=3001
 FRONTEND_URL=http://localhost:5173
 NODE_ENV=development
 
-# JWT Authentication
+# JWT Authentication (REQUIRED - минимум 32 символа каждый)
 JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
 JWT_REFRESH_SECRET=your-refresh-secret-different-from-jwt-secret-minimum-32-characters
 
@@ -144,9 +146,19 @@ G2A_EMAIL=Welcome@nalytoo.com
 
 # Redis (опционально)
 REDIS_URL=redis://localhost:6379
+
+# Email (опционально, можно настроить через админ-панель)
+EMAIL_HOST=smtp.sendgrid.net
+EMAIL_PORT=587
+EMAIL_USER=apikey
+EMAIL_PASS=your-smtp-password-or-api-key
+EMAIL_FROM=noreply@gkeys.store
 ```
 
-**Важно:** Измените `JWT_SECRET` на безопасную случайную строку в production!
+**Важно:** 
+- Измените `JWT_SECRET` и `JWT_REFRESH_SECRET` на безопасные случайные строки (минимум 32 символа)
+- Генерация секретов: `openssl rand -base64 32`
+- Для полной документации см. [docs/ENVIRONMENT_VARIABLES.md](../docs/ENVIRONMENT_VARIABLES.md)
 
 #### Шаг 5: Настройка схемы базы данных
 
