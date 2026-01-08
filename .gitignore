@@ -99,7 +99,7 @@ DEPLOYMENT_CHECKLIST.md
 DEPLOYMENT_GUIDE.md
 VERCEL_ENV_SETUP.md
 QUICK_START.md
-ENVIRONMENT_VARIABLES.md
+# ENVIRONMENT_VARIABLES.md is now included in docs/
 
 # Exclude local IDE settings (keep shared configs)
 .vscode/settings.json
