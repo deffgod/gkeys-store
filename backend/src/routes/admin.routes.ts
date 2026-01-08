@@ -96,6 +96,12 @@ import {
   updatePromoCodeController,
   deletePromoCodeController,
   getPromoCodeStatisticsController,
+  getAllGameKeysController,
+  getGameKeyByIdController,
+  createGameKeyController,
+  updateGameKeyController,
+  deleteGameKeyController,
+  getGameKeyStatisticsController,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin, requireAuth } from '../middleware/auth.js';
 import { sessionMiddleware } from '../middleware/session.middleware.js';
@@ -243,5 +249,13 @@ router.get('/promo-codes/:id', getPromoCodeByIdController);
 router.post('/promo-codes', createPromoCodeController);
 router.put('/promo-codes/:id', updatePromoCodeController);
 router.delete('/promo-codes/:id', deletePromoCodeController);
+
+// Game Keys Management
+router.get('/game-keys', getAllGameKeysController);
+router.get('/game-keys/statistics', getGameKeyStatisticsController);
+router.get('/game-keys/:id', getGameKeyByIdController);
+router.post('/game-keys', createGameKeyController);
+router.put('/game-keys/:id', updateGameKeyController);
+router.delete('/game-keys/:id', deleteGameKeyController);
 
 export default router;

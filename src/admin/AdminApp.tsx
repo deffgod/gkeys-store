@@ -24,6 +24,7 @@ import TagsPage from './pages/TagsPage';
 import EmailTemplatesPage from './pages/EmailTemplatesPage';
 import EmailSettingsPage from './pages/EmailSettingsPage';
 import PromoCodesPage from './pages/PromoCodesPage';
+import GameKeysPage from './pages/GameKeysPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -52,6 +53,7 @@ const AdminApp: React.FC = () => {
         <Route path="email-templates" element={<EmailTemplatesPage />} />
         <Route path="email-settings" element={<EmailSettingsPage />} />
         <Route path="promo-codes" element={<PromoCodesPage />} />
+        <Route path="game-keys" element={<GameKeysPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
     </Routes>

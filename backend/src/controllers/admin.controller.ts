@@ -63,6 +63,12 @@ import {
   updatePromoCode,
   deletePromoCode,
   getPromoCodeStatistics,
+  getAllGameKeys,
+  getGameKeyById,
+  createGameKey,
+  updateGameKey,
+  deleteGameKey,
+  getGameKeyStatistics,
 } from '../services/admin.service.js';
 import {
   getEmailTemplates,
@@ -1849,6 +1855,80 @@ export const deletePromoCodeController = async (req: AuthRequest, res: Response,
 export const getPromoCodeStatisticsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const statistics = await getPromoCodeStatistics();
+    res.json({ success: true, data: statistics });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Game Keys Controllers
+export const getAllGameKeysController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 50;
+    const filters = {
+      gameId: req.query.gameId as string | undefined,
+      orderId: req.query.orderId as string | undefined,
+      activated: req.query.activated === 'true' ? true : req.query.activated === 'false' ? false : undefined,
+      search: req.query.search as string | undefined,
+    };
+    const result = await getAllGameKeys(page, pageSize, filters);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGameKeyByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const gameKey = await getGameKeyById(id);
+    
+    if (!gameKey) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game key not found',
+      });
+    }
+    
+    res.json({ success: true, data: gameKey });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const gameKey = await createGameKey(req.body);
+    res.status(201).json({ success: true, data: gameKey });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const gameKey = await updateGameKey(id, req.body);
+    res.json({ success: true, data: gameKey });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await deleteGameKey(id);
+    res.json({ success: true, message: 'Game key deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGameKeyStatisticsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const statistics = await getGameKeyStatistics();
     res.json({ success: true, data: statistics });
   } catch (error) {
     next(error);

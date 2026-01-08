@@ -3417,3 +3417,603 @@ export const getPromoCodeStatistics = async (): Promise<PromoCodeStatistics> => 
       : null,
   };
 };
+
+// Game Keys Management
+export interface GameKey {
+  id: string;
+  gameId: string;
+  key: string;
+  orderId: string | null;
+  activated: boolean;
+  activationDate: Date | null;
+  createdAt: Date;
+  game?: {
+    id: string;
+    title: string;
+    slug: string;
+    image: string;
+  };
+  order?: {
+    id: string;
+    userId: string;
+    total: number;
+    status: string;
+    createdAt: Date;
+    user?: {
+      id: string;
+      email: string;
+      nickname: string;
+    };
+  };
+}
+
+export interface GameKeyCreateInput {
+  gameId: string;
+  key: string;
+  orderId?: string | null;
+  activated?: boolean;
+}
+
+export interface GameKeyUpdateInput {
+  gameId?: string;
+  key?: string;
+  orderId?: string | null;
+  activated?: boolean;
+  activationDate?: string | Date | null;
+}
+
+export interface GameKeyFilters {
+  gameId?: string;
+  orderId?: string;
+  activated?: boolean;
+  search?: string;
+}
+
+export interface GameKeyStatistics {
+  totalKeys: number;
+  activatedKeys: number;
+  unactivatedKeys: number;
+  keysByGame: Array<{
+    gameId: string;
+    gameTitle: string;
+    total: number;
+    activated: number;
+    unactivated: number;
+  }>;
+  keysByOrder: Array<{
+    orderId: string;
+    total: number;
+    activated: number;
+    unactivated: number;
+  }>;
+}
+
+export const getAllGameKeys = async (
+  page: number = 1,
+  pageSize: number = 50,
+  filters?: GameKeyFilters
+): Promise<{
+  keys: GameKey[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> => {
+  const skip = (page - 1) * pageSize;
+
+  const where: Prisma.GameKeyWhereInput = {};
+
+  if (filters?.gameId) {
+    where.gameId = filters.gameId;
+  }
+
+  if (filters?.orderId) {
+    where.orderId = filters.orderId;
+  }
+
+  if (filters?.activated !== undefined) {
+    where.activated = filters.activated;
+  }
+
+  if (filters?.search) {
+    where.OR = [
+      { key: { contains: filters.search, mode: 'insensitive' } },
+      {
+        game: {
+          title: { contains: filters.search, mode: 'insensitive' },
+        },
+      },
+      {
+        order: {
+          user: {
+            email: { contains: filters.search, mode: 'insensitive' },
+          },
+        },
+      },
+    ];
+  }
+
+  const [keys, total] = await Promise.all([
+    prisma.gameKey.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        game: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            image: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            userId: true,
+            total: true,
+            status: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                nickname: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.gameKey.count({ where }),
+  ]);
+
+  return {
+    keys: keys.map((k) => ({
+      id: k.id,
+      gameId: k.gameId,
+      key: k.key,
+      orderId: k.orderId,
+      activated: k.activated,
+      activationDate: k.activationDate,
+      createdAt: k.createdAt,
+      game: k.game
+        ? {
+            id: k.game.id,
+            title: k.game.title,
+            slug: k.game.slug,
+            image: k.game.image,
+          }
+        : undefined,
+      order: k.order
+        ? {
+            id: k.order.id,
+            userId: k.order.userId,
+            total: Number(k.order.total),
+            status: k.order.status,
+            createdAt: k.order.createdAt,
+            user: k.order.user
+              ? {
+                  id: k.order.user.id,
+                  email: k.order.user.email,
+                  nickname: k.order.user.nickname || '',
+                }
+              : undefined,
+          }
+        : undefined,
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+
+export const getGameKeyById = async (id: string): Promise<GameKey | null> => {
+  const key = await prisma.gameKey.findUnique({
+    where: { id },
+    include: {
+      game: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          image: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          userId: true,
+          total: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              nickname: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!key) {
+    return null;
+  }
+
+  return {
+    id: key.id,
+    gameId: key.gameId,
+    key: key.key,
+    orderId: key.orderId,
+    activated: key.activated,
+    activationDate: key.activationDate,
+    createdAt: key.createdAt,
+    game: key.game
+      ? {
+          id: key.game.id,
+          title: key.game.title,
+          slug: key.game.slug,
+          image: key.game.image,
+        }
+      : undefined,
+    order: key.order
+      ? {
+          id: key.order.id,
+          userId: key.order.userId,
+          total: Number(key.order.total),
+          status: key.order.status,
+          createdAt: key.order.createdAt,
+          user: key.order.user
+            ? {
+                id: key.order.user.id,
+                email: key.order.user.email,
+                nickname: key.order.user.nickname || '',
+              }
+            : undefined,
+        }
+      : undefined,
+  };
+};
+
+export const createGameKey = async (data: GameKeyCreateInput): Promise<GameKey> => {
+  // Check if key already exists
+  const existing = await prisma.gameKey.findUnique({
+    where: { key: data.key },
+  });
+
+  if (existing) {
+    throw new AppError('Game key already exists', 400);
+  }
+
+  // Verify game exists
+  const game = await prisma.game.findUnique({
+    where: { id: data.gameId },
+  });
+
+  if (!game) {
+    throw new AppError('Game not found', 404);
+  }
+
+  // Verify order exists if provided
+  if (data.orderId) {
+    const order = await prisma.order.findUnique({
+      where: { id: data.orderId },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+  }
+
+  const gameKey = await prisma.gameKey.create({
+    data: {
+      gameId: data.gameId,
+      key: data.key,
+      orderId: data.orderId || null,
+      activated: data.activated ?? false,
+    },
+    include: {
+      game: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          image: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          userId: true,
+          total: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              nickname: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  adminLogger.audit('GAME_KEY_CREATED', 'system', 'create', {
+    gameKeyId: gameKey.id,
+    gameId: gameKey.gameId,
+    orderId: gameKey.orderId,
+  });
+
+  return {
+    id: gameKey.id,
+    gameId: gameKey.gameId,
+    key: gameKey.key,
+    orderId: gameKey.orderId,
+    activated: gameKey.activated,
+    activationDate: gameKey.activationDate,
+    createdAt: gameKey.createdAt,
+    game: gameKey.game
+      ? {
+          id: gameKey.game.id,
+          title: gameKey.game.title,
+          slug: gameKey.game.slug,
+          image: gameKey.game.image,
+        }
+      : undefined,
+    order: gameKey.order
+      ? {
+          id: gameKey.order.id,
+          userId: gameKey.order.userId,
+          total: Number(gameKey.order.total),
+          status: gameKey.order.status,
+          createdAt: gameKey.order.createdAt,
+          user: gameKey.order.user
+            ? {
+                id: gameKey.order.user.id,
+                email: gameKey.order.user.email,
+                nickname: gameKey.order.user.nickname || '',
+              }
+            : undefined,
+        }
+      : undefined,
+  };
+};
+
+export const updateGameKey = async (id: string, data: GameKeyUpdateInput): Promise<GameKey> => {
+  const existing = await prisma.gameKey.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    throw new AppError('Game key not found', 404);
+  }
+
+  // Check if key is being changed and new key already exists
+  if (data.key && data.key !== existing.key) {
+    const keyExists = await prisma.gameKey.findUnique({
+      where: { key: data.key },
+    });
+
+    if (keyExists) {
+      throw new AppError('Game key already exists', 400);
+    }
+  }
+
+  // Verify game exists if gameId is being changed
+  if (data.gameId && data.gameId !== existing.gameId) {
+    const game = await prisma.game.findUnique({
+      where: { id: data.gameId },
+    });
+
+    if (!game) {
+      throw new AppError('Game not found', 404);
+    }
+  }
+
+  // Verify order exists if orderId is being changed
+  if (data.orderId !== undefined && data.orderId !== existing.orderId) {
+    if (data.orderId) {
+      const order = await prisma.order.findUnique({
+        where: { id: data.orderId },
+      });
+
+      if (!order) {
+        throw new AppError('Order not found', 404);
+      }
+    }
+  }
+
+  const updateData: Prisma.GameKeyUpdateInput = {};
+  if (data.gameId !== undefined) updateData.gameId = data.gameId;
+  if (data.key !== undefined) updateData.key = data.key;
+  if (data.orderId !== undefined) updateData.orderId = data.orderId;
+  if (data.activated !== undefined) {
+    updateData.activated = data.activated;
+    // Set activation date if activating
+    if (data.activated && !existing.activated) {
+      updateData.activationDate = new Date();
+    } else if (!data.activated) {
+      updateData.activationDate = null;
+    }
+  }
+  if (data.activationDate !== undefined) {
+    updateData.activationDate = data.activationDate ? new Date(data.activationDate) : null;
+  }
+
+  const gameKey = await prisma.gameKey.update({
+    where: { id },
+    data: updateData,
+    include: {
+      game: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          image: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          userId: true,
+          total: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              nickname: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  adminLogger.audit('GAME_KEY_UPDATED', 'system', 'update', {
+    gameKeyId: gameKey.id,
+    gameId: gameKey.gameId,
+  });
+
+  return {
+    id: gameKey.id,
+    gameId: gameKey.gameId,
+    key: gameKey.key,
+    orderId: gameKey.orderId,
+    activated: gameKey.activated,
+    activationDate: gameKey.activationDate,
+    createdAt: gameKey.createdAt,
+    game: gameKey.game
+      ? {
+          id: gameKey.game.id,
+          title: gameKey.game.title,
+          slug: gameKey.game.slug,
+          image: gameKey.game.image,
+        }
+      : undefined,
+    order: gameKey.order
+      ? {
+          id: gameKey.order.id,
+          userId: gameKey.order.userId,
+          total: Number(gameKey.order.total),
+          status: gameKey.order.status,
+          createdAt: gameKey.order.createdAt,
+          user: gameKey.order.user
+            ? {
+                id: gameKey.order.user.id,
+                email: gameKey.order.user.email,
+                nickname: gameKey.order.user.nickname || '',
+              }
+            : undefined,
+        }
+      : undefined,
+  };
+};
+
+export const deleteGameKey = async (id: string): Promise<void> => {
+  const gameKey = await prisma.gameKey.findUnique({
+    where: { id },
+  });
+
+  if (!gameKey) {
+    throw new AppError('Game key not found', 404);
+  }
+
+  // Prevent deletion of keys that are already activated and assigned to orders
+  if (gameKey.activated && gameKey.orderId) {
+    throw new AppError('Cannot delete activated game key that is assigned to an order', 400);
+  }
+
+  await prisma.gameKey.delete({
+    where: { id },
+  });
+
+  adminLogger.audit('GAME_KEY_DELETED', 'system', 'delete', {
+    gameKeyId: id,
+    gameId: gameKey.gameId,
+  });
+};
+
+export const getGameKeyStatistics = async (): Promise<GameKeyStatistics> => {
+  const allKeys = await prisma.gameKey.findMany({
+    include: {
+      game: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  const totalKeys = allKeys.length;
+  const activatedKeys = allKeys.filter((k) => k.activated).length;
+  const unactivatedKeys = totalKeys - activatedKeys;
+
+  // Group by game
+  const keysByGameMap = new Map<string, { gameId: string; gameTitle: string; total: number; activated: number; unactivated: number }>();
+  for (const key of allKeys) {
+    const gameId = key.gameId;
+    const gameTitle = key.game?.title || 'Unknown Game';
+    if (!keysByGameMap.has(gameId)) {
+      keysByGameMap.set(gameId, {
+        gameId,
+        gameTitle,
+        total: 0,
+        activated: 0,
+        unactivated: 0,
+      });
+    }
+    const stats = keysByGameMap.get(gameId)!;
+    stats.total++;
+    if (key.activated) {
+      stats.activated++;
+    } else {
+      stats.unactivated++;
+    }
+  }
+
+  // Group by order
+  const keysByOrderMap = new Map<string, { orderId: string; total: number; activated: number; unactivated: number }>();
+  for (const key of allKeys) {
+    if (key.orderId) {
+      const orderId = key.orderId;
+      if (!keysByOrderMap.has(orderId)) {
+        keysByOrderMap.set(orderId, {
+          orderId,
+          total: 0,
+          activated: 0,
+          unactivated: 0,
+        });
+      }
+      const stats = keysByOrderMap.get(orderId)!;
+      stats.total++;
+      if (key.activated) {
+        stats.activated++;
+      } else {
+        stats.unactivated++;
+      }
+    }
+  }
+
+  return {
+    totalKeys,
+    activatedKeys,
+    unactivatedKeys,
+    keysByGame: Array.from(keysByGameMap.values()),
+    keysByOrder: Array.from(keysByOrderMap.values()),
+  };
+};

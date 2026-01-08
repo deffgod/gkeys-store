@@ -1919,5 +1919,152 @@ export const adminApi = {
     } }>('/api/admin/promo-codes/statistics');
     return response.data;
   },
+
+  // Game Keys
+  getGameKeys: async (page = 1, pageSize = 50, filters?: {
+    gameId?: string;
+    orderId?: string;
+    activated?: boolean;
+    search?: string;
+  }) => {
+    const params: Record<string, string> = {
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    };
+    if (filters?.gameId) params.gameId = filters.gameId;
+    if (filters?.orderId) params.orderId = filters.orderId;
+    if (filters?.activated !== undefined) params.activated = filters.activated.toString();
+    if (filters?.search) params.search = filters.search;
+
+    const response = await apiClient.get<{ success: boolean; data: {
+      keys: Array<{
+        id: string;
+        gameId: string;
+        key: string;
+        orderId: string | null;
+        activated: boolean;
+        activationDate: string | null;
+        createdAt: string;
+        game?: {
+          id: string;
+          title: string;
+          slug: string;
+          image: string;
+        };
+        order?: {
+          id: string;
+          userId: string;
+          total: number;
+          status: string;
+          createdAt: string;
+          user?: {
+            id: string;
+            email: string;
+            nickname: string;
+          };
+        };
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    } }>('/api/admin/game-keys', { params });
+    return response.data;
+  },
+
+  getGameKeyById: async (id: string) => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      id: string;
+      gameId: string;
+      key: string;
+      orderId: string | null;
+      activated: boolean;
+      activationDate: string | null;
+      createdAt: string;
+      game?: {
+        id: string;
+        title: string;
+        slug: string;
+        image: string;
+      };
+      order?: {
+        id: string;
+        userId: string;
+        total: number;
+        status: string;
+        createdAt: string;
+        user?: {
+          id: string;
+          email: string;
+          nickname: string;
+        };
+      };
+    } }>(`/api/admin/game-keys/${id}`);
+    return response.data;
+  },
+
+  createGameKey: async (data: {
+    gameId: string;
+    key: string;
+    orderId?: string | null;
+    activated?: boolean;
+  }) => {
+    const response = await apiClient.post<{ success: boolean; data: {
+      id: string;
+      gameId: string;
+      key: string;
+      orderId: string | null;
+      activated: boolean;
+      activationDate: string | null;
+      createdAt: string;
+    } }>('/api/admin/game-keys', data);
+    return response.data;
+  },
+
+  updateGameKey: async (id: string, data: {
+    gameId?: string;
+    key?: string;
+    orderId?: string | null;
+    activated?: boolean;
+    activationDate?: string | null;
+  }) => {
+    const response = await apiClient.put<{ success: boolean; data: {
+      id: string;
+      gameId: string;
+      key: string;
+      orderId: string | null;
+      activated: boolean;
+      activationDate: string | null;
+      createdAt: string;
+    } }>(`/api/admin/game-keys/${id}`, data);
+    return response.data;
+  },
+
+  deleteGameKey: async (id: string) => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/admin/game-keys/${id}`);
+    return response.data;
+  },
+
+  getGameKeyStatistics: async () => {
+    const response = await apiClient.get<{ success: boolean; data: {
+      totalKeys: number;
+      activatedKeys: number;
+      unactivatedKeys: number;
+      keysByGame: Array<{
+        gameId: string;
+        gameTitle: string;
+        total: number;
+        activated: number;
+        unactivated: number;
+      }>;
+      keysByOrder: Array<{
+        orderId: string;
+        total: number;
+        activated: number;
+        unactivated: number;
+      }>;
+    } }>('/api/admin/game-keys/statistics');
+    return response.data;
+  },
 };
 
