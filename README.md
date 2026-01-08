@@ -195,17 +195,19 @@ Create a `backend/.env` file:
 ```env
 # Database
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/gkeys_store?schema=public"
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/gkeys_store?schema=public"
 
 # Server
 PORT=3001
-CORS_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
 
-# JWT Authentication
-JWT_SECRET="your-secret-key-change-in-production"
-JWT_REFRESH_SECRET="your-refresh-secret-change-in-production"
+# JWT Authentication (REQUIRED - минимум 32 символа каждый)
+JWT_SECRET="your-secret-key-change-in-production-minimum-32-characters-long"
+JWT_REFRESH_SECRET="your-refresh-secret-different-from-jwt-secret-minimum-32-characters"
 
-# G2A Integration
-G2A_API_URL="https://api.g2a.com/integration-api/v1"
+# G2A Integration (optional, only if using G2A)
+G2A_API_URL="https://sandboxapi.g2a.com/v1"
 G2A_API_KEY="your-g2a-api-key"
 G2A_API_HASH="your-g2a-api-hash"
 G2A_ENV="sandbox"
@@ -214,13 +216,17 @@ G2A_ENV="sandbox"
 REDIS_URL="redis://localhost:6379"
 
 # Optional: Email (for notifications)
-SMTP_HOST="smtp.example.com"
-SMTP_PORT=587
-SMTP_USER="your-email@example.com"
-SMTP_PASS="your-password"
+EMAIL_HOST="smtp.sendgrid.net"
+EMAIL_PORT=587
+EMAIL_USER="apikey"
+EMAIL_PASS="your-smtp-password-or-api-key"
+EMAIL_FROM="noreply@gkeys.store"
 ```
 
-**Important:** Change `JWT_SECRET` to a secure random string in production!
+**Important:** 
+- Change `JWT_SECRET` and `JWT_REFRESH_SECRET` to secure random strings (minimum 32 characters)
+- Generate secrets: `openssl rand -base64 32`
+- For complete environment variables documentation, see [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md)
 
 ### Step 3: Set Up Database Schema
 
