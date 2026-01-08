@@ -1666,6 +1666,86 @@ export const adminApi = {
     return response.data;
   },
 
+  sendTestEmail: async (templateName: string, email: string, variables: Record<string, string>) => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      `/api/admin/email-templates/${templateName}/send-test`,
+      { email, variables }
+    );
+    return response.data;
+  },
+
+  sendBulkEmails: async (templateName: string, emails: string[], variables: Record<string, string>, batchSize?: number) => {
+    const response = await apiClient.post<{ success: boolean; message: string; data: { sent: number; failed: number; errors: Array<{ email: string; error: string }> } }>(
+      '/api/admin/email-templates/bulk-send',
+      { templateName, emails, variables, batchSize }
+    );
+    return response.data;
+  },
+
+  // Email Settings
+  getEmailSettings: async (activeOnly?: boolean) => {
+    const response = await apiClient.get<{ success: boolean; data: any }>(
+      `/api/admin/email-settings${activeOnly ? '?activeOnly=true' : ''}`
+    );
+    return response.data;
+  },
+
+  getEmailSettingsById: async (id: string) => {
+    const response = await apiClient.get<{ success: boolean; data: any }>(
+      `/api/admin/email-settings/${id}`
+    );
+    return response.data;
+  },
+
+  upsertEmailSettings: async (data: {
+    name?: string;
+    host: string;
+    port: number;
+    secure?: boolean;
+    user: string;
+    password: string;
+    fromEmail: string;
+    fromName?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await apiClient.post<{ success: boolean; data: any }>(
+      '/api/admin/email-settings',
+      data
+    );
+    return response.data;
+  },
+
+  updateEmailSettings: async (id: string, data: Partial<{
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    password: string;
+    fromEmail: string;
+    fromName: string;
+    isActive: boolean;
+  }>) => {
+    const response = await apiClient.put<{ success: boolean; data: any }>(
+      `/api/admin/email-settings/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteEmailSettings: async (id: string) => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      `/api/admin/email-settings/${id}`
+    );
+    return response.data;
+  },
+
+  testEmailSettings: async (id: string) => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      `/api/admin/email-settings/${id}/test`
+    );
+    return response.data;
+  },
+
   // G2A Settings
   getG2ASettings: async () => {
     const response = await apiClient.get<{ success: boolean; data: {

@@ -3,7 +3,7 @@
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "npm install && cd backend && npm install",
+  "installCommand": "npm install --include=dev && cd backend && npm install --include=dev",
   "rewrites": [
     {
       "source": "/api/(.*)",

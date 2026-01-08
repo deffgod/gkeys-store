@@ -5,6 +5,9 @@ import {
   refreshTokenController,
   getCurrentUserController,
   logoutController,
+  forgotPasswordController,
+  sendVerificationCodeController,
+  verifyEmailController,
 } from '../controllers/auth.controller.js';
 import { registerValidator, loginValidator, refreshTokenValidator } from '../validators/auth.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -16,4 +19,7 @@ router.post('/login', loginValidator, loginController);
 router.post('/refresh', refreshTokenValidator, refreshTokenController);
 router.get('/me', requireAuth, getCurrentUserController);
 router.post('/logout', requireAuth, sessionMiddleware, logoutController);
+router.post('/forgot-password', forgotPasswordController);
+router.post('/send-verification-code', requireAuth, sendVerificationCodeController);
+router.post('/verify-email', requireAuth, verifyEmailController);
 export default router;

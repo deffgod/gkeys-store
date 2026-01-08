@@ -107,3 +107,81 @@ export const getCurrentUserController = async (
     next(error);
   }
 };
+
+export const forgotPasswordController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required',
+      });
+    }
+
+    const { forgotPassword } = await import('../services/auth-email.service.js');
+    await forgotPassword(email);
+
+    // Always return success to prevent email enumeration
+    res.status(200).json({
+      success: true,
+      message: 'If an account exists with this email, a password reset email has been sent.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendVerificationCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    const { sendVerificationCode } = await import('../services/auth-email.service.js');
+    const code = await sendVerificationCode(req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification code sent to your email',
+      // In production, don't return the code - it should only be in email
+      // For development/testing, you might want to return it
+      ...(process.env.NODE_ENV === 'development' && { code }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmailController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    const { code } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code is required',
+      });
+    }
+
+    const { verifyEmail } = await import('../services/auth-email.service.js');
+    await verifyEmail(req.user.userId, code);
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};

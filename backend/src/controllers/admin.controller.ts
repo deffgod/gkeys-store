@@ -1544,6 +1544,154 @@ export const getEmailTemplateMetadataController = async (req: AuthRequest, res: 
   }
 };
 
+export const sendTestEmailController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name } = req.params;
+    const { email, variables } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Template name and email are required',
+      });
+    }
+
+    const { sendTestEmail } = await import('../services/email.service.js');
+    await sendTestEmail(name, email, variables || {});
+
+    res.status(200).json({
+      success: true,
+      message: 'Test email sent successfully',
+    });
+  } catch (error: any) {
+    next(error);
+  }
+};
+
+// Email Settings Controllers
+export const getEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { getActiveEmailSettings, getAllEmailSettings } = await import('../services/email-settings.service.js');
+    const activeOnly = req.query.activeOnly === 'true';
+    
+    if (activeOnly) {
+      const settings = await getActiveEmailSettings();
+      return res.json({ success: true, data: settings });
+    }
+    
+    const settings = await getAllEmailSettings();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEmailSettingsByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { getEmailSettingsById } = await import('../services/email-settings.service.js');
+    const settings = await getEmailSettingsById(id);
+    
+    if (!settings) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email settings not found',
+      });
+    }
+    
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const upsertEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { upsertEmailSettings } = await import('../services/email-settings.service.js');
+    const settings = await upsertEmailSettings(req.body);
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { updateEmailSettings } = await import('../services/email-settings.service.js');
+    const settings = await updateEmailSettings(id, req.body);
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { deleteEmailSettings } = await import('../services/email-settings.service.js');
+    await deleteEmailSettings(id);
+    res.json({ success: true, message: 'Email settings deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const testEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { getEmailSettingsById, testEmailSettings } = await import('../services/email-settings.service.js');
+    const settings = await getEmailSettingsById(id);
+    
+    if (!settings) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email settings not found',
+      });
+    }
+    
+    const isValid = await testEmailSettings(settings);
+    
+    if (isValid) {
+      res.json({ success: true, message: 'Email settings test successful' });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Email settings test failed. Please check your configuration.',
+      });
+    }
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Email settings test failed',
+    });
+  }
+};
+
+export const sendBulkEmailsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { templateName, emails, variables, batchSize } = req.body;
+
+    if (!templateName || !emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Template name and emails array are required',
+      });
+    }
+
+    const { sendBulkEmails } = await import('../services/email.service.js');
+    const result = await sendBulkEmails(emails, templateName, variables || {}, batchSize || 10);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: `Sent ${result.sent} emails, ${result.failed} failed`,
+    });
+  } catch (error: any) {
+    next(error);
+  }
+};
+
 // G2A Settings Controllers
 export const getG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

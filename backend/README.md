@@ -39,6 +39,9 @@ npm run prisma:migrate
 # Seed данные
 npm run prisma:seed
 
+# Восстановление из бэкапа (для форка проекта)
+npm run db:restore
+
 # Prisma Studio (GUI для БД)
 npm run prisma:studio
 ```

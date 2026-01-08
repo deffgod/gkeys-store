@@ -76,6 +76,14 @@ import {
   getEmailTemplateController,
   updateEmailTemplateController,
   getEmailTemplateMetadataController,
+  sendTestEmailController,
+  sendBulkEmailsController,
+  getEmailSettingsController,
+  getEmailSettingsByIdController,
+  upsertEmailSettingsController,
+  updateEmailSettingsController,
+  deleteEmailSettingsController,
+  testEmailSettingsController,
   getG2ASettingsController,
   getAllG2ASettingsController,
   generateG2AApiKeyController,
@@ -203,6 +211,16 @@ router.get('/email-templates', getEmailTemplatesController);
 router.get('/email-templates/metadata', getEmailTemplateMetadataController);
 router.get('/email-templates/:name', getEmailTemplateController);
 router.put('/email-templates/:name', updateEmailTemplateController);
+router.post('/email-templates/:name/send-test', sendTestEmailController);
+router.post('/email-templates/bulk-send', sendBulkEmailsController);
+
+// Email Settings
+router.get('/email-settings', getEmailSettingsController);
+router.get('/email-settings/:id', getEmailSettingsByIdController);
+router.post('/email-settings', upsertEmailSettingsController);
+router.put('/email-settings/:id', updateEmailSettingsController);
+router.delete('/email-settings/:id', deleteEmailSettingsController);
+router.post('/email-settings/:id/test', testEmailSettingsController);
 
 // G2A Settings Management
 router.get('/g2a-settings', getG2ASettingsController);

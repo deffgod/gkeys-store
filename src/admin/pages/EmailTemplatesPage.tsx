@@ -8,7 +8,10 @@ import {
   FiEye,
   FiCode,
   FiFileText,
-  FiRefreshCw
+  FiRefreshCw,
+  FiSend,
+  FiSmartphone,
+  FiMonitor
 } from 'react-icons/fi';
 import { adminApi } from '../services/adminApi';
 
@@ -47,6 +50,10 @@ const EmailTemplatesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewView, setPreviewView] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewVariables, setPreviewVariables] = useState<Record<string, string>>({});
+  const [testEmail, setTestEmail] = useState<string>('');
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -77,6 +84,28 @@ const EmailTemplatesPage: React.FC = () => {
       setEditingContent(fullTemplate.content);
       setIsEditing(false);
       setPreviewMode(false);
+      
+      // Initialize preview variables with default values
+      const defaultVars: Record<string, string> = {
+        username: 'John Doe',
+        gameTitle: 'Cyberpunk 2077',
+        key: 'XXXX-XXXX-XXXX-XXXX',
+        platform: 'Steam',
+        amount: '50.00',
+        currency: 'EUR',
+        newBalance: '150.00',
+        date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.'),
+        paymentMethod: 'Trustly',
+        newPassword: 'NewSecurePass123!',
+        verificationCode: '123456',
+      };
+      
+      const initialVars: Record<string, string> = {};
+      fullTemplate.variables?.forEach((varName: string) => {
+        initialVars[varName] = defaultVars[varName] || '';
+      });
+      setPreviewVariables(initialVars);
+      setTestEmail('');
     } catch (err) {
       console.error('Failed to load template:', err);
       setError('Failed to load template content');
@@ -118,27 +147,38 @@ const EmailTemplatesPage: React.FC = () => {
   };
 
   const renderPreview = (content: string) => {
-    // Replace variables with sample data for preview
+    // Replace variables with preview variables
     let previewContent = content;
-    const sampleData: Record<string, string> = {
-      username: 'John Doe',
-      gameTitle: 'Cyberpunk 2077',
-      key: 'XXXX-XXXX-XXXX-XXXX',
-      platform: 'Steam',
-      amount: '50.00',
-      currency: 'EUR',
-      newBalance: '150.00',
-      date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.'),
-      paymentMethod: 'Trustly',
-      newPassword: 'NewSecurePass123!',
-      verificationCode: '123456',
-    };
-
-    Object.entries(sampleData).forEach(([key, value]) => {
-      previewContent = previewContent.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    Object.entries(previewVariables).forEach(([key, value]) => {
+      previewContent = previewContent.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
     });
 
     return previewContent;
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!selectedTemplate || !testEmail) {
+      setError('Please enter an email address');
+      return;
+    }
+
+    if (!testEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsSendingTest(true);
+      setError(null);
+      await adminApi.sendTestEmail(selectedTemplate.name, testEmail, previewVariables);
+      setSuccessMessage(`Test email sent successfully to ${testEmail}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to send test email:', err);
+      setError(err.response?.data?.message || 'Failed to send test email');
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   if (isLoading) {
@@ -458,6 +498,113 @@ const EmailTemplatesPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Preview Variables Editor */}
+            {previewMode && !isEditing && selectedTemplate.variables.length > 0 && (
+              <div style={{
+                padding: '16px',
+                backgroundColor: theme.colors.surfaceLight,
+                borderRadius: '8px',
+                border: `1px solid ${theme.colors.border}`,
+                marginBottom: '16px',
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme.colors.text,
+                  marginBottom: '12px',
+                }}>
+                  Preview Variables:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  {selectedTemplate.variables.map((variable) => (
+                    <div key={variable}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        color: theme.colors.textSecondary,
+                        marginBottom: '4px',
+                      }}>
+                        {variable}:
+                      </label>
+                      <input
+                        type="text"
+                        value={previewVariables[variable] || ''}
+                        onChange={(e) => setPreviewVariables({
+                          ...previewVariables,
+                          [variable]: e.target.value,
+                        })}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          backgroundColor: theme.colors.background,
+                          border: `1px solid ${theme.colors.border}`,
+                          borderRadius: '6px',
+                          color: theme.colors.text,
+                          fontSize: '14px',
+                        }}
+                        placeholder={`Enter ${variable}...`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: theme.colors.background,
+                  borderRadius: '6px',
+                  border: `1px solid ${theme.colors.border}`,
+                }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    color: theme.colors.textSecondary,
+                    marginBottom: '6px',
+                  }}>
+                    Test Email Address:
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="email"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                      placeholder="test@example.com"
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        backgroundColor: theme.colors.surface,
+                        border: `1px solid ${theme.colors.border}`,
+                        borderRadius: '6px',
+                        color: theme.colors.text,
+                        fontSize: '14px',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendTestEmail}
+                      disabled={isSendingTest || !testEmail}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: isSendingTest || !testEmail ? theme.colors.border : theme.colors.info,
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isSendingTest || !testEmail ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        opacity: isSendingTest || !testEmail ? 0.6 : 1,
+                      }}
+                    >
+                      <FiSend size={16} />
+                      {isSendingTest ? 'Sending...' : 'Send Test'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Content Editor/Viewer */}
             {previewMode && !isEditing ? (
               <div style={{
@@ -465,20 +612,84 @@ const EmailTemplatesPage: React.FC = () => {
                 borderRadius: '8px',
                 padding: '0',
                 overflow: 'hidden',
-                maxHeight: '600px',
                 border: `1px solid ${theme.colors.border}`,
                 position: 'relative',
               }}>
-                <iframe
-                  srcDoc={renderPreview(selectedTemplate.content || '')}
-                  style={{
-                    width: '100%',
-                    height: '600px',
-                    border: 'none',
+                {/* Preview View Toggle */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '12px',
+                  backgroundColor: theme.colors.surface,
+                  borderBottom: `1px solid ${theme.colors.border}`,
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewView('desktop')}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: previewView === 'desktop' ? theme.colors.primary : 'transparent',
+                      color: previewView === 'desktop' ? '#000' : theme.colors.textSecondary,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <FiMonitor size={14} />
+                    Desktop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewView('mobile')}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: previewView === 'mobile' ? theme.colors.primary : 'transparent',
+                      color: previewView === 'mobile' ? '#000' : theme.colors.textSecondary,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <FiSmartphone size={14} />
+                    Mobile
+                  </button>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  padding: previewView === 'mobile' ? '20px' : '40px',
+                  backgroundColor: '#e5e5e5',
+                  minHeight: '600px',
+                }}>
+                  <div style={{
+                    width: previewView === 'mobile' ? '375px' : '100%',
+                    maxWidth: previewView === 'mobile' ? '375px' : '600px',
                     backgroundColor: '#ffffff',
-                  }}
-                  title="Email Preview"
-                />
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    borderRadius: previewView === 'mobile' ? '8px' : '0',
+                    overflow: 'hidden',
+                  }}>
+                    <iframe
+                      srcDoc={renderPreview(selectedTemplate.content || '')}
+                      style={{
+                        width: '100%',
+                        height: previewView === 'mobile' ? '600px' : '600px',
+                        border: 'none',
+                        backgroundColor: '#ffffff',
+                      }}
+                      title="Email Preview"
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <div style={{ position: 'relative' }}>

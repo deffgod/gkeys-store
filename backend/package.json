@@ -31,6 +31,7 @@
     "db:update": "prisma migrate dev",
     "db:update:deploy": "prisma migrate deploy",
     "db:backup": "npx tsx scripts/backup-db-prisma.ts",
+    "db:restore": "npx tsx scripts/restore-from-backup.ts",
     "orders:sync": "npx tsx scripts/sync-orders.ts",
     "lint": "eslint src prisma scripts tests --ext .ts --ignore-pattern 'dist' --ignore-pattern 'node_modules'",
     "format": "prettier --write \"src/**/*.ts\""

@@ -62,6 +62,7 @@ const menuItems = [
   { id: 'platforms', label: 'Platforms', path: '/admin/platforms', icon: Icons.Platforms },
   { id: 'tags', label: 'Tags', path: '/admin/tags', icon: Icons.Tags },
   { id: 'email-templates', label: 'Email Templates', path: '/admin/email-templates', icon: Icons.Email },
+  { id: 'email-settings', label: 'Email Settings', path: '/admin/email-settings', icon: Icons.Email },
 ];
 
 interface AdminSidebarProps {

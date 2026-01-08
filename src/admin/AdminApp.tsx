@@ -22,6 +22,7 @@ import GenresPage from './pages/GenresPage';
 import PlatformsPage from './pages/PlatformsPage';
 import TagsPage from './pages/TagsPage';
 import EmailTemplatesPage from './pages/EmailTemplatesPage';
+import EmailSettingsPage from './pages/EmailSettingsPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const AdminApp: React.FC = () => {
         <Route path="platforms" element={<PlatformsPage />} />
         <Route path="tags" element={<TagsPage />} />
         <Route path="email-templates" element={<EmailTemplatesPage />} />
+        <Route path="email-settings" element={<EmailSettingsPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
     </Routes>

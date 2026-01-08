@@ -270,6 +270,9 @@ npm run db:check
 
 # (Optional) Seed database with test data
 npm run prisma:seed
+
+# OR restore from backup (includes full test data)
+npm run db:restore
 ```
 
 ### Step 4: Verify Setup

@@ -1,7 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const TEMPLATES_DIR = path.join(process.cwd(), 'src', 'templates', 'emails');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export interface EmailTemplate {
   name: string;
@@ -54,9 +57,32 @@ const TEMPLATE_METADATA: Record<string, Omit<EmailTemplate, 'content'>> = {
 export const getEmailTemplates = async (): Promise<(EmailTemplate & { content: string })[]> => {
   const templates: (EmailTemplate & { content: string })[] = [];
 
+  // Try multiple paths
+  const possiblePaths = [
+    path.join(__dirname, '..', 'templates', 'emails'), // dist/templates/emails (production)
+    path.join(process.cwd(), 'src', 'templates', 'emails'), // src/templates/emails (dev)
+    path.join(process.cwd(), 'backend', 'src', 'templates', 'emails'), // backend/src/templates/emails (from root)
+  ];
+
+  let templatesDir: string | null = null;
+  for (const dirPath of possiblePaths) {
+    try {
+      await fs.access(dirPath);
+      templatesDir = dirPath;
+      break;
+    } catch {
+      // Path doesn't exist, try next
+    }
+  }
+
+  if (!templatesDir) {
+    console.error('Templates directory not found. Tried:', possiblePaths);
+    return templates;
+  }
+
   for (const [key, metadata] of Object.entries(TEMPLATE_METADATA)) {
     try {
-      const filePath = path.join(TEMPLATES_DIR, metadata.filename);
+      const filePath = path.join(templatesDir, metadata.filename);
       const content = await fs.readFile(filePath, 'utf-8');
       
       templates.push({
@@ -64,7 +90,7 @@ export const getEmailTemplates = async (): Promise<(EmailTemplate & { content: s
         content,
       });
     } catch (error) {
-      console.error(`Failed to load template ${key}:`, error);
+      console.error(`Failed to load template ${key} from ${templatesDir}:`, error);
     }
   }
 
@@ -77,18 +103,29 @@ export const getEmailTemplate = async (templateName: string): Promise<(EmailTemp
     return null;
   }
 
-  try {
-    const filePath = path.join(TEMPLATES_DIR, metadata.filename);
-    const content = await fs.readFile(filePath, 'utf-8');
+  // Try multiple paths
+  const possiblePaths = [
+    path.join(__dirname, '..', 'templates', 'emails'), // dist/templates/emails (production)
+    path.join(process.cwd(), 'src', 'templates', 'emails'), // src/templates/emails (dev)
+    path.join(process.cwd(), 'backend', 'src', 'templates', 'emails'), // backend/src/templates/emails (from root)
+  ];
 
-    return {
-      ...metadata,
-      content,
-    };
-  } catch (error) {
-    console.error(`Failed to load template ${templateName}:`, error);
-    return null;
+  for (const dirPath of possiblePaths) {
+    try {
+      const filePath = path.join(dirPath, metadata.filename);
+      await fs.access(filePath);
+      const content = await fs.readFile(filePath, 'utf-8');
+      return {
+        ...metadata,
+        content,
+      };
+    } catch {
+      // Try next path
+    }
   }
+
+  console.error(`Failed to load template ${templateName}. Tried paths:`, possiblePaths);
+  return null;
 };
 
 export const updateEmailTemplate = async (
@@ -100,9 +137,29 @@ export const updateEmailTemplate = async (
     throw new Error(`Template ${templateName} not found`);
   }
 
+  // Try multiple paths - use the first one that exists
+  const possiblePaths = [
+    path.join(process.cwd(), 'src', 'templates', 'emails'), // src/templates/emails (dev - writable)
+    path.join(process.cwd(), 'backend', 'src', 'templates', 'emails'), // backend/src/templates/emails (from root)
+    path.join(__dirname, '..', 'templates', 'emails'), // dist/templates/emails (production - may not be writable)
+  ];
+
+  for (const dirPath of possiblePaths) {
+    try {
+      const filePath = path.join(dirPath, metadata.filename);
+      await fs.access(dirPath);
+      await fs.writeFile(filePath, content, 'utf-8');
+      return true;
+    } catch {
+      // Try next path
+    }
+  }
+
+  // If no path worked, try to write to the first path anyway (create if needed)
+  const firstPath = possiblePaths[0];
   try {
-    const filePath = path.join(TEMPLATES_DIR, metadata.filename);
-    await fs.writeFile(filePath, content, 'utf-8');
+    await fs.mkdir(path.dirname(path.join(firstPath, metadata.filename)), { recursive: true });
+    await fs.writeFile(path.join(firstPath, metadata.filename), content, 'utf-8');
     return true;
   } catch (error) {
     console.error(`Failed to update template ${templateName}:`, error);
