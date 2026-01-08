@@ -333,7 +333,7 @@ export default function HomePage() {
 
   const [randomPicks, setRandomPicks] = useState([]);
   const [randomPicksLoading, setRandomPicksLoading] = useState(true);
-  const [bestSellersTabs, setBestSellersTabs] = useState<string[]>(['All']);
+  const [bestSellersTabs, setBestSellersTabs] = useState(['All']);
 
   // Load genres for Best Sellers tabs
   useEffect(() => {
