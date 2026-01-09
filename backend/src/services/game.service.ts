@@ -535,15 +535,32 @@ export const getNewGames = async (): Promise<GameResponse[]> => {
 };
 
 export const getGamesByGenre = async (genreSlug: string): Promise<GameResponse[]> => {
+  // Try to find by slug first, then by name (case-insensitive)
   const games = await prisma.game.findMany({
     where: {
-      genres: {
-        some: {
-          genre: {
-            slug: genreSlug,
+      OR: [
+        {
+          genres: {
+            some: {
+              genre: {
+                slug: genreSlug.toLowerCase(),
+              },
+            },
           },
         },
-      },
+        {
+          genres: {
+            some: {
+              genre: {
+                name: { 
+                  equals: genreSlug, 
+                  mode: 'insensitive' 
+                },
+              },
+            },
+          },
+        },
+      ],
       inStock: true,
     },
     take: 40,
@@ -573,6 +590,12 @@ export const getGamesByGenre = async (genreSlug: string): Promise<GameResponse[]
       },
     },
   });
+
+  // If no games found for this genre, return popular games as fallback
+  if (games.length === 0) {
+    console.warn(`No games found for genre "${genreSlug}", returning popular games as fallback`);
+    return getBestSellers();
+  }
 
   return games.map(transformGame);
 };

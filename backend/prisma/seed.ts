@@ -817,6 +817,27 @@ async function main() {
     
     const platformSlug = getPlatformSlug(gameData.activationService);
     
+    // Determine genres based on game content
+    const genreSlugs = ['action', 'adventure'];
+    
+    // Check if game is open world based on title, description, or shortDescription
+    const isOpenWorld = 
+      gameData.title.toLowerCase().includes('gta') ||
+      gameData.title.toLowerCase().includes('grand theft auto') ||
+      gameData.title.toLowerCase().includes('fallout') ||
+      gameData.title.toLowerCase().includes('mad max') ||
+      gameData.title.toLowerCase().includes('elder scrolls') ||
+      gameData.title.toLowerCase().includes('skyrim') ||
+      gameData.title.toLowerCase().includes('witcher') ||
+      gameData.title.toLowerCase().includes('assassin\'s creed') ||
+      gameData.title.toLowerCase().includes('red dead') ||
+      (gameData.description && gameData.description.toLowerCase().includes('open world')) ||
+      (gameData.shortDescription && gameData.shortDescription.toLowerCase().includes('open world'));
+    
+    if (isOpenWorld) {
+      genreSlugs.push('open-world');
+    }
+    
     const createData = {
       title: gameData.title,
       slug: gameData.slug,
@@ -850,10 +871,9 @@ async function main() {
           }],
         },
         genres: {
-          create: [
-            { genre: { connect: { slug: 'action' } } },
-            { genre: { connect: { slug: 'adventure' } } },
-          ],
+          create: genreSlugs.map(slug => ({
+            genre: { connect: { slug } },
+          })),
         },
         platforms: {
           create: [

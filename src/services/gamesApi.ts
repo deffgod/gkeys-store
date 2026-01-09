@@ -717,22 +717,43 @@ export const gamesApi = {
   getGamesByGenre: async (genre: string): Promise<Game[]> => {
     try {
       const response = await apiClient.get<{ success: boolean; data: Game[] }>(
-        `/api/games/by-genre/${genre}`
+        `/api/games/by-genre/${encodeURIComponent(genre)}`
       );
-      return response.data;
+      const games = response.data || [];
+      
+      // If no games found, try to get popular games as fallback
+      if (games.length === 0) {
+        console.warn(`No games found for genre "${genre}", using popular games as fallback`);
+        const fallbackGames = await gamesApi.getBestSellers();
+        return fallbackGames.slice(0, 20);
+      }
+      
+      return games;
     } catch (error) {
-      // In production, throw error instead of using mock data
+      // In production, try to get popular games as fallback
       if (!isDevelopment) {
         console.error('Failed to fetch games by genre from API:', error);
-        throw new Error('Unable to load games. Please try again later.');
+        try {
+          const fallbackGames = await gamesApi.getBestSellers();
+          return fallbackGames.slice(0, 20);
+        } catch (fallbackError) {
+          throw new Error('Unable to load games. Please try again later.');
+        }
       }
       // Fallback to mock data only in development
       if (isDevelopment) {
         console.warn('API request failed, using mock data (development mode):', error);
       }
-      return mockGamesFromG2A.filter(g => 
+      const filteredGames = mockGamesFromG2A.filter(g => 
         g.genres.some(gGenre => gGenre.toLowerCase() === genre.toLowerCase())
-      ).slice(0, 40);
+      );
+      
+      // If no mock games found for genre, return popular games
+      if (filteredGames.length === 0) {
+        return mockGamesFromG2A.filter(g => g.isBestSeller).slice(0, 20);
+      }
+      
+      return filteredGames.slice(0, 40);
     }
   },
 
