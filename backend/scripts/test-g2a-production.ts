@@ -8,11 +8,14 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-// Production G2A credentials
-const G2A_API_KEY = 'ibHtsEljmCxjOFAn'; // Client ID
-const G2A_API_HASH = 'HrsPmuOlWjqBMHnQWIgfchUqBTBYcRph'; // Client Secret
-const G2A_API_URL = 'https://api.g2a.com';
-const G2A_EMAIL = process.env.G2A_EMAIL || 'Welcome@nalytoo.com'; // Required for Export API
+// G2A credentials - can be production or sandbox
+// For sandbox, use: https://sandboxapi.g2a.com
+// For production, use: https://api.g2a.com
+const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw'; // Client ID
+const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS'; // Client Secret
+const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com'; // Change to https://sandboxapi.g2a.com for sandbox
+const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com'; // Required for Export API
+const IS_SANDBOX = G2A_API_URL.includes('sandboxapi.g2a.com');
 
 // Timeout for requests
 const TIMEOUT_MS = 30000;
@@ -38,21 +41,26 @@ function generateExportApiKey(): string {
 }
 
 /**
- * Create G2A Import API client with hash-based authentication
+ * Create G2A Import API client for token endpoint
+ * Sandbox uses: Authorization: "hash, key"
+ * Production might use: Authorization: "key, hash" or different format
  */
 function createImportAPIClient() {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const hash = generateHash(timestamp);
-
+  const baseURL = IS_SANDBOX 
+    ? 'https://sandboxapi.g2a.com/v1'
+    : `${G2A_API_URL}/v1`;
+  
+  // Try different formats for production
+  const authHeader = IS_SANDBOX
+    ? `${G2A_API_HASH}, ${G2A_API_KEY}`  // Sandbox: hash, key
+    : `${G2A_API_KEY}, ${G2A_API_HASH}`; // Production: try key, hash
+    
   return axios.create({
-    baseURL: `${G2A_API_URL}/integration-api/v1`,
+    baseURL: baseURL,
     timeout: TIMEOUT_MS,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-HASH': G2A_API_HASH,
-      'X-API-KEY': G2A_API_KEY,
-      'X-G2A-Timestamp': timestamp,
-      'X-G2A-Hash': hash,
+      'Authorization': authHeader,
     },
   });
 }
@@ -60,15 +68,17 @@ function createImportAPIClient() {
 /**
  * Create G2A Export API client with Authorization header (ClientId, ApiKey)
  * According to G2A Developers API documentation:
- * - Format: Authorization: ClientId, ApiKey
+ * - Format: Authorization: "ClientId, ApiKey"
  * - ApiKey = sha256(ClientId + Email + ClientSecret)
- * - Base URL: https://api.g2a.com/v1 (not /integration-api/v1)
+ * - Base URL: https://api.g2a.com/v1 or https://sandboxapi.g2a.com/v1
  */
 function createExportAPIClient() {
   const apiKey = generateExportApiKey();
   
-  // For Export API (Developers API), use /v1, not /integration-api/v1
-  const exportBaseURL = G2A_API_URL.replace('/integration-api/v1', '/v1').replace(/\/+$/, '') + '/v1';
+  // For Export API (Developers API), use /v1
+  const exportBaseURL = IS_SANDBOX
+    ? 'https://sandboxapi.g2a.com/v1'
+    : `${G2A_API_URL}/v1`;
 
   return axios.create({
     baseURL: exportBaseURL,
@@ -102,6 +112,14 @@ async function testBasicConnection() {
   
   try {
     const client = createExportAPIClient();
+    const apiKey = generateExportApiKey();
+    
+    // Debug: log the Authorization header format
+    console.log(`🔍 Debug: Export API Authorization header format:`);
+    console.log(`   Format: "${G2A_API_KEY}, ${apiKey}"`);
+    console.log(`   Client ID length: ${G2A_API_KEY.length}`);
+    console.log(`   ApiKey length: ${apiKey.length}`);
+    
     // Try to get products (simple endpoint to test connection)
     const response = await client.get('/products', {
       params: { page: 1 },
@@ -112,7 +130,11 @@ async function testBasicConnection() {
     if (error.response) {
       const status = error.response.status;
       const message = error.response.data?.message || error.response.data?.code || error.message;
+      const headers = error.response.headers;
       logTest('Basic connection', 'FAIL', `Status: ${status}, Message: ${message}`);
+      if (error.config?.headers?.Authorization) {
+        console.log(`   Used Authorization: ${error.config.headers.Authorization.substring(0, 50)}...`);
+      }
     } else {
       logTest('Basic connection', 'FAIL', error.message);
     }
@@ -128,6 +150,11 @@ async function testOAuth2Token() {
   
   try {
     const client = createImportAPIClient();
+    
+    // Debug: log authentication method
+    console.log(`🔍 Debug: Token auth (${IS_SANDBOX ? 'Sandbox' : 'Production'}):`);
+    console.log(`   Authorization: ${G2A_API_HASH.substring(0, 10)}..., ${G2A_API_KEY.substring(0, 10)}...`);
+    
     const response = await client.get<{ access_token: string; expires_in: number; token_type: string }>('/token');
     
     if (response.data.access_token) {
@@ -253,8 +280,13 @@ async function testPriceSimulation(oauthToken?: string) {
     const productId = productsResponse.data.docs[0].id;
     
     // Use OAuth2 token for Import API
+    // For production, Import API uses /v1
+    const importBaseURL = IS_SANDBOX
+      ? 'https://sandboxapi.g2a.com/v1'
+      : `${G2A_API_URL}/v1`;
+      
     const importClient = axios.create({
-      baseURL: `${G2A_API_URL}/integration-api/v1`,
+      baseURL: importBaseURL,
       timeout: TIMEOUT_MS,
       headers: {
         'Content-Type': 'application/json',
@@ -324,15 +356,16 @@ async function testAuthenticationMethod() {
  * Main test runner
  */
 async function runTests() {
-  console.log('\n🚀 Starting G2A Production API Tests...\n');
+  console.log('\n🚀 Starting G2A API Tests...\n');
   console.log('📋 Configuration:');
+  console.log(`   Environment: ${IS_SANDBOX ? 'SANDBOX' : 'PRODUCTION'}`);
   console.log(`   API URL: ${G2A_API_URL}`);
   console.log(`   Client ID: ${G2A_API_KEY.substring(0, 10)}...`);
   console.log(`   Client Secret: ${G2A_API_HASH.substring(0, 10)}...`);
   console.log(`   Email: ${G2A_EMAIL}`);
   console.log(`   ⚠️  Note: Email is required for Export API authentication`);
   console.log(`   📝 Export API uses: Authorization: ClientId, ApiKey (where ApiKey = sha256(ClientId + Email + ClientSecret))`);
-  console.log(`   📝 Import API uses: Hash-based auth with X-API-HASH, X-API-KEY headers\n`);
+  console.log(`   📝 Import API uses: Authorization: "hash, key" format\n`);
   
   const results: Array<{ name: string; passed: boolean }> = [];
   

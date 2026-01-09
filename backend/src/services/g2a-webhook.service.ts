@@ -3,7 +3,7 @@ import prisma from '../config/database.js';
 import redisClient from '../config/redis.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { G2AWebhookEvent, IdempotencyRecord } from '../types/g2a.js';
-import { getG2AConfig } from '../config/g2a.js';
+import { getG2AConfigSync } from '../config/g2a.js';
 
 const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
 const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60; // 24 hours
@@ -11,6 +11,7 @@ const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 /**
  * Validate G2A webhook signature
  * According to G2A API docs, signature is HMAC-SHA256 of payload + timestamp + nonce + secret
+ * Note: Uses sync config for webhook validation (must be fast)
  */
 export const validateG2AWebhookSignature = (
   payload: string,
@@ -18,7 +19,7 @@ export const validateG2AWebhookSignature = (
   timestamp: number,
   nonce: string
 ): boolean => {
-  const config = getG2AConfig();
+  const config = getG2AConfigSync();
   const secret = config.apiHash; // Use API hash as webhook secret
 
   // Create expected signature: HMAC-SHA256(payload + timestamp + nonce + secret)

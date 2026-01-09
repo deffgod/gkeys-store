@@ -4,16 +4,19 @@ import prisma from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { G2AError, G2AErrorCode } from '../types/g2a.js';
 import redisClient from '../config/redis.js';
-import { getG2AConfig } from '../config/g2a.js';
+import { getG2AConfig, getG2AConfigSync } from '../config/g2a.js';
+import { getG2ASettings } from './g2a-settings.service.js';
 import { invalidateCache } from '../services/cache.service.js';
 
+// Use sync version for module-level initialization (backward compatibility)
+// Individual functions will use async getG2AConfig() to get DB settings
 const {
   apiHash: G2A_API_HASH,
   apiKey: G2A_API_KEY,
   baseUrl: G2A_API_URL,
   timeoutMs: G2A_TIMEOUT_MS,
   retryMax: G2A_RETRY_MAX,
-} = getG2AConfig();
+} = getG2AConfigSync();
 const G2A_API_URL_RAW = process.env.G2A_API_URL || 'https://api.g2a.com/integration-api/v1';
 
 const MARKUP_PERCENTAGE = 2; // 2% markup on G2A prices
@@ -56,15 +59,23 @@ interface OAuth2TokenResponse {
  * @param clientSecret - G2A Client Secret (defaults to G2A_API_HASH from config)
  * @returns SHA256 hash of (ClientId + Email + ClientSecret)
  */
-export const generateExportApiKey = (
+export const generateExportApiKey = async (
   clientId?: string,
   email?: string,
   clientSecret?: string
-): string => {
-  const config = getG2AConfig();
-  const finalClientId = clientId || config.apiKey;
-  const finalEmail = email || process.env.G2A_EMAIL || 'Welcome@nalytoo.com';
-  const finalClientSecret = clientSecret || config.apiHash;
+): Promise<string> => {
+  // Try to get settings from database first
+  let dbSettings = null;
+  try {
+    dbSettings = await getG2ASettings();
+  } catch (error) {
+    // Fallback to env vars
+  }
+
+  const config = await getG2AConfig();
+  const finalClientId = clientId || dbSettings?.clientId || config.apiKey;
+  const finalEmail = email || dbSettings?.email || process.env.G2A_EMAIL || 'Welcome@nalytoo.com';
+  const finalClientSecret = clientSecret || dbSettings?.clientSecret || config.apiHash;
 
   if (!finalClientId || !finalEmail || !finalClientSecret) {
     throw new AppError(
@@ -123,14 +134,37 @@ const getOAuth2Token = async (): Promise<string> => {
     // Get new token from G2A API
     logger.info('Fetching new OAuth2 token from G2A API');
 
-    // Use hash-based auth for token endpoint (as per documentation)
-    const isSandbox = G2A_API_URL.includes('sandboxapi.g2a.com');
+    // Get settings from database or use environment variables
+    let dbSettings = null;
+    try {
+      dbSettings = await getG2ASettings();
+    } catch (error) {
+      // Fallback to env vars
+    }
+
+    const apiKey = dbSettings?.clientId || G2A_API_KEY;
+    const apiHash = dbSettings?.clientSecret || G2A_API_HASH;
+    const environment = dbSettings?.environment || (G2A_API_URL.includes('sandboxapi.g2a.com') ? 'sandbox' : 'production');
+    const isSandbox = environment === 'sandbox';
+
+    // Determine base URL and token endpoint
+    let baseUrl: string;
+    let tokenEndpoint: string;
+    
+    if (isSandbox) {
+      baseUrl = 'https://sandboxapi.g2a.com';
+      tokenEndpoint = '/v1/token';
+    } else {
+      baseUrl = 'https://api.g2a.com';
+      tokenEndpoint = '/v1/token';
+    }
+
     const timestamp = isSandbox ? undefined : Math.floor(Date.now() / 1000).toString();
     const hash = isSandbox
       ? undefined
       : crypto
           .createHash('sha256')
-          .update(G2A_API_HASH + G2A_API_KEY + timestamp!)
+          .update(apiHash + apiKey + timestamp!)
           .digest('hex');
 
     const tokenHeaders: Record<string, string> = {
@@ -138,21 +172,21 @@ const getOAuth2Token = async (): Promise<string> => {
     };
 
     if (isSandbox) {
-      tokenHeaders.Authorization = `${G2A_API_HASH}, ${G2A_API_KEY}`;
+      tokenHeaders.Authorization = `${apiHash}, ${apiKey}`;
     } else {
-      tokenHeaders['X-API-HASH'] = G2A_API_HASH;
-      tokenHeaders['X-API-KEY'] = G2A_API_KEY;
+      tokenHeaders['X-API-HASH'] = apiHash;
+      tokenHeaders['X-API-KEY'] = apiKey;
       tokenHeaders['X-G2A-Timestamp'] = timestamp!;
       tokenHeaders['X-G2A-Hash'] = hash!;
     }
 
     const tokenClient = axios.create({
-      baseURL: G2A_API_URL,
+      baseURL: baseUrl,
       headers: tokenHeaders,
       timeout: G2A_TIMEOUT_MS,
     });
 
-    const response = await tokenClient.get<OAuth2TokenResponse>('/token');
+    const response = await tokenClient.get<OAuth2TokenResponse>(tokenEndpoint);
     const { access_token, expires_in } = response.data;
 
     // Cache token in Redis
@@ -641,7 +675,7 @@ export const createG2AClient = async (
     } else {
       // Production Export API (Developers API) uses Authorization header with generated API key
       // Format: Authorization: "ClientId, ApiKey" where ApiKey = sha256(ClientId + Email + ClientSecret)
-      const exportApiKey = generateExportApiKey();
+      const exportApiKey = await generateExportApiKey();
       headers.Authorization = `${G2A_API_KEY}, ${exportApiKey}`;
       authMethod = 'Authorization header (Export API with generated key)';
     }

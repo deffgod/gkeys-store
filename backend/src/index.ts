@@ -236,7 +236,7 @@ async function getHealthStatus() {
   try {
     // Check G2A connectivity (try to get config - if it throws, G2A is misconfigured)
     const { getG2AConfig } = await import('./config/g2a.js');
-    getG2AConfig(); // Verify config is accessible
+    await getG2AConfig(); // Verify config is accessible
     // Try a simple token validation check
     const { validateG2ACredentials } = await import('./services/g2a.service.js');
     validateG2ACredentials();

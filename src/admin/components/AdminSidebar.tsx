@@ -54,6 +54,7 @@ const menuItems = [
   { id: 'wishlists', label: 'Wishlists', path: '/admin/wishlists', icon: Icons.Wishlist },
   { id: 'faqs', label: 'FAQs', path: '/admin/faqs', icon: Icons.FAQ },
   { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', icon: Icons.Sync },
+  { id: 'g2a-live-sync', label: 'G2A Live Sync', path: '/admin/g2a/live-sync', icon: Icons.Sync },
   { id: 'g2a-offers', label: 'G2A Offers', path: '/admin/g2a/offers', icon: Icons.G2AOffers },
   { id: 'g2a-reservations', label: 'G2A Reservations', path: '/admin/g2a/reservations', icon: Icons.G2AReservations },
   { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', icon: Icons.G2AEnvSetup },

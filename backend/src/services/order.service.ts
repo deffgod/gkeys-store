@@ -424,9 +424,9 @@ export const createOrder = async (
   // Get G2A client instance
   let g2aClient: G2AIntegrationClient | null = null;
   try {
-    // Get G2A config from environment
+    // Get G2A config from database or environment
     const { getG2AConfig } = await import('../config/g2a.js');
-    const g2aConfig = getG2AConfig();
+    const g2aConfig = await getG2AConfig();
     
     if (g2aConfig.apiKey && g2aConfig.apiHash) {
       const { getDefaultConfig } = await import('../lib/g2a/config/defaults.js');
@@ -436,7 +436,7 @@ export const createOrder = async (
         env: g2aConfig.env || 'sandbox',
         apiKey: g2aConfig.apiKey,
         apiHash: g2aConfig.apiHash,
-        email: process.env.G2A_EMAIL || 'Welcome@nalytoo.com',
+        email: g2aConfig.email || 'Welcome@nalytoo.com',
         baseUrl: g2aConfig.baseUrl || defaultConfig.baseUrl,
         timeoutMs: g2aConfig.timeoutMs || defaultConfig.timeoutMs,
       });

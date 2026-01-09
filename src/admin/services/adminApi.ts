@@ -804,11 +804,35 @@ export const adminApi = {
   },
 
   // G2A Sync
-  syncG2A: async (): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ success: boolean; message: string }>(
-      '/api/admin/g2a/sync'
+  syncG2A: async (options?: {
+    fullSync?: boolean;
+    productIds?: string[];
+    categories?: string[];
+    includeRelationships?: boolean;
+  }): Promise<{ success: boolean; message: string; data: {
+    synced: number;
+    added: number;
+    updated: number;
+    removed: number;
+    categoriesCreated: number;
+    genresCreated: number;
+    platformsCreated: number;
+    errors: Array<{ productId: string; error: string }>;
+  } }> => {
+    const response = await apiClient.post<{ success: boolean; message: string; data: {
+      synced: number;
+      added: number;
+      updated: number;
+      removed: number;
+      categoriesCreated: number;
+      genresCreated: number;
+      platformsCreated: number;
+      errors: Array<{ productId: string; error: string }>;
+    } }>(
+      '/api/admin/g2a/sync',
+      options || {}
     );
-    return { message: response.message || 'Sync started' };
+    return response.data;
   },
 
   getG2ASyncProgress: async (): Promise<{

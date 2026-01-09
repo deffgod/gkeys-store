@@ -1,9 +1,10 @@
 import axios, { AxiosError } from 'axios';
 import { G2AError, G2AErrorCode } from '../types/g2a.js';
-import { getG2AConfig } from '../config/g2a.js';
+import { getG2AConfigSync } from '../config/g2a.js';
 import { createG2AClient } from './g2a.service.js';
 
-const { baseUrl: G2A_API_URL } = getG2AConfig();
+// Use sync version for module-level initialization
+const { baseUrl: G2A_API_URL } = getG2AConfigSync();
 
 /**
  * Structured logger for G2A Offer API operations

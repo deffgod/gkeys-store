@@ -61,6 +61,7 @@ export async function getG2AToken(
   const baseUrl = isSandbox
     ? 'https://sandboxapi.g2a.com'
     : 'https://api.g2a.com';
+  const tokenEndpoint = '/v1/token';
 
   const tokenHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ export async function getG2AToken(
   }
 
   try {
-    const response = await axios.get<G2ATokenResponse>(`${baseUrl}/v1/token`, {
+    const response = await axios.get<G2ATokenResponse>(`${baseUrl}${tokenEndpoint}`, {
       headers: tokenHeaders,
       timeout: 10000,
     });
@@ -93,9 +94,11 @@ export async function getG2AToken(
   } catch (error: any) {
     const errorMessage =
       error.response?.data?.message ||
+      error.response?.data?.error ||
       error.message ||
       'Failed to obtain G2A token';
-    throw new AppError(`G2A token error: ${errorMessage}`, error.response?.status || 500);
+    const statusCode = error.response?.status || 500;
+    throw new AppError(`G2A token error: ${errorMessage}`, statusCode);
   }
 }
 

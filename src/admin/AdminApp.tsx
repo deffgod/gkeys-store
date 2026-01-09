@@ -25,6 +25,7 @@ import EmailTemplatesPage from './pages/EmailTemplatesPage';
 import EmailSettingsPage from './pages/EmailSettingsPage';
 import PromoCodesPage from './pages/PromoCodesPage';
 import GameKeysPage from './pages/GameKeysPage';
+import G2ALiveSyncPage from './pages/G2ALiveSyncPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -41,6 +42,7 @@ const AdminApp: React.FC = () => {
         <Route path="wishlists" element={<WishlistManagementPage />} />
         <Route path="faqs" element={<FAQManagementPage />} />
         <Route path="g2a" element={<G2ASyncPage />} />
+        <Route path="g2a/live-sync" element={<G2ALiveSyncPage />} />
         <Route path="g2a/offers" element={<G2AOffersPage />} />
         <Route path="g2a/reservations" element={<G2AReservationsPage />} />
         <Route path="g2a/env-setup" element={<G2AEnvSetupPage />} />
