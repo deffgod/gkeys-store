@@ -142,7 +142,7 @@ export const homepageSections: SectionConfig[] = [
     },
     display: {
       columns: 4,
-      carousel: false,
+      carousel: true,
       showCheckAll: true,
       checkAllLink: '/catalog?genre=noir',
       checkAllText: 'Check all',
@@ -159,7 +159,7 @@ export const homepageSections: SectionConfig[] = [
     },
     display: {
       columns: 5,
-      carousel: false,
+      carousel: true,
       showCheckAll: true,
       checkAllLink: '/catalog?collection=remakes',
     },
@@ -176,7 +176,7 @@ export const homepageSections: SectionConfig[] = [
     },
     display: {
       columns: 5,
-      carousel: false,
+      carousel: true,
       showCheckAll: true,
       checkAllLink: '/catalog?genre=rpg',
     },
