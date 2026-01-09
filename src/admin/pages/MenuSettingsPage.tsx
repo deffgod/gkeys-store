@@ -52,7 +52,21 @@ const MenuSettingsPage: React.FC = () => {
   const initializeDefaultMenu = () => {
     const defaultItems: MenuItem[] = [
       { id: 'dashboard', label: 'Dashboard', path: '/admin', visible: true, order: 0 },
-      { id: 'games', label: 'Games', path: '/admin/games', visible: true, order: 1 },
+      {
+        id: 'games-group',
+        label: 'Games',
+        path: '/admin/games',
+        visible: true,
+        order: 1,
+        children: [
+          { id: 'games', label: 'Games', path: '/admin/games', visible: true, order: 0 },
+          { id: 'categories', label: 'Categories', path: '/admin/categories', visible: true, order: 1 },
+          { id: 'genres', label: 'Genres', path: '/admin/genres', visible: true, order: 2 },
+          { id: 'platforms', label: 'Platforms', path: '/admin/platforms', visible: true, order: 3 },
+          { id: 'tags', label: 'Tags', path: '/admin/tags', visible: true, order: 4 },
+          { id: 'game-keys', label: 'Game Keys', path: '/admin/game-keys', visible: true, order: 5 },
+        ],
+      },
       { id: 'users', label: 'Users', path: '/admin/users', visible: true, order: 2 },
       { id: 'orders', label: 'Orders', path: '/admin/orders', visible: true, order: 3 },
       { id: 'blog', label: 'Blog Posts', path: '/admin/blog', visible: true, order: 4 },
@@ -75,14 +89,9 @@ const MenuSettingsPage: React.FC = () => {
         ],
       },
       { id: 'cache', label: 'Cache', path: '/admin/cache', visible: true, order: 17 },
-      { id: 'categories', label: 'Categories', path: '/admin/categories', visible: true, order: 18 },
-      { id: 'genres', label: 'Genres', path: '/admin/genres', visible: true, order: 19 },
-      { id: 'platforms', label: 'Platforms', path: '/admin/platforms', visible: true, order: 20 },
-      { id: 'tags', label: 'Tags', path: '/admin/tags', visible: true, order: 21 },
       { id: 'email-templates', label: 'Email Templates', path: '/admin/email-templates', visible: true, order: 22 },
       { id: 'email-settings', label: 'Email Settings', path: '/admin/email-settings', visible: true, order: 23 },
       { id: 'promo-codes', label: 'Promo Codes', path: '/admin/promo-codes', visible: true, order: 24 },
-      { id: 'game-keys', label: 'Game Keys', path: '/admin/game-keys', visible: true, order: 25 },
       { id: 'menu-settings', label: 'Menu Settings', path: '/admin/menu-settings', visible: true, order: 26 },
     ];
     setMenuItems(defaultItems);

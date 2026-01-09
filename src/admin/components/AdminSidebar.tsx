@@ -45,7 +45,20 @@ const Icons = {
 // Базовые пункты меню (используются как fallback)
 const defaultMenuItems = [
   { id: 'dashboard', label: 'Dashboard', path: '/admin', icon: Icons.Dashboard },
-  { id: 'games', label: 'Games', path: '/admin/games', icon: Icons.Games },
+  {
+    id: 'games-group',
+    label: 'Games',
+    path: '/admin/games',
+    icon: Icons.Games,
+    children: [
+      { id: 'games', label: 'Games', path: '/admin/games', icon: Icons.Games },
+      { id: 'categories', label: 'Categories', path: '/admin/categories', icon: Icons.Categories },
+      { id: 'genres', label: 'Genres', path: '/admin/genres', icon: Icons.Genres },
+      { id: 'platforms', label: 'Platforms', path: '/admin/platforms', icon: Icons.Platforms },
+      { id: 'tags', label: 'Tags', path: '/admin/tags', icon: Icons.Tags },
+      { id: 'game-keys', label: 'Game Keys', path: '/admin/game-keys', icon: Icons.GameKeys },
+    ],
+  },
   { id: 'users', label: 'Users', path: '/admin/users', icon: Icons.Users },
   { id: 'orders', label: 'Orders', path: '/admin/orders', icon: Icons.Orders },
   { id: 'blog', label: 'Blog Posts', path: '/admin/blog', icon: Icons.Blog },
@@ -67,14 +80,9 @@ const defaultMenuItems = [
     ],
   },
   { id: 'cache', label: 'Cache', path: '/admin/cache', icon: Icons.Cache },
-  { id: 'categories', label: 'Categories', path: '/admin/categories', icon: Icons.Categories },
-  { id: 'genres', label: 'Genres', path: '/admin/genres', icon: Icons.Genres },
-  { id: 'platforms', label: 'Platforms', path: '/admin/platforms', icon: Icons.Platforms },
-  { id: 'tags', label: 'Tags', path: '/admin/tags', icon: Icons.Tags },
   { id: 'email-templates', label: 'Email Templates', path: '/admin/email-templates', icon: Icons.Email },
   { id: 'email-settings', label: 'Email Settings', path: '/admin/email-settings', icon: Icons.Email },
   { id: 'promo-codes', label: 'Promo Codes', path: '/admin/promo-codes', icon: Icons.PromoCode },
-  { id: 'game-keys', label: 'Game Keys', path: '/admin/game-keys', icon: Icons.GameKeys },
   { id: 'menu-settings', label: 'Menu Settings', path: '/admin/menu-settings', icon: Icons.Settings },
 ];
 
@@ -132,7 +140,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 }) => {
   const location = useLocation();
   const menuItems = getMenuItems();
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['g2a-group']));
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['g2a-group', 'games-group']));
 
   const isActive = (path: string) => {
     if (path === '/admin') {
