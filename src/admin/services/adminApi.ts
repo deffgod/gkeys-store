@@ -2110,5 +2110,34 @@ export const adminApi = {
     } }>('/api/admin/game-keys/statistics');
     return response.data;
   },
+
+  // Script Execution
+  async executeTestG2AExportAPI(params: { page?: number; perPage?: number; debug?: boolean }) {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: {
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+        duration: number;
+        error?: string;
+      };
+    }>('/api/admin/scripts/test-g2a-export-api', params);
+    return response.data;
+  },
+
+  async executeSyncAllG2AGames(params: { limit?: number; dryRun?: boolean; filters?: boolean }) {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: {
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+        duration: number;
+        error?: string;
+      };
+    }>('/api/admin/scripts/sync-all-g2a-games', params);
+    return response.data;
+  },
 };
 

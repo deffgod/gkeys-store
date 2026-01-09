@@ -103,6 +103,8 @@ import {
   updateGameKeyController,
   deleteGameKeyController,
   getGameKeyStatisticsController,
+  executeTestG2AExportAPIController,
+  executeSyncAllG2AGamesController,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin, requireAuth } from '../middleware/auth.js';
 import { sessionMiddleware } from '../middleware/session.middleware.js';
@@ -260,5 +262,9 @@ router.get('/game-keys/:id', getGameKeyByIdController);
 router.post('/game-keys', createGameKeyController);
 router.put('/game-keys/:id', updateGameKeyController);
 router.delete('/game-keys/:id', deleteGameKeyController);
+
+// Script Execution
+router.post('/scripts/test-g2a-export-api', executeTestG2AExportAPIController);
+router.post('/scripts/sync-all-g2a-games', executeSyncAllG2AGamesController);
 
 export default router;

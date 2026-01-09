@@ -9,11 +9,19 @@
 
 import dotenv from 'dotenv';
 import { loadG2AEnvVars } from '../src/lib/g2a/config/env.js';
+console.log(`🔍 process.env.API_BASE_URL: ${process.env.API_BASE_URL}`);
+
 
 dotenv.config();
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001';
+const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3001';
 const ADMIN_TOKEN = process.argv[2] || process.env.ADMIN_TOKEN || 'eyJhbGciOiJIUzI1NiJ9.e30.jBrIDEb49OUZvDk2UfwaGf_cH5YSDzR1rdaoKqOVafk';
+const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw';
+const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS';
+const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com';
+const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com';
+const G2A_ENV = process.env.G2A_ENV || 'live';
+
 
 if (!ADMIN_TOKEN) {
   console.warn('⚠️  No admin token provided. Some tests will be skipped.');
@@ -33,14 +41,14 @@ async function getG2AToken(): Promise<string | null> {
     const g2aConfig = loadG2AEnvVars();
     const crypto = await import('crypto');
     
-    const isSandbox = g2aConfig.env === 'sandbox';
+    const isSandbox = G2A_ENV === 'sandbox';
     
     // Determine token endpoint based on environment
     // For sandbox: use GET /token with hash-based auth
     // For production: try GET /token first, fallback to POST /oauth/token
     const baseUrl = isSandbox
       ? 'https://sandboxapi.g2a.com/v1'
-      : 'https://api.g2a.com/integration-api/v1';
+      : 'https://api.g2a.com/v1';
 
     console.log(`\n🔐 Fetching G2A OAuth2 token from: ${baseUrl}/token`);
     console.log(`📋 Environment: ${g2aConfig.env}`);
@@ -77,11 +85,11 @@ async function getG2AToken(): Promise<string | null> {
     // If GET fails for production, try POST /oauth/token with OAuth2
     if (!response.ok && !isSandbox) {
       console.log(`   GET /token failed, trying POST /oauth/token...`);
-      const oauthUrl = 'https://api.g2a.com/integration-api/oauth/token';
+      const oauthUrl = `${G2A_API_URL}/oauth/token`;
       const body = new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: g2aConfig.apiKey,
-        client_secret: g2aConfig.apiHash,
+        client_id: G2A_API_KEY,
+        client_secret: G2A_API_HASH,
       });
 
       response = await fetch(oauthUrl, {

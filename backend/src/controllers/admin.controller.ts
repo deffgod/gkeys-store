@@ -1976,3 +1976,52 @@ export const getGameKeyStatisticsController = async (req: AuthRequest, res: Resp
     next(error);
   }
 };
+
+// Script execution controllers
+export const executeTestG2AExportAPIController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { executeTestG2AExportAPI } = await import('../services/script-executor.service.js');
+    const page = parseInt(req.body.page || req.query.page || '1', 10);
+    const perPage = parseInt(req.body.perPage || req.query.perPage || '20', 10);
+    const debug = req.body.debug === true || req.query.debug === 'true';
+
+    const result = await executeTestG2AExportAPI(page, perPage, debug);
+    
+    res.json({
+      success: result.success,
+      data: {
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        duration: result.duration,
+        error: result.error,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const executeSyncAllG2AGamesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { executeSyncAllG2AGames } = await import('../services/script-executor.service.js');
+    const limit = req.body.limit || req.query.limit ? parseInt(req.body.limit || req.query.limit || '0', 10) : undefined;
+    const dryRun = req.body.dryRun === true || req.query.dryRun === 'true';
+    const filters = req.body.filters === true || req.query.filters === 'true';
+
+    const result = await executeSyncAllG2AGames(limit, dryRun, filters);
+    
+    res.json({
+      success: result.success,
+      data: {
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        duration: result.duration,
+        error: result.error,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

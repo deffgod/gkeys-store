@@ -16,6 +16,10 @@ import {
 import { adminApi } from '../services/adminApi';
 import { adminButtonStyle } from '../styles/adminStyles';
 
+const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw';
+const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS';
+const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com';
+const G2A_ENV = process.env.G2A_ENV || 'live';
 const theme = {
   colors: {
     primary: '#00C8C2',
@@ -151,7 +155,11 @@ const G2ALiveSyncPage: React.FC = () => {
         fullSync: syncOptions.fullSync,
         includeRelationships: syncOptions.includeRelationships,
         categories: syncOptions.categories,
-      });
+        apiKey: G2A_API_KEY,
+        apiHash: G2A_API_HASH,
+        apiUrl: G2A_API_URL,
+        env: G2A_ENV,
+        });
 
       setLastSyncResult(result.data);
       setIsSyncing(false);

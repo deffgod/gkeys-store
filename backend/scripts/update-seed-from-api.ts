@@ -12,13 +12,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 async function updateSeedFromAPI() {
   console.log('📦 Fetching data from API to update seed file...\n');
 
   try {
     // Fetch all games
+
+    console.log(`🔍 API Base URL: ${API_BASE}`);
+    
     const gamesResponse = await axios.get(`${API_BASE}/games?limit=1000`);
     const games = gamesResponse.data.data || [];
 

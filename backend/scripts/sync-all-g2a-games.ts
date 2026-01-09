@@ -21,6 +21,15 @@ import { loadG2AEnvVars } from '../src/lib/g2a/config/env.js';
 
 dotenv.config();
 
+const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw';
+const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS';
+const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com';
+const G2A_ENV = process.env.G2A_ENV || 'live';
+const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com';
+
+const G2A_TIMEOUT_MS = process.env.G2A_TIMEOUT_MS || '8000';
+const G2A_RETRY_MAX = process.env.G2A_RETRY_MAX || '2';
+
 const prisma = new PrismaClient();
 
 interface SyncOptions {
@@ -91,37 +100,35 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
   console.log('');
 
   // Load G2A configuration from environment
-  let g2aEnvVars;
-  try {
-    g2aEnvVars = loadG2AEnvVars();
-  } catch (error) {
-    console.error('❌ Error: G2A API credentials not found!');
-    console.error(`   ${(error as Error).message}`);
-    console.error('   Please set G2A_API_KEY and G2A_API_HASH environment variables.');
-    process.exit(1);
-  }
+  let g2aEnvVars = loadG2AEnvVars();
 
   // Initialize G2A client with circuit breaker disabled for bulk sync
   const client = await G2AIntegrationClient.create({
-    apiKey: g2aEnvVars.apiKey,
-    apiHash: g2aEnvVars.apiHash,
-    email: g2aEnvVars.email,
-    env: g2aEnvVars.env,
-    baseUrl: g2aEnvVars.baseUrl,
-    timeoutMs: g2aEnvVars.timeoutMs,
+    apiKey: G2A_API_KEY,
+    apiHash: G2A_API_HASH,
+    email: G2A_EMAIL,
+    env: G2A_ENV,
+    baseUrl: G2A_API_URL,
+    timeoutMs: G2A_TIMEOUT_MS,
     circuitBreaker: {
-      enabled: false, // Disable circuit breaker for bulk sync operations
+      enabled: true, // Disable circuit breaker for bulk sync operations
     },
     rateLimiting: {
       enabled: true,
-      requestsPerSecond: 2, // Slower rate for bulk operations
+      requestsPerSecond: 1, // Slower rate for bulk operations
       burstSize: 5,
+      perEndpoint: {
+        '/products': {
+          requestsPerSecond: 1,
+          burstSize: 5,
+        },
+      },
     },
-  });
+  }) as unknown as G2AIntegrationClient;
   
   console.log('🔗 Connecting to G2A Export API...');
-  console.log(`   Environment: ${g2aEnvVars.env}`);
-  console.log(`   API URL: ${g2aEnvVars.baseUrl}`);
+  console.log(`   Environment: ${G2A_ENV}`);
+  console.log(`   API URL: ${G2A_API_URL}`);
   console.log('');
 
   try {
