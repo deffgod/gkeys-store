@@ -35,11 +35,11 @@ export const normalizeG2AUrl = (url: string): string => {
     return `${normalized}/v1`;
   }
 
-  if (normalized.includes('/integration-api/v1')) return normalized;
-  if (normalized.endsWith('/integration-api')) return `${normalized}/v1`;
+  if (normalized.includes('/v1')) return normalized;
+  if (normalized.endsWith('/')) return `${normalized}/v1`;
   if (normalized.endsWith('/v1')) {
     const base = normalized.replace(/\/v1$/, '');
-    return `${base}/integration-api/v1`;
+    return `${base}/v1`;
   }
   if (
     normalized === 'https://api.g2a.com' ||
@@ -47,9 +47,9 @@ export const normalizeG2AUrl = (url: string): string => {
     normalized === 'http://api.g2a.com' ||
     normalized === 'http://www.g2a.com'
   ) {
-    return `${normalized}/integration-api/v1`;
+    return `${normalized}/v1`;
   }
-  return `${normalized}/integration-api/v1`;
+  return `${normalized}/v1`;
 };
 
 /**
@@ -78,7 +78,7 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
   if (!rawUrl) {
     rawUrl = env === 'sandbox' 
       ? 'https://sandboxapi.g2a.com/v1'
-      : 'https://api.g2a.com/integration-api/v1';
+      : 'https://api.g2a.com/v1';
   }
 
   const timeoutMs = Number(process.env.G2A_TIMEOUT_MS || 8000);
@@ -106,7 +106,7 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
   }
 
   const baseUrl = normalizeG2AUrl(rawUrl);
-  if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://sandboxapi.g2a.com')) {
+  if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://api.g2a.com')) {
     throw new AppError('G2A_API_URL must use HTTPS', 500);
   }
 
@@ -126,10 +126,10 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
  * @deprecated Use getG2AConfig() instead for database settings support
  */
 export const getG2AConfigSync = (): G2AConfig => {
-  const rawUrl = process.env.G2A_API_URL || 'https://api.g2a.com/integration-api/v1';
+  const rawUrl = process.env.G2A_API_URL || 'https://api.g2a.com/v1';
   const apiKey = process.env.G2A_API_KEY || '';
   const apiHash = process.env.G2A_API_HASH || process.env.G2A_API_SECRET || '';
-  const email = process.env.G2A_EMAIL || 'Welcome@nalytoo.com';
+  const email = process.env.G2A_EMAIL || 'welcome@nalytoo.com';
   const env = (process.env.G2A_ENV as G2AEnvironment) || 'sandbox';
   const timeoutMs = Number(process.env.G2A_TIMEOUT_MS || 8000);
   const retryMax = Number(process.env.G2A_RETRY_MAX || 2);
@@ -142,7 +142,7 @@ export const getG2AConfigSync = (): G2AConfig => {
   }
 
   const baseUrl = normalizeG2AUrl(rawUrl);
-  if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://sandboxapi.g2a.com')) {
+  if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://api.g2a.com')) {
     throw new AppError('G2A_API_URL must use HTTPS', 500);
   }
 

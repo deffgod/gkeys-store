@@ -673,11 +673,19 @@ export const createG2AClient = async (
       headers.Authorization = `${G2A_API_HASH}, ${G2A_API_KEY}`;
       authMethod = 'Authorization header (sandbox)';
     } else {
-      // Production Export API (Developers API) uses Authorization header with generated API key
-      // Format: Authorization: "ClientId, ApiKey" where ApiKey = sha256(ClientId + Email + ClientSecret)
-      const exportApiKey = await generateExportApiKey();
-      headers.Authorization = `${G2A_API_KEY}, ${exportApiKey}`;
-      authMethod = 'Authorization header (Export API with generated key)';
+      // Production Export API uses hash-based authentication with X-API-* headers
+      // This is the same method used for getting OAuth2 tokens
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const hash = crypto
+        .createHash('sha256')
+        .update(G2A_API_HASH + G2A_API_KEY + timestamp)
+        .digest('hex');
+      
+      headers['X-API-HASH'] = G2A_API_HASH;
+      headers['X-API-KEY'] = G2A_API_KEY;
+      headers['X-G2A-Timestamp'] = timestamp;
+      headers['X-G2A-Hash'] = hash;
+      authMethod = 'Hash-based authentication (X-API-* headers)';
     }
   }
 
