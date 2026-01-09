@@ -21,6 +21,35 @@ import { loadG2AEnvVars } from '../src/lib/g2a/config/env.js';
 
 dotenv.config();
 
+// Handle Redis connection errors at process level to prevent crashes
+// This catches unhandled Redis errors that might occur during long-running sync operations
+process.on('uncaughtException', (error: any) => {
+  // Check if it's a Redis connection error
+  if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+    console.warn('⚠️  Redis connection error detected (non-fatal):', error.message);
+    console.warn('   Continuing without Redis cache...');
+    // Don't exit - let the script continue
+    return;
+  }
+  // For other errors, log and exit
+  console.error('❌ Uncaught exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections (Redis errors often come as rejections)
+process.on('unhandledRejection', (reason: any, promise) => {
+  // Check if it's a Redis connection error
+  if (reason?.code === 'ECONNRESET' || reason?.code === 'ECONNREFUSED' || reason?.code === 'ETIMEDOUT') {
+    console.warn('⚠️  Redis connection error in promise (non-fatal):', reason?.message || reason);
+    console.warn('   Continuing without Redis cache...');
+    // Don't exit - let the script continue
+    return;
+  }
+  // For other rejections, log and exit
+  console.error('❌ Unhandled rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw';
 const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS';
 const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com';
@@ -373,9 +402,34 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
 
 async function main() {
   const options = parseArgs();
+  
+  // Handle process termination gracefully
+  const cleanup = async () => {
+    console.log('\n\n⚠️  Process interrupted, cleaning up...');
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('uncaughtException', async (error) => {
+    console.error('\n❌ Uncaught exception:', error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
+  process.on('unhandledRejection', async (reason, promise) => {
+    console.error('\n❌ Unhandled rejection at:', promise, 'reason:', reason);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
+
   await syncAllGames(options);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
+  main().catch(async (error) => {
+    console.error('Fatal error:', error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
 }

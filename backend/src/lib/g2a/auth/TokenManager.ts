@@ -40,6 +40,25 @@ export class TokenManager {
 
     try {
       this.redis = createClient({ url: this.redisUrl }) as RedisClientType;
+      
+      // Handle Redis connection errors gracefully
+      this.redis.on('error', (err) => {
+        this.logger.warn('TokenManager: Redis connection error, falling back to in-memory cache', {
+          error: err.message,
+          code: (err as any).code,
+        });
+        // Mark Redis as unavailable but don't crash
+        // The code will automatically fall back to in-memory cache
+      });
+
+      this.redis.on('reconnecting', () => {
+        this.logger.info('TokenManager: Redis reconnecting...');
+      });
+
+      this.redis.on('ready', () => {
+        this.logger.info('TokenManager: Redis ready');
+      });
+
       await this.redis.connect();
       this.logger.info('TokenManager: Redis connected for token caching');
     } catch (error) {
@@ -74,8 +93,24 @@ export class TokenManager {
           });
           return parsed;
         }
-      } catch (error) {
-        this.logger.warn('Failed to get token from Redis', error);
+      } catch (error: any) {
+        // Handle connection errors gracefully - fall back to in-memory
+        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+          this.logger.warn('Redis connection lost, using in-memory cache', {
+            code: error.code,
+          });
+          // Mark Redis as unavailable
+          try {
+            if (this.redis?.isOpen) {
+              await this.redis.quit().catch(() => {});
+            }
+          } catch {
+            // Ignore errors when closing
+          }
+          this.redis = null;
+        } else {
+          this.logger.warn('Failed to get token from Redis', error);
+        }
       }
     }
 
@@ -102,8 +137,24 @@ export class TokenManager {
         const key = this.getCacheKey(env);
         await this.redis.setEx(key, ttlSeconds, JSON.stringify(token));
         this.logger.debug('Token stored in Redis cache', { ttlSeconds });
-      } catch (error) {
-        this.logger.warn('Failed to store token in Redis', error);
+      } catch (error: any) {
+        // Handle connection errors gracefully - fall back to in-memory only
+        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+          this.logger.warn('Redis connection lost, storing in in-memory cache only', {
+            code: error.code,
+          });
+          // Mark Redis as unavailable
+          try {
+            if (this.redis?.isOpen) {
+              await this.redis.quit().catch(() => {});
+            }
+          } catch {
+            // Ignore errors when closing
+          }
+          this.redis = null;
+        } else {
+          this.logger.warn('Failed to store token in Redis', error);
+        }
       }
     }
 
@@ -198,8 +249,24 @@ export class TokenManager {
         const key = this.getCacheKey(env);
         await this.redis.del(key);
         this.logger.info('Token invalidated from Redis cache');
-      } catch (error) {
-        this.logger.warn('Failed to invalidate token from Redis', error);
+      } catch (error: any) {
+        // Handle connection errors gracefully
+        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+          this.logger.warn('Redis connection lost during invalidation', {
+            code: error.code,
+          });
+          // Mark Redis as unavailable
+          try {
+            if (this.redis?.isOpen) {
+              await this.redis.quit().catch(() => {});
+            }
+          } catch {
+            // Ignore errors when closing
+          }
+          this.redis = null;
+        } else {
+          this.logger.warn('Failed to invalidate token from Redis', error);
+        }
       }
     }
 
@@ -213,8 +280,17 @@ export class TokenManager {
    */
   async close(): Promise<void> {
     if (this.redis?.isOpen) {
-      await this.redis.quit();
-      this.logger.info('TokenManager: Redis connection closed');
+      try {
+        await this.redis.quit();
+        this.logger.info('TokenManager: Redis connection closed');
+      } catch (error: any) {
+        // Ignore errors when closing (connection might already be closed)
+        this.logger.debug('TokenManager: Error closing Redis connection (ignored)', {
+          code: error?.code,
+        });
+      } finally {
+        this.redis = null;
+      }
     }
   }
 }

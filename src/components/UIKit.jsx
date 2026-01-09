@@ -1,7 +1,7 @@
 // UI-Kit: Core Components for GKEYS
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext, useRef, useEffect } from 'react';
 // Import centralized design tokens
-import { colors, spacing, borderRadius, breakpoints, typography } from '../styles/design-tokens';
+import { colors, spacing, borderRadius, breakpoints, typography, animations, shadows } from '../styles/design-tokens';
 import catalogIcon from '../assets/catalog.svg';
 import mediaIcon from '../assets/media.svg';
 import wishlistIcon from '../assets/wishlist.svg';
@@ -16,6 +16,8 @@ export const theme = {
   spacing,
   borderRadius,
   breakpoints,
+  animations,
+  shadows,
 };
 
 // ============ STYLES ============
@@ -67,6 +69,12 @@ const styles = `
   ::-webkit-scrollbar-thumb:hover {
     background: ${theme.colors.surfaceHover};
   }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 // Inject global styles
@@ -83,11 +91,15 @@ export const Button = ({
   size = 'md', 
   fullWidth = false,
   disabled = false,
+  loading = false,
   icon,
   onClick,
   className = '',
   ...props 
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
   const baseStyles = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -95,33 +107,42 @@ export const Button = ({
     gap: '8px',
     fontWeight: '600',
     borderRadius: theme.borderRadius.md,
-    transition: 'all 0.2s ease',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
+    transition: theme.animations.transitions.all,
+    cursor: (disabled || loading) ? 'not-allowed' : 'pointer',
+    opacity: (disabled || loading) ? 0.6 : 1,
     width: fullWidth ? '100%' : 'auto',
+    position: 'relative',
+    overflow: 'hidden',
+    transform: isHovered && !disabled && !loading ? 'translateY(-1px)' : 'translateY(0)',
+    boxShadow: isHovered && !disabled && !loading
+      ? (variant === 'primary' ? theme.shadows.glow : theme.shadows.sm)
+      : 'none',
   };
 
-  const variants = {
-    primary: {
-      backgroundColor: theme.colors.primary,
-      color: '#000000',
-      border: 'none',
-    },
-    secondary: {
-      backgroundColor: 'transparent',
-      color: theme.colors.text,
-      border: `1px solid ${theme.colors.border}`,
-    },
-    ghost: {
-      backgroundColor: 'transparent',
-      color: theme.colors.text,
-      border: 'none',
-    },
-    outline: {
-      backgroundColor: 'transparent',
-      color: theme.colors.primary,
-      border: `1px solid ${theme.colors.primary}`,
-    },
+  const getVariantStyles = () => {
+    const base = {
+      primary: {
+        backgroundColor: isHovered && !disabled ? theme.colors.accent : theme.colors.primary,
+        color: '#000000',
+        border: 'none',
+      },
+      secondary: {
+        backgroundColor: isHovered && !disabled ? theme.colors.surfaceHover : 'transparent',
+        color: theme.colors.text,
+        border: `1px solid ${isHovered && !disabled ? theme.colors.primary : theme.colors.border}`,
+      },
+      ghost: {
+        backgroundColor: isHovered && !disabled ? theme.colors.surfaceHover : 'transparent',
+        color: theme.colors.text,
+        border: 'none',
+      },
+      outline: {
+        backgroundColor: isHovered && !disabled ? `${theme.colors.primary}15` : 'transparent',
+        color: theme.colors.primary,
+        border: `1px solid ${theme.colors.primary}`,
+      },
+    };
+    return base[variant];
   };
 
   const sizes = {
@@ -130,16 +151,36 @@ export const Button = ({
     lg: { padding: '16px 32px', fontSize: '18px' },
   };
 
+  const focusRingStyle = isFocused && !disabled ? {
+    outline: `2px solid ${theme.colors.primary}`,
+    outlineOffset: '2px',
+  } : {};
+
   return (
     <button
-      style={{ ...baseStyles, ...variants[variant], ...sizes[size] }}
+      style={{ ...baseStyles, ...getVariantStyles(), ...sizes[size], ...focusRingStyle }}
       onClick={onClick}
       disabled={disabled}
       className={className}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       {...props}
     >
-      {icon && <span>{icon}</span>}
-      {children}
+      {loading && (
+        <span style={{ 
+          display: 'inline-block',
+          width: '16px',
+          height: '16px',
+          border: `2px solid ${variant === 'primary' ? '#000' : theme.colors.text}`,
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 0.6s linear infinite',
+        }} />
+      )}
+      {!loading && icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
+      {!loading && children}
     </button>
   );
 };
@@ -157,6 +198,9 @@ export const Input = ({
   className = '',
   ...props
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef(null);
+
   const containerStyle = {
     position: 'relative',
     width: fullWidth ? '100%' : 'auto',
@@ -173,31 +217,39 @@ export const Input = ({
   const inputStyle = {
     width: '100%',
     backgroundColor: theme.colors.surface,
-    border: `1px solid ${error ? theme.colors.error : theme.colors.border}`,
+    border: `1px solid ${error ? theme.colors.error : isFocused ? theme.colors.primary : theme.colors.border}`,
     borderRadius: theme.borderRadius.md,
     color: theme.colors.text,
     outline: 'none',
-    transition: 'border-color 0.2s ease',
+    transition: theme.animations.transitions.all,
     paddingLeft: icon ? '44px' : sizes[size].padding,
+    boxShadow: isFocused && !error 
+      ? `0 0 0 3px ${theme.colors.primary}20`
+      : 'none',
     ...sizes[size],
   };
 
   const iconStyle = {
     position: 'absolute',
     left: '16px',
-    color: theme.colors.textSecondary,
+    color: isFocused ? theme.colors.primary : theme.colors.textSecondary,
     pointerEvents: 'none',
+    transition: theme.animations.transitions.colors,
+    zIndex: 1,
   };
 
   return (
     <div style={containerStyle} className={className}>
       {icon && <span style={iconStyle}>{icon}</span>}
       <input
+        ref={inputRef}
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         style={inputStyle}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         {...props}
       />
     </div>
@@ -227,10 +279,15 @@ export const Card = ({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: paddings[padding],
-    transition: 'all 0.2s ease',
+    transition: theme.animations.transitions.all,
     cursor: onClick ? 'pointer' : 'default',
-    transform: hover && isHovered ? 'translateY(-4px)' : 'none',
-    boxShadow: hover && isHovered ? '0 8px 24px rgba(0, 200, 194, 0.1)' : 'none',
+    transform: hover && isHovered ? 'translateY(-4px) scale(1.01)' : 'scale(1)',
+    boxShadow: hover && isHovered 
+      ? theme.shadows.card
+      : 'none',
+    border: hover && isHovered 
+      ? `1px solid ${theme.colors.primary}40`
+      : `1px solid transparent`,
     ...style,
   };
 
@@ -266,8 +323,8 @@ export const GameCard = ({
     width: '100%',
     maxWidth: '200px',
     cursor: 'pointer',
-    transition: 'transform 0.2s ease',
-    transform: isHovered ? 'translateY(-4px)' : 'none',
+    transition: theme.animations.transitions.all,
+    transform: isHovered ? 'translateY(-6px) scale(1.02)' : 'translateY(0) scale(1)',
   };
 
   const imageContainerStyle = {
@@ -283,6 +340,8 @@ export const GameCard = ({
     width: '100%',
     height: '100%',
     objectFit: 'cover',
+    transition: theme.animations.transitions.all,
+    transform: isHovered ? 'scale(1.05)' : 'scale(1)',
   };
 
   const badgeContainerStyle = {
@@ -367,6 +426,8 @@ export const Badge = ({
   variant = 'primary',
   size = 'md',
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   const variants = {
     primary: { backgroundColor: theme.colors.primary, color: '#000' },
     secondary: { backgroundColor: theme.colors.surface, color: theme.colors.text },
@@ -387,11 +448,21 @@ export const Badge = ({
     justifyContent: 'center',
     borderRadius: theme.borderRadius.sm,
     fontWeight: '600',
+    transition: theme.animations.transitions.all,
+    transform: isHovered ? 'scale(1.05)' : 'scale(1)',
     ...variants[variant],
     ...sizes[size],
   };
 
-  return <span style={style}>{children}</span>;
+  return (
+    <span 
+      style={style}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {children}
+    </span>
+  );
 };
 
 // ============ ICON COMPONENTS ============
@@ -548,6 +619,52 @@ export const Grid = ({ children, columns = 4, gap = 'md', style = {} }) => {
   return <div style={gridStyle}>{children}</div>;
 };
 
+// ============ TOOLTIP COMPONENT ============
+export const Tooltip = ({ children, content, position = 'top' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const tooltipRef = useRef(null);
+
+  const positions = {
+    top: { bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px' },
+    bottom: { top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '8px' },
+    left: { right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: '8px' },
+    right: { left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: '8px' },
+  };
+
+  const tooltipStyle = {
+    position: 'absolute',
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    borderRadius: theme.borderRadius.sm,
+    fontSize: '12px',
+    whiteSpace: 'nowrap',
+    zIndex: 1000,
+    opacity: isVisible ? 1 : 0,
+    pointerEvents: 'none',
+    transition: theme.animations.transitions.opacity,
+    boxShadow: theme.shadows.md,
+    border: `1px solid ${theme.colors.border}`,
+    ...positions[position],
+  };
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+      ref={tooltipRef}
+    >
+      {children}
+      {content && (
+        <div style={tooltipStyle}>
+          {content}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ============ SECTION COMPONENT ============
 export const Section = ({ title, action, children }) => {
   const sectionStyle = {
@@ -571,13 +688,27 @@ export const Section = ({ title, action, children }) => {
     color: theme.colors.primary,
     fontSize: '14px',
     cursor: 'pointer',
+    transition: theme.animations.transitions.colors,
+    textDecoration: 'none',
+    ':hover': {
+      color: theme.colors.accent,
+    },
   };
 
   return (
     <section style={sectionStyle}>
       <div style={headerStyle}>
         <h2 style={titleStyle}>{title}</h2>
-        {action && <a href="#" style={actionStyle}>{action}</a>}
+        {action && (
+          <a 
+            href="#" 
+            style={actionStyle}
+            onMouseEnter={(e) => e.target.style.color = theme.colors.accent}
+            onMouseLeave={(e) => e.target.style.color = theme.colors.primary}
+          >
+            {action}
+          </a>
+        )}
       </div>
       {children}
     </section>
@@ -595,5 +726,6 @@ export default {
   Container,
   Grid,
   Section,
+  Tooltip,
 };
 

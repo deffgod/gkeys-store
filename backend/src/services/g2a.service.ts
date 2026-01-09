@@ -17,7 +17,7 @@ const {
   timeoutMs: G2A_TIMEOUT_MS,
   retryMax: G2A_RETRY_MAX,
 } = getG2AConfigSync();
-const G2A_API_URL_RAW = process.env.G2A_API_URL || 'https://api.g2a.com/integration-api/v1';
+const G2A_API_URL_RAW = process.env.G2A_API_URL || 'https://api.g2a.com/v1';
 
 const MARKUP_PERCENTAGE = 2; // 2% markup on G2A prices
 

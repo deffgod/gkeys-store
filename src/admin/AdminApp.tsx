@@ -27,6 +27,7 @@ import PromoCodesPage from './pages/PromoCodesPage';
 import GameKeysPage from './pages/GameKeysPage';
 import G2ALiveSyncPage from './pages/G2ALiveSyncPage';
 import G2AScriptsPage from './pages/G2AScriptsPage';
+import MenuSettingsPage from './pages/MenuSettingsPage';
 
 const AdminApp: React.FC = () => {
   return (
@@ -58,6 +59,7 @@ const AdminApp: React.FC = () => {
         <Route path="email-settings" element={<EmailSettingsPage />} />
         <Route path="promo-codes" element={<PromoCodesPage />} />
         <Route path="game-keys" element={<GameKeysPage />} />
+        <Route path="menu-settings" element={<MenuSettingsPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
     </Routes>

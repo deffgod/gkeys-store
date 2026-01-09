@@ -101,7 +101,7 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
   // Warn if G2A_EMAIL is not set and not using DB settings
   if (!dbSettings && !process.env.G2A_EMAIL) {
     console.warn(
-      '[G2A Config] WARNING: G2A_EMAIL is not set. Using default "Welcome@nalytoo.com" for Export API key generation. Consider configuring G2A settings in admin panel.'
+      '[G2A Config] WARNING: G2A_EMAIL is not set. Using default "welcome@nalytoo.com" for Export API key generation. Consider configuring G2A settings in admin panel.'
     );
   }
 

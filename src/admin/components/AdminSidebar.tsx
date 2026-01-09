@@ -42,7 +42,8 @@ const Icons = {
   Home: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
 };
 
-const menuItems = [
+// Базовые пункты меню (используются как fallback)
+const defaultMenuItems = [
   { id: 'dashboard', label: 'Dashboard', path: '/admin', icon: Icons.Dashboard },
   { id: 'games', label: 'Games', path: '/admin/games', icon: Icons.Games },
   { id: 'users', label: 'Users', path: '/admin/users', icon: Icons.Users },
@@ -69,7 +70,34 @@ const menuItems = [
   { id: 'email-settings', label: 'Email Settings', path: '/admin/email-settings', icon: Icons.Email },
   { id: 'promo-codes', label: 'Promo Codes', path: '/admin/promo-codes', icon: Icons.PromoCode },
   { id: 'game-keys', label: 'Game Keys', path: '/admin/game-keys', icon: Icons.GameKeys },
+  { id: 'menu-settings', label: 'Menu Settings', path: '/admin/menu-settings', icon: Icons.Settings },
 ];
+
+// Функция для загрузки настроек меню
+const getMenuItems = () => {
+  try {
+    const saved = localStorage.getItem('adminMenuSettings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Создаем мапу для быстрого доступа к иконкам
+      const iconMap = new Map(defaultMenuItems.map(item => [item.id, item.icon]));
+      
+      // Объединяем сохраненные настройки с иконками из defaultMenuItems
+      const itemsWithIcons = parsed
+        .filter((item: any) => item.visible)
+        .sort((a: any, b: any) => a.order - b.order)
+        .map((item: any) => ({
+          ...item,
+          icon: iconMap.get(item.id) || Icons.Dashboard,
+        }));
+      
+      return itemsWithIcons.length > 0 ? itemsWithIcons : defaultMenuItems;
+    }
+  } catch (e) {
+    console.error('Failed to load menu settings:', e);
+  }
+  return defaultMenuItems;
+};
 
 interface AdminSidebarProps {
   isMobile?: boolean;
@@ -83,6 +111,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onClose 
 }) => {
   const location = useLocation();
+  const menuItems = getMenuItems();
 
   const isActive = (path: string) => {
     if (path === '/admin') {
