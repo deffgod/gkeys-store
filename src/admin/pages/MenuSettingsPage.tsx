@@ -21,6 +21,7 @@ interface MenuItem {
   path: string;
   visible: boolean;
   order: number;
+  children?: MenuItem[];
 }
 
 const MenuSettingsPage: React.FC = () => {
@@ -60,13 +61,19 @@ const MenuSettingsPage: React.FC = () => {
       { id: 'carts', label: 'Carts', path: '/admin/carts', visible: true, order: 7 },
       { id: 'wishlists', label: 'Wishlists', path: '/admin/wishlists', visible: true, order: 8 },
       { id: 'faqs', label: 'FAQs', path: '/admin/faqs', visible: true, order: 9 },
-      { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', visible: true, order: 10 },
-      { id: 'g2a-live-sync', label: 'G2A Live Sync', path: '/admin/g2a/live-sync', visible: true, order: 11 },
-      { id: 'g2a-scripts', label: 'G2A Scripts', path: '/admin/g2a/scripts', visible: true, order: 12 },
-      { id: 'g2a-offers', label: 'G2A Offers', path: '/admin/g2a/offers', visible: true, order: 13 },
-      { id: 'g2a-reservations', label: 'G2A Reservations', path: '/admin/g2a/reservations', visible: true, order: 14 },
-      { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', visible: true, order: 15 },
-      { id: 'g2a-key-manager', label: 'G2A Key Manager', path: '/admin/g2a/key-manager', visible: true, order: 16 },
+      {
+        id: 'g2a-group',
+        label: 'G2A',
+        path: '/admin/g2a',
+        visible: true,
+        order: 10,
+        children: [
+          { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', visible: true, order: 0 },
+          { id: 'g2a-live-sync', label: 'G2A Live Sync', path: '/admin/g2a/live-sync', visible: true, order: 1 },
+          { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', visible: true, order: 2 },
+          { id: 'g2a-key-manager', label: 'G2A Key Manager', path: '/admin/g2a/key-manager', visible: true, order: 3 },
+        ],
+      },
       { id: 'cache', label: 'Cache', path: '/admin/cache', visible: true, order: 17 },
       { id: 'categories', label: 'Categories', path: '/admin/categories', visible: true, order: 18 },
       { id: 'genres', label: 'Genres', path: '/admin/genres', visible: true, order: 19 },
@@ -89,11 +96,19 @@ const MenuSettingsPage: React.FC = () => {
     window.location.reload();
   };
 
-  const toggleVisibility = (id: string) => {
+  const toggleVisibility = (id: string, parentId?: string) => {
     setMenuItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, visible: !item.visible } : item
-      )
+      items.map(item => {
+        if (parentId && item.id === parentId && item.children) {
+          return {
+            ...item,
+            children: item.children.map(child =>
+              child.id === id ? { ...child, visible: !child.visible } : child
+            ),
+          };
+        }
+        return item.id === id ? { ...item, visible: !item.visible } : item;
+      })
     );
   };
 
@@ -312,39 +327,72 @@ const MenuSettingsPage: React.FC = () => {
         ) : (
           sortedItems.map((item, index) => {
             const isDragging = draggedItem === item.id;
+            const hasChildren = item.children && item.children.length > 0;
+            
             return (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item.id)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, item.id)}
-                onDragEnd={handleDragEnd}
-                style={styles.item(isDragging, false)}
-              >
-                <div style={styles.dragHandle}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="9" cy="5" r="1"/>
-                    <circle cx="9" cy="12" r="1"/>
-                    <circle cx="9" cy="19" r="1"/>
-                    <circle cx="15" cy="5" r="1"/>
-                    <circle cx="15" cy="12" r="1"/>
-                    <circle cx="15" cy="19" r="1"/>
-                  </svg>
-                </div>
-                <div style={styles.itemInfo}>
-                  <div style={styles.itemLabel}>{item.label}</div>
-                  <div style={styles.itemPath}>{item.path}</div>
-                </div>
+              <div key={item.id}>
                 <div
-                  style={{
-                    ...styles.toggle,
-                    ...(item.visible ? styles.toggleActive : {}),
-                  }}
-                  onClick={() => toggleVisibility(item.id)}
+                  draggable={!hasChildren}
+                  onDragStart={!hasChildren ? (e) => handleDragStart(e, item.id) : undefined}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, item.id)}
+                  onDragEnd={handleDragEnd}
+                  style={styles.item(isDragging, false)}
                 >
-                  <div style={styles.toggleThumb(item.visible)} />
+                  <div style={styles.dragHandle}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="9" cy="5" r="1"/>
+                      <circle cx="9" cy="12" r="1"/>
+                      <circle cx="9" cy="19" r="1"/>
+                      <circle cx="15" cy="5" r="1"/>
+                      <circle cx="15" cy="12" r="1"/>
+                      <circle cx="15" cy="19" r="1"/>
+                    </svg>
+                  </div>
+                  <div style={styles.itemInfo}>
+                    <div style={styles.itemLabel}>
+                      {item.label}
+                      {hasChildren && <span style={{ color: theme.colors.textSecondary, fontSize: '12px', marginLeft: '8px' }}>({item.children.length} items)</span>}
+                    </div>
+                    <div style={styles.itemPath}>{item.path}</div>
+                  </div>
+                  <div
+                    style={{
+                      ...styles.toggle,
+                      ...(item.visible ? styles.toggleActive : {}),
+                    }}
+                    onClick={() => toggleVisibility(item.id)}
+                  >
+                    <div style={styles.toggleThumb(item.visible)} />
+                  </div>
                 </div>
+                {hasChildren && item.visible && (
+                  <div style={{ marginLeft: '32px', borderLeft: `2px solid ${theme.colors.border}`, paddingLeft: '16px' }}>
+                    {item.children.map((child) => (
+                      <div
+                        key={child.id}
+                        style={{
+                          ...styles.item(false, false),
+                          paddingLeft: spacing.md,
+                        }}
+                      >
+                        <div style={styles.itemInfo}>
+                          <div style={styles.itemLabel}>{child.label}</div>
+                          <div style={styles.itemPath}>{child.path}</div>
+                        </div>
+                        <div
+                          style={{
+                            ...styles.toggle,
+                            ...(child.visible ? styles.toggleActive : {}),
+                          }}
+                          onClick={() => toggleVisibility(child.id, item.id)}
+                        >
+                          <div style={styles.toggleThumb(child.visible)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })

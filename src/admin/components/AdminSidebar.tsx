@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const theme = {
@@ -54,13 +54,18 @@ const defaultMenuItems = [
   { id: 'carts', label: 'Carts', path: '/admin/carts', icon: Icons.Cart },
   { id: 'wishlists', label: 'Wishlists', path: '/admin/wishlists', icon: Icons.Wishlist },
   { id: 'faqs', label: 'FAQs', path: '/admin/faqs', icon: Icons.FAQ },
-  { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', icon: Icons.Sync },
-  { id: 'g2a-live-sync', label: 'G2A Live Sync', path: '/admin/g2a/live-sync', icon: Icons.Sync },
-  { id: 'g2a-scripts', label: 'G2A Scripts', path: '/admin/g2a/scripts', icon: Icons.Sync },
-  { id: 'g2a-offers', label: 'G2A Offers', path: '/admin/g2a/offers', icon: Icons.G2AOffers },
-  { id: 'g2a-reservations', label: 'G2A Reservations', path: '/admin/g2a/reservations', icon: Icons.G2AReservations },
-  { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', icon: Icons.G2AEnvSetup },
-  { id: 'g2a-key-manager', label: 'G2A Key Manager', path: '/admin/g2a/key-manager', icon: Icons.G2AEnvSetup },
+  {
+    id: 'g2a-group',
+    label: 'G2A',
+    path: '/admin/g2a',
+    icon: Icons.Sync,
+    children: [
+      { id: 'g2a', label: 'G2A Sync', path: '/admin/g2a', icon: Icons.Sync },
+      { id: 'g2a-live-sync', label: 'G2A Live Sync', path: '/admin/g2a/live-sync', icon: Icons.Sync },
+      { id: 'g2a-env-setup', label: 'G2A Env Setup', path: '/admin/g2a/env-setup', icon: Icons.G2AEnvSetup },
+      { id: 'g2a-key-manager', label: 'G2A Key Manager', path: '/admin/g2a/key-manager', icon: Icons.G2AEnvSetup },
+    ],
+  },
   { id: 'cache', label: 'Cache', path: '/admin/cache', icon: Icons.Cache },
   { id: 'categories', label: 'Categories', path: '/admin/categories', icon: Icons.Categories },
   { id: 'genres', label: 'Genres', path: '/admin/genres', icon: Icons.Genres },
@@ -79,17 +84,32 @@ const getMenuItems = () => {
     const saved = localStorage.getItem('adminMenuSettings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Создаем мапу для быстрого доступа к иконкам
-      const iconMap = new Map(defaultMenuItems.map(item => [item.id, item.icon]));
+      // Создаем мапу для быстрого доступа к иконкам и children
+      const itemMap = new Map(defaultMenuItems.map(item => {
+        if ('children' in item) {
+          return [item.id, { icon: item.icon, children: item.children }];
+        }
+        return [item.id, { icon: item.icon }];
+      }));
       
-      // Объединяем сохраненные настройки с иконками из defaultMenuItems
+      // Объединяем сохраненные настройки с иконками и children из defaultMenuItems
       const itemsWithIcons = parsed
         .filter((item: any) => item.visible)
         .sort((a: any, b: any) => a.order - b.order)
-        .map((item: any) => ({
-          ...item,
-          icon: iconMap.get(item.id) || Icons.Dashboard,
-        }));
+        .map((item: any) => {
+          const defaultItem = itemMap.get(item.id);
+          if (defaultItem && 'children' in defaultItem) {
+            return {
+              ...item,
+              icon: defaultItem.icon,
+              children: defaultItem.children,
+            };
+          }
+          return {
+            ...item,
+            icon: defaultItem?.icon || Icons.Dashboard,
+          };
+        });
       
       return itemsWithIcons.length > 0 ? itemsWithIcons : defaultMenuItems;
     }
@@ -112,12 +132,25 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 }) => {
   const location = useLocation();
   const menuItems = getMenuItems();
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['g2a-group']));
 
   const isActive = (path: string) => {
     if (path === '/admin') {
       return location.pathname === '/admin';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId);
+      } else {
+        newSet.add(groupId);
+      }
+      return newSet;
+    });
   };
 
   // Close sidebar on mobile when navigating
@@ -182,7 +215,53 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       transition: 'all 0.2s ease',
       minHeight: '48px', // Minimum touch target size for mobile
       WebkitTapHighlightColor: 'transparent',
+      cursor: 'pointer',
     }),
+    navGroup: (active: boolean, expanded: boolean) => ({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '14px 16px',
+      borderRadius: '8px',
+      color: active ? theme.colors.text : theme.colors.textSecondary,
+      backgroundColor: active ? theme.colors.surfaceLight : 'transparent',
+      fontSize: '14px',
+      fontWeight: active ? '600' : '400',
+      marginBottom: '4px',
+      transition: 'all 0.2s ease',
+      minHeight: '48px',
+      cursor: 'pointer',
+      userSelect: 'none' as const,
+    }),
+    navSubItem: (active: boolean) => ({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '12px 16px 12px 44px',
+      borderRadius: '8px',
+      color: active ? theme.colors.text : theme.colors.textSecondary,
+      backgroundColor: active ? theme.colors.surfaceLight : 'transparent',
+      textDecoration: 'none',
+      fontSize: '13px',
+      fontWeight: active ? '600' : '400',
+      marginBottom: '2px',
+      transition: 'all 0.2s ease',
+      minHeight: '44px',
+      WebkitTapHighlightColor: 'transparent',
+    }),
+    subMenu: {
+      marginLeft: '12px',
+      borderLeft: `2px solid ${theme.colors.border}`,
+      paddingLeft: '8px',
+    },
+    chevron: {
+      marginLeft: 'auto',
+      transition: 'transform 0.2s ease',
+      transform: 'rotate(0deg)',
+    },
+    chevronExpanded: {
+      transform: 'rotate(90deg)',
+    },
     footer: {
       padding: '16px 12px',
       borderTop: `1px solid ${theme.colors.border}`,
@@ -212,17 +291,68 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       </div>
 
       <nav style={styles.nav}>
-        {menuItems.map((item) => (
-          <Link
-            key={item.id}
-            to={item.path}
-            style={styles.navItem(isActive(item.path))}
-            onClick={handleLinkClick}
-          >
-            <item.icon />
-            {item.label}
-          </Link>
-        ))}
+        {menuItems.map((item: any) => {
+          // Check if item has children (is a group)
+          if (item.children && Array.isArray(item.children)) {
+            const isExpanded = expandedGroups.has(item.id);
+            const hasActiveChild = item.children.some((child: any) => isActive(child.path));
+            const isGroupActive = isActive(item.path) || hasActiveChild;
+
+            return (
+              <div key={item.id}>
+                <div
+                  style={styles.navGroup(isGroupActive, isExpanded)}
+                  onClick={() => toggleGroup(item.id)}
+                >
+                  <item.icon />
+                  {item.label}
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{
+                      ...styles.chevron,
+                      ...(isExpanded ? styles.chevronExpanded : {}),
+                    }}
+                  >
+                    <polyline points="4 2 8 6 4 10" />
+                  </svg>
+                </div>
+                {isExpanded && (
+                  <div style={styles.subMenu}>
+                    {item.children.map((child: any) => (
+                      <Link
+                        key={child.id}
+                        to={child.path}
+                        style={styles.navSubItem(isActive(child.path))}
+                        onClick={handleLinkClick}
+                      >
+                        <child.icon />
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Regular menu item
+          return (
+            <Link
+              key={item.id}
+              to={item.path}
+              style={styles.navItem(isActive(item.path))}
+              onClick={handleLinkClick}
+            >
+              <item.icon />
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div style={styles.footer}>
