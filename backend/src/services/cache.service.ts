@@ -149,7 +149,7 @@ export const invalidateCache = async (pattern: string, tags?: string[]): Promise
     } else {
       console.warn(`[Cache] Redis not available, skipping invalidation for pattern: ${pattern}`);
     }
-    
+
     // Invalidate Accelerate cache if tags provided
     if (tags && tags.length > 0) {
       await invalidateAccelerateCache(tags);

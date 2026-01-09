@@ -17,7 +17,7 @@ export interface EmailTemplate {
 
 // Template metadata
 const TEMPLATE_METADATA: Record<string, Omit<EmailTemplate, 'content'>> = {
-  'registration': {
+  registration: {
     name: 'Registration',
     filename: 'registration.html',
     description: 'Welcome email sent to new users after registration',
@@ -84,7 +84,7 @@ export const getEmailTemplates = async (): Promise<(EmailTemplate & { content: s
     try {
       const filePath = path.join(templatesDir, metadata.filename);
       const content = await fs.readFile(filePath, 'utf-8');
-      
+
       templates.push({
         ...metadata,
         content,
@@ -97,7 +97,9 @@ export const getEmailTemplates = async (): Promise<(EmailTemplate & { content: s
   return templates;
 };
 
-export const getEmailTemplate = async (templateName: string): Promise<(EmailTemplate & { content: string }) | null> => {
+export const getEmailTemplate = async (
+  templateName: string
+): Promise<(EmailTemplate & { content: string }) | null> => {
   const metadata = TEMPLATE_METADATA[templateName];
   if (!metadata) {
     return null;

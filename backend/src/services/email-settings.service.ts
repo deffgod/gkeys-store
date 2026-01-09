@@ -76,9 +76,7 @@ export async function getEmailSettingsById(id: string): Promise<EmailSettingsRes
 /**
  * Create or update email settings
  */
-export async function upsertEmailSettings(
-  data: EmailSettingsData
-): Promise<EmailSettingsResponse> {
+export async function upsertEmailSettings(data: EmailSettingsData): Promise<EmailSettingsResponse> {
   const name = data.name || 'default';
 
   // Deactivate all existing settings if this one should be active

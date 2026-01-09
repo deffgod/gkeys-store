@@ -63,22 +63,23 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
     dbSettings = await getG2ASettings();
   } catch (error) {
     // Database might not be available, fallback to env vars
-    console.debug('[G2A Config] Could not load settings from database, using environment variables');
+    console.debug(
+      '[G2A Config] Could not load settings from database, using environment variables'
+    );
   }
 
   // Use database settings if available, otherwise fallback to environment variables
   const apiKey = dbSettings?.clientId || process.env.G2A_API_KEY || '';
-  const apiHash = dbSettings?.clientSecret || process.env.G2A_API_HASH || process.env.G2A_API_SECRET || '';
+  const apiHash =
+    dbSettings?.clientSecret || process.env.G2A_API_HASH || process.env.G2A_API_SECRET || '';
   const email = dbSettings?.email || process.env.G2A_EMAIL || 'Welcome@nalytoo.com';
   const envFromDb = dbSettings?.environment === 'production' ? 'live' : 'sandbox';
   const env = (process.env.G2A_ENV as G2AEnvironment) || envFromDb || 'sandbox';
-  
+
   // Determine base URL based on environment
   let rawUrl = process.env.G2A_API_URL;
   if (!rawUrl) {
-    rawUrl = env === 'sandbox' 
-      ? 'https://sandboxapi.g2a.com/v1'
-      : 'https://api.g2a.com/v1';
+    rawUrl = env === 'sandbox' ? 'https://sandboxapi.g2a.com/v1' : 'https://api.g2a.com/v1';
   }
 
   const timeoutMs = Number(process.env.G2A_TIMEOUT_MS || 8000);

@@ -21,6 +21,7 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
+
 interface SyncOptions {
   dryRun: boolean;
   limit?: number;

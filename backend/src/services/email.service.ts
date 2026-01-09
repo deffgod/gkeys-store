@@ -18,7 +18,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@gkeys.store';
 // Create transporter from settings
 const createTransporter = async (): Promise<Transporter> => {
   const settings = await getActiveEmailSettings();
-  
+
   if (settings) {
     return nodemailer.createTransport({
       host: settings.host,
@@ -30,7 +30,7 @@ const createTransporter = async (): Promise<Transporter> => {
       },
     });
   }
-  
+
   // Fallback to env vars
   return nodemailer.createTransport({
     host: EMAIL_HOST,
@@ -47,9 +47,7 @@ const createTransporter = async (): Promise<Transporter> => {
 const getFromEmail = async (): Promise<string> => {
   const settings = await getActiveEmailSettings();
   if (settings) {
-    return settings.fromName 
-      ? `${settings.fromName} <${settings.fromEmail}>`
-      : settings.fromEmail;
+    return settings.fromName ? `${settings.fromName} <${settings.fromEmail}>` : settings.fromEmail;
   }
   return EMAIL_FROM;
 };
@@ -214,7 +212,7 @@ export const sendTestEmail = async (
 ): Promise<void> => {
   const { getEmailTemplate } = await import('./email-template.service.js');
   const template = await getEmailTemplate(templateName);
-  
+
   if (!template) {
     throw new Error(`Template ${templateName} not found`);
   }
@@ -253,7 +251,7 @@ export const sendBulkEmails = async (
 ): Promise<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
   const { getEmailTemplate } = await import('./email-template.service.js');
   const template = await getEmailTemplate(templateName);
-  
+
   if (!template) {
     throw new Error(`Template ${templateName} not found`);
   }
@@ -280,7 +278,7 @@ export const sendBulkEmails = async (
   // Send in batches to avoid overwhelming the SMTP server
   for (let i = 0; i < emails.length; i += batchSize) {
     const batch = emails.slice(i, i + batchSize);
-    
+
     await Promise.all(
       batch.map(async (email) => {
         try {
@@ -303,7 +301,7 @@ export const sendBulkEmails = async (
 
     // Small delay between batches
     if (i + batchSize < emails.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 

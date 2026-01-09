@@ -8,9 +8,11 @@ function validateDependencies() {
   if (!redisClient) {
     console.warn('⚠️  Redis client not initialized, session middleware will work without Redis');
   }
-  
+
   if (!prisma) {
-    console.warn('⚠️  Prisma client not initialized, session middleware will work without database');
+    console.warn(
+      '⚠️  Prisma client not initialized, session middleware will work without database'
+    );
   }
 }
 
@@ -26,7 +28,7 @@ export const sessionMiddleware = async (req: SessionRequest, res: Response, next
   try {
     // Validate dependencies on first use
     validateDependencies();
-    
+
     // Always try to get/create session for guest users
     // Even authenticated users might need session for cart/wishlist migration
 

@@ -10,16 +10,14 @@ function createPrismaClient() {
   const isProduction = process.env.NODE_ENV === 'production';
   const hasDirectUrl = !!process.env.DIRECT_URL;
   const databaseUrl = process.env.DATABASE_URL || '';
-  const hasPrismaAccelerate = databaseUrl.startsWith('prisma://') || databaseUrl.startsWith('prisma+postgres://');
+  const hasPrismaAccelerate =
+    databaseUrl.startsWith('prisma://') || databaseUrl.startsWith('prisma+postgres://');
 
   // Use direct connection if:
   // 1. We're on Vercel (serverless)
   // 2. DIRECT_URL is explicitly provided (bypasses Accelerate)
   // 3. FORCE_DIRECT_DB is set
-  const useDirectConnection =
-    isVercel ||
-    hasDirectUrl ||
-    process.env.FORCE_DIRECT_DB === 'true';
+  const useDirectConnection = isVercel || hasDirectUrl || process.env.FORCE_DIRECT_DB === 'true';
 
   const dbUrl = process.env.DIRECT_URL || databaseUrl;
 

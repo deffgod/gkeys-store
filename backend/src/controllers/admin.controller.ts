@@ -1493,7 +1493,11 @@ export const deleteTagController = async (req: AuthRequest, res: Response, next:
 };
 
 // Email Templates
-export const getEmailTemplatesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getEmailTemplatesController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const templates = await getEmailTemplates();
     res.status(200).json({
@@ -1505,11 +1509,15 @@ export const getEmailTemplatesController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const getEmailTemplateController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getEmailTemplateController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { name } = req.params;
     const template = await getEmailTemplate(name);
-    
+
     if (!template) {
       return res.status(404).json({
         success: false,
@@ -1526,7 +1534,11 @@ export const getEmailTemplateController = async (req: AuthRequest, res: Response
   }
 };
 
-export const updateEmailTemplateController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateEmailTemplateController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { name } = req.params;
     const { content } = req.body;
@@ -1548,7 +1560,11 @@ export const updateEmailTemplateController = async (req: AuthRequest, res: Respo
   }
 };
 
-export const getEmailTemplateMetadataController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getEmailTemplateMetadataController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const metadata = getTemplateMetadata();
     res.json({ success: true, data: metadata });
@@ -1557,7 +1573,11 @@ export const getEmailTemplateMetadataController = async (req: AuthRequest, res: 
   }
 };
 
-export const sendTestEmailController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const sendTestEmailController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { name } = req.params;
     const { email, variables } = req.body;
@@ -1582,16 +1602,21 @@ export const sendTestEmailController = async (req: AuthRequest, res: Response, n
 };
 
 // Email Settings Controllers
-export const getEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getEmailSettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const { getActiveEmailSettings, getAllEmailSettings } = await import('../services/email-settings.service.js');
+    const { getActiveEmailSettings, getAllEmailSettings } =
+      await import('../services/email-settings.service.js');
     const activeOnly = req.query.activeOnly === 'true';
-    
+
     if (activeOnly) {
       const settings = await getActiveEmailSettings();
       return res.json({ success: true, data: settings });
     }
-    
+
     const settings = await getAllEmailSettings();
     res.json({ success: true, data: settings });
   } catch (error) {
@@ -1599,26 +1624,34 @@ export const getEmailSettingsController = async (req: AuthRequest, res: Response
   }
 };
 
-export const getEmailSettingsByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getEmailSettingsByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const { getEmailSettingsById } = await import('../services/email-settings.service.js');
     const settings = await getEmailSettingsById(id);
-    
+
     if (!settings) {
       return res.status(404).json({
         success: false,
         message: 'Email settings not found',
       });
     }
-    
+
     res.json({ success: true, data: settings });
   } catch (error) {
     next(error);
   }
 };
 
-export const upsertEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const upsertEmailSettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { upsertEmailSettings } = await import('../services/email-settings.service.js');
     const settings = await upsertEmailSettings(req.body);
@@ -1628,7 +1661,11 @@ export const upsertEmailSettingsController = async (req: AuthRequest, res: Respo
   }
 };
 
-export const updateEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateEmailSettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const { updateEmailSettings } = await import('../services/email-settings.service.js');
@@ -1639,7 +1676,11 @@ export const updateEmailSettingsController = async (req: AuthRequest, res: Respo
   }
 };
 
-export const deleteEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const deleteEmailSettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const { deleteEmailSettings } = await import('../services/email-settings.service.js');
@@ -1650,21 +1691,26 @@ export const deleteEmailSettingsController = async (req: AuthRequest, res: Respo
   }
 };
 
-export const testEmailSettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const testEmailSettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
-    const { getEmailSettingsById, testEmailSettings } = await import('../services/email-settings.service.js');
+    const { getEmailSettingsById, testEmailSettings } =
+      await import('../services/email-settings.service.js');
     const settings = await getEmailSettingsById(id);
-    
+
     if (!settings) {
       return res.status(404).json({
         success: false,
         message: 'Email settings not found',
       });
     }
-    
+
     const isValid = await testEmailSettings(settings);
-    
+
     if (isValid) {
       res.json({ success: true, message: 'Email settings test successful' });
     } else {
@@ -1681,7 +1727,11 @@ export const testEmailSettingsController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const sendBulkEmailsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const sendBulkEmailsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { templateName, emails, variables, batchSize } = req.body;
 
@@ -1706,7 +1756,11 @@ export const sendBulkEmailsController = async (req: AuthRequest, res: Response, 
 };
 
 // G2A Settings Controllers
-export const getG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getG2ASettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const settings = await getG2ASettings();
     res.json({ success: true, data: settings });
@@ -1715,7 +1769,11 @@ export const getG2ASettingsController = async (req: AuthRequest, res: Response, 
   }
 };
 
-export const getAllG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAllG2ASettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const settings = await getAllG2ASettings();
     res.json({ success: true, data: settings });
@@ -1724,7 +1782,11 @@ export const getAllG2ASettingsController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const generateG2AApiKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const generateG2AApiKeyController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { clientId, email, clientSecret } = req.body;
 
@@ -1742,7 +1804,11 @@ export const generateG2AApiKeyController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const upsertG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const upsertG2ASettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { clientId, email, clientSecret, apiKey, environment, isActive } = req.body;
 
@@ -1768,7 +1834,11 @@ export const upsertG2ASettingsController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const updateG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateG2ASettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const { clientId, email, clientSecret, apiKey, environment, isActive } = req.body;
@@ -1788,15 +1858,19 @@ export const updateG2ASettingsController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const getG2ATokenController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getG2ATokenController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
-    
+
     // Get settings by ID or use active settings
     let settings;
     if (id) {
       const allSettings = await getAllG2ASettings();
-      settings = allSettings.find(s => s.id === id);
+      settings = allSettings.find((s) => s.id === id);
       if (!settings) {
         return res.status(404).json({
           success: false,
@@ -1814,20 +1888,24 @@ export const getG2ATokenController = async (req: AuthRequest, res: Response, nex
     }
 
     const tokenResponse = await getG2AToken(settings);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: {
         ...tokenResponse,
         environment: settings.environment,
         expiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString(),
-      }
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-export const deleteG2ASettingsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const deleteG2ASettingsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     await deleteG2ASettings(id);
@@ -1838,7 +1916,11 @@ export const deleteG2ASettingsController = async (req: AuthRequest, res: Respons
 };
 
 // Promo Codes Controllers
-export const getAllPromoCodesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAllPromoCodesController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const promoCodes = await getAllPromoCodes();
     res.json({ success: true, data: promoCodes });
@@ -1847,25 +1929,33 @@ export const getAllPromoCodesController = async (req: AuthRequest, res: Response
   }
 };
 
-export const getPromoCodeByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getPromoCodeByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const promoCode = await getPromoCodeById(id);
-    
+
     if (!promoCode) {
       return res.status(404).json({
         success: false,
         message: 'Promo code not found',
       });
     }
-    
+
     res.json({ success: true, data: promoCode });
   } catch (error) {
     next(error);
   }
 };
 
-export const createPromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const createPromoCodeController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const promoCode = await createPromoCode(req.body);
     res.status(201).json({ success: true, data: promoCode });
@@ -1874,7 +1964,11 @@ export const createPromoCodeController = async (req: AuthRequest, res: Response,
   }
 };
 
-export const updatePromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updatePromoCodeController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const promoCode = await updatePromoCode(id, req.body);
@@ -1884,7 +1978,11 @@ export const updatePromoCodeController = async (req: AuthRequest, res: Response,
   }
 };
 
-export const deletePromoCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const deletePromoCodeController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     await deletePromoCode(id);
@@ -1894,7 +1992,11 @@ export const deletePromoCodeController = async (req: AuthRequest, res: Response,
   }
 };
 
-export const getPromoCodeStatisticsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getPromoCodeStatisticsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const statistics = await getPromoCodeStatistics();
     res.json({ success: true, data: statistics });
@@ -1904,14 +2006,19 @@ export const getPromoCodeStatisticsController = async (req: AuthRequest, res: Re
 };
 
 // Game Keys Controllers
-export const getAllGameKeysController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAllGameKeysController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 50;
     const filters = {
       gameId: req.query.gameId as string | undefined,
       orderId: req.query.orderId as string | undefined,
-      activated: req.query.activated === 'true' ? true : req.query.activated === 'false' ? false : undefined,
+      activated:
+        req.query.activated === 'true' ? true : req.query.activated === 'false' ? false : undefined,
       search: req.query.search as string | undefined,
     };
     const result = await getAllGameKeys(page, pageSize, filters);
@@ -1921,25 +2028,33 @@ export const getAllGameKeysController = async (req: AuthRequest, res: Response, 
   }
 };
 
-export const getGameKeyByIdController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getGameKeyByIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const gameKey = await getGameKeyById(id);
-    
+
     if (!gameKey) {
       return res.status(404).json({
         success: false,
         message: 'Game key not found',
       });
     }
-    
+
     res.json({ success: true, data: gameKey });
   } catch (error) {
     next(error);
   }
 };
 
-export const createGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const createGameKeyController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const gameKey = await createGameKey(req.body);
     res.status(201).json({ success: true, data: gameKey });
@@ -1948,7 +2063,11 @@ export const createGameKeyController = async (req: AuthRequest, res: Response, n
   }
 };
 
-export const updateGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateGameKeyController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     const gameKey = await updateGameKey(id, req.body);
@@ -1958,7 +2077,11 @@ export const updateGameKeyController = async (req: AuthRequest, res: Response, n
   }
 };
 
-export const deleteGameKeyController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const deleteGameKeyController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
     await deleteGameKey(id);
@@ -1968,7 +2091,11 @@ export const deleteGameKeyController = async (req: AuthRequest, res: Response, n
   }
 };
 
-export const getGameKeyStatisticsController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getGameKeyStatisticsController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const statistics = await getGameKeyStatistics();
     res.json({ success: true, data: statistics });
@@ -1978,7 +2105,11 @@ export const getGameKeyStatisticsController = async (req: AuthRequest, res: Resp
 };
 
 // Script execution controllers
-export const executeTestG2AExportAPIController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const executeTestG2AExportAPIController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { executeTestG2AExportAPI } = await import('../services/script-executor.service.js');
     const page = parseInt(req.body.page || req.query.page || '1', 10);
@@ -1986,7 +2117,7 @@ export const executeTestG2AExportAPIController = async (req: AuthRequest, res: R
     const debug = req.body.debug === true || req.query.debug === 'true';
 
     const result = await executeTestG2AExportAPI(page, perPage, debug);
-    
+
     res.json({
       success: result.success,
       data: {
@@ -2002,15 +2133,22 @@ export const executeTestG2AExportAPIController = async (req: AuthRequest, res: R
   }
 };
 
-export const executeSyncAllG2AGamesController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const executeSyncAllG2AGamesController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { executeSyncAllG2AGames } = await import('../services/script-executor.service.js');
-    const limit = req.body.limit || req.query.limit ? parseInt(req.body.limit || req.query.limit || '0', 10) : undefined;
+    const limit =
+      req.body.limit || req.query.limit
+        ? parseInt(req.body.limit || req.query.limit || '0', 10)
+        : undefined;
     const dryRun = req.body.dryRun === true || req.query.dryRun === 'true';
     const filters = req.body.filters === true || req.query.filters === 'true';
 
     const result = await executeSyncAllG2AGames(limit, dryRun, filters);
-    
+
     res.json({
       success: result.success,
       data: {

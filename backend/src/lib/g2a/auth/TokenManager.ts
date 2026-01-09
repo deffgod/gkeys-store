@@ -40,7 +40,7 @@ export class TokenManager {
 
     try {
       this.redis = createClient({ url: this.redisUrl }) as RedisClientType;
-      
+
       // Handle Redis connection errors gracefully
       this.redis.on('error', (err) => {
         this.logger.warn('TokenManager: Redis connection error, falling back to in-memory cache', {
@@ -95,7 +95,11 @@ export class TokenManager {
         }
       } catch (error: any) {
         // Handle connection errors gracefully - fall back to in-memory
-        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+        if (
+          error?.code === 'ECONNRESET' ||
+          error?.code === 'ECONNREFUSED' ||
+          error?.code === 'ETIMEDOUT'
+        ) {
           this.logger.warn('Redis connection lost, using in-memory cache', {
             code: error.code,
           });
@@ -139,7 +143,11 @@ export class TokenManager {
         this.logger.debug('Token stored in Redis cache', { ttlSeconds });
       } catch (error: any) {
         // Handle connection errors gracefully - fall back to in-memory only
-        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+        if (
+          error?.code === 'ECONNRESET' ||
+          error?.code === 'ECONNREFUSED' ||
+          error?.code === 'ETIMEDOUT'
+        ) {
           this.logger.warn('Redis connection lost, storing in in-memory cache only', {
             code: error.code,
           });
@@ -251,7 +259,11 @@ export class TokenManager {
         this.logger.info('Token invalidated from Redis cache');
       } catch (error: any) {
         // Handle connection errors gracefully
-        if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+        if (
+          error?.code === 'ECONNRESET' ||
+          error?.code === 'ECONNREFUSED' ||
+          error?.code === 'ETIMEDOUT'
+        ) {
           this.logger.warn('Redis connection lost during invalidation', {
             code: error.code,
           });

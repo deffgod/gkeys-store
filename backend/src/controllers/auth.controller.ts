@@ -132,7 +132,11 @@ export const forgotPasswordController = async (req: Request, res: Response, next
   }
 };
 
-export const sendVerificationCodeController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const sendVerificationCodeController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -156,7 +160,11 @@ export const sendVerificationCodeController = async (req: AuthRequest, res: Resp
   }
 };
 
-export const verifyEmailController = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const verifyEmailController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({

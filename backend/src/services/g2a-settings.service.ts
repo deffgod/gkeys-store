@@ -38,11 +38,7 @@ export interface G2ATokenResponse {
  * Generate G2A API Key
  * Formula: sha256(ClientId + Email + ClientSecret)
  */
-export function generateG2AApiKey(
-  clientId: string,
-  email: string,
-  clientSecret: string
-): string {
+export function generateG2AApiKey(clientId: string, email: string, clientSecret: string): string {
   return crypto
     .createHash('sha256')
     .update(clientId + email + clientSecret)
@@ -54,13 +50,9 @@ export function generateG2AApiKey(
  * @param settings - G2A settings to use for authentication
  * @returns Token response with access_token and expires_in
  */
-export async function getG2AToken(
-  settings: G2ASettingsResponse
-): Promise<G2ATokenResponse> {
+export async function getG2AToken(settings: G2ASettingsResponse): Promise<G2ATokenResponse> {
   const isSandbox = settings.environment === 'sandbox';
-  const baseUrl = isSandbox
-    ? 'https://sandboxapi.g2a.com'
-    : 'https://api.g2a.com';
+  const baseUrl = isSandbox ? 'https://sandboxapi.g2a.com' : 'https://api.g2a.com';
   const tokenEndpoint = '/v1/token';
 
   const tokenHeaders: Record<string, string> = {
@@ -128,9 +120,7 @@ export async function getAllG2ASettings(): Promise<G2ASettingsResponse[]> {
 /**
  * Create or update G2A settings
  */
-export async function upsertG2ASettings(
-  data: G2ASettingsData
-): Promise<G2ASettingsResponse> {
+export async function upsertG2ASettings(data: G2ASettingsData): Promise<G2ASettingsResponse> {
   // Generate API key if not provided
   const apiKey = data.apiKey || generateG2AApiKey(data.clientId, data.email, data.clientSecret);
   const environment = data.environment || 'sandbox';

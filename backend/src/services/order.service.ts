@@ -44,12 +44,7 @@ const orderLogger = {
   /**
    * Audit log for order operations
    */
-  audit: (
-    operation: string,
-    userId: string,
-    orderId: string,
-    data?: Record<string, unknown>
-  ) => {
+  audit: (operation: string, userId: string, orderId: string, data?: Record<string, unknown>) => {
     const timestamp = new Date().toISOString();
     const auditData = {
       timestamp,
@@ -71,7 +66,7 @@ export const createOrder = async (
   // Audit log: Order creation started
   orderLogger.audit('ORDER_CREATE_START', userId, 'pending', {
     itemsCount: items.length,
-    gameIds: items.map(i => i.gameId),
+    gameIds: items.map((i) => i.gameId),
     promoCode: promoCode || null,
   });
 
@@ -342,8 +337,9 @@ export const createOrder = async (
   // Try to add order to processing queue (if available)
   // If queue is not available, process synchronously
   try {
-    const { addOrderToQueue, isQueueAvailable } = await import('../queues/order-processing.queue.js');
-    
+    const { addOrderToQueue, isQueueAvailable } =
+      await import('../queues/order-processing.queue.js');
+
     if (isQueueAvailable()) {
       const queueData = {
         orderId: order.id,
@@ -366,7 +362,7 @@ export const createOrder = async (
           orderId: order.id,
           userId,
         });
-        
+
         // Update order status to PROCESSING
         await prisma.order.update({
           where: { id: order.id },
@@ -427,11 +423,11 @@ export const createOrder = async (
     // Get G2A config from database or environment
     const { getG2AConfig } = await import('../config/g2a.js');
     const g2aConfig = await getG2AConfig();
-    
+
     if (g2aConfig.apiKey && g2aConfig.apiHash) {
       const { getDefaultConfig } = await import('../lib/g2a/config/defaults.js');
       const defaultConfig = getDefaultConfig(g2aConfig.env || 'sandbox');
-      
+
       g2aClient = await G2AIntegrationClient.getInstance({
         env: g2aConfig.env || 'sandbox',
         apiKey: g2aConfig.apiKey,
@@ -440,7 +436,7 @@ export const createOrder = async (
         baseUrl: g2aConfig.baseUrl || defaultConfig.baseUrl,
         timeoutMs: g2aConfig.timeoutMs || defaultConfig.timeoutMs,
       });
-      
+
       orderLogger.info('G2A client initialized for order processing', {
         orderId: order.id,
         env: g2aConfig.env,
@@ -490,7 +486,10 @@ export const createOrder = async (
             });
           } catch (payError) {
             // Handle payment errors
-            if (payError instanceof G2AError && payError.code === G2AErrorCode.G2A_INVALID_REQUEST) {
+            if (
+              payError instanceof G2AError &&
+              payError.code === G2AErrorCode.G2A_INVALID_REQUEST
+            ) {
               // Check if it's a retryable error (ORD03 - payment not ready yet)
               const errorCode = payError.metadata?.errorCode;
               if (errorCode === 'ORD03' && payError.metadata?.retryable) {
@@ -500,7 +499,7 @@ export const createOrder = async (
                   g2aOrderId,
                   errorCode: 'ORD03',
                 });
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
                 try {
                   paymentResult = await g2aClient.orders.pay(g2aOrderId);
                 } catch (retryError) {
@@ -517,8 +516,8 @@ export const createOrder = async (
 
           // Step 3: Get order key (can only be downloaded once)
           // Wait a bit for order to be processed after payment
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
           const keyResponse = await g2aClient.orders.getKey(g2aOrderId);
           const gameKeyValue = keyResponse.key;
 
@@ -581,7 +580,7 @@ export const createOrder = async (
             totalItems: item.quantity,
             g2aOrderId: g2aOrderIds[g2aOrderIds.length - 1],
           });
-          
+
           // If it's a critical error, handle refund in transaction
           if (
             error instanceof G2AError &&

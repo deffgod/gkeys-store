@@ -9,7 +9,7 @@ import { getDefaultConfig } from '../lib/g2a/config/defaults.js';
 /**
  * Queue for processing G2A orders asynchronously
  * This allows the order creation to return quickly while G2A processing happens in background
- * 
+ *
  * Note: Queue is optional - if Redis is not available, orders will be processed synchronously
  */
 
@@ -30,8 +30,9 @@ interface OrderProcessingJobData {
 
 // Parse Redis URL for BullMQ connection
 function getRedisConnection() {
-  const redisUrl = process.env.REDIS_GKEYS_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6379';
-  
+  const redisUrl =
+    process.env.REDIS_GKEYS_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6379';
+
   try {
     const url = new URL(redisUrl);
     return {
@@ -135,11 +136,14 @@ try {
               try {
                 paymentResult = await g2aClient.orders.pay(g2aOrderId);
               } catch (payError) {
-                if (payError instanceof G2AError && payError.code === G2AErrorCode.G2A_INVALID_REQUEST) {
+                if (
+                  payError instanceof G2AError &&
+                  payError.code === G2AErrorCode.G2A_INVALID_REQUEST
+                ) {
                   const errorCode = payError.metadata?.errorCode;
                   if (errorCode === 'ORD03' && payError.metadata?.retryable) {
                     // Retry after delay
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
                     paymentResult = await g2aClient.orders.pay(g2aOrderId);
                   } else {
                     throw payError;
@@ -150,7 +154,7 @@ try {
               }
 
               // Step 3: Get order key
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise((resolve) => setTimeout(resolve, 1000));
               const keyResponse = await g2aClient.orders.getKey(g2aOrderId);
               const gameKeyValue = keyResponse.key;
 
@@ -174,7 +178,10 @@ try {
                   platform: item.platforms[0]?.platform?.name || 'PC',
                 });
               } catch (emailError) {
-                console.error(`[Order Queue] Failed to send email for key ${gameKey.id}:`, emailError);
+                console.error(
+                  `[Order Queue] Failed to send email for key ${gameKey.id}:`,
+                  emailError
+                );
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
@@ -254,12 +261,18 @@ try {
         data: {
           status: finalStatus,
           paymentStatus:
-            finalStatus === 'COMPLETED' ? 'COMPLETED' : finalStatus === 'FAILED' ? 'FAILED' : 'PENDING',
+            finalStatus === 'COMPLETED'
+              ? 'COMPLETED'
+              : finalStatus === 'FAILED'
+                ? 'FAILED'
+                : 'PENDING',
           completedAt: finalStatus === 'COMPLETED' ? new Date() : null,
         },
       });
 
-      console.log(`[Order Queue] Order ${orderId} processed: ${finalStatus}, keys: ${gameKeys.length}, errors: ${purchaseErrors.length}`);
+      console.log(
+        `[Order Queue] Order ${orderId} processed: ${finalStatus}, keys: ${gameKeys.length}, errors: ${purchaseErrors.length}`
+      );
 
       return {
         orderId,
@@ -289,7 +302,10 @@ try {
 
   console.log('[Order Queue] Queue and worker initialized successfully');
 } catch (error) {
-  console.warn('[Order Queue] Failed to initialize queue (Redis may not be available). Orders will be processed synchronously:', error);
+  console.warn(
+    '[Order Queue] Failed to initialize queue (Redis may not be available). Orders will be processed synchronously:',
+    error
+  );
 }
 
 /**

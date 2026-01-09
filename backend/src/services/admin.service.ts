@@ -3248,7 +3248,8 @@ export const createPromoCode = async (data: PromoCodeCreateInput): Promise<Promo
 
   // Validate dates
   const validFrom = typeof data.validFrom === 'string' ? new Date(data.validFrom) : data.validFrom;
-  const validUntil = typeof data.validUntil === 'string' ? new Date(data.validUntil) : data.validUntil;
+  const validUntil =
+    typeof data.validUntil === 'string' ? new Date(data.validUntil) : data.validUntil;
 
   if (validFrom >= validUntil) {
     throw new AppError('Valid until date must be after valid from date', 400);
@@ -3285,7 +3286,10 @@ export const createPromoCode = async (data: PromoCodeCreateInput): Promise<Promo
   };
 };
 
-export const updatePromoCode = async (id: string, data: PromoCodeUpdateInput): Promise<PromoCode> => {
+export const updatePromoCode = async (
+  id: string,
+  data: PromoCodeUpdateInput
+): Promise<PromoCode> => {
   const existing = await prisma.promoCode.findUnique({
     where: { id },
   });
@@ -3398,12 +3402,15 @@ export const getPromoCodeStatistics = async (): Promise<PromoCodeStatistics> => 
     },
   });
 
-  const totalDiscountGiven = ordersWithPromo.reduce((sum, order) => sum + Number(order.discount || 0), 0);
+  const totalDiscountGiven = ordersWithPromo.reduce(
+    (sum, order) => sum + Number(order.discount || 0),
+    0
+  );
 
   // Find most used code
   const mostUsed = allCodes.reduce(
     (max, pc) => (pc.usedCount > (max?.usedCount || 0) ? pc : max),
-    null as typeof allCodes[0] | null
+    null as (typeof allCodes)[0] | null
   );
 
   return {
@@ -3975,7 +3982,10 @@ export const getGameKeyStatistics = async (): Promise<GameKeyStatistics> => {
   const unactivatedKeys = totalKeys - activatedKeys;
 
   // Group by game
-  const keysByGameMap = new Map<string, { gameId: string; gameTitle: string; total: number; activated: number; unactivated: number }>();
+  const keysByGameMap = new Map<
+    string,
+    { gameId: string; gameTitle: string; total: number; activated: number; unactivated: number }
+  >();
   for (const key of allKeys) {
     const gameId = key.gameId;
     const gameTitle = key.game?.title || 'Unknown Game';
@@ -3998,7 +4008,10 @@ export const getGameKeyStatistics = async (): Promise<GameKeyStatistics> => {
   }
 
   // Group by order
-  const keysByOrderMap = new Map<string, { orderId: string; total: number; activated: number; unactivated: number }>();
+  const keysByOrderMap = new Map<
+    string,
+    { orderId: string; total: number; activated: number; unactivated: number }
+  >();
   for (const key of allKeys) {
     if (key.orderId) {
       const orderId = key.orderId;

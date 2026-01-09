@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { G2AError, G2AErrorCode } from '../types/g2a.js';
 import redisClient from '../config/redis.js';
 import { getG2AConfig, getG2AConfigSync } from '../config/g2a.js';
+
 import { getG2ASettings } from './g2a-settings.service.js';
 import { invalidateCache } from '../services/cache.service.js';
 
@@ -144,13 +145,15 @@ const getOAuth2Token = async (): Promise<string> => {
 
     const apiKey = dbSettings?.clientId || G2A_API_KEY;
     const apiHash = dbSettings?.clientSecret || G2A_API_HASH;
-    const environment = dbSettings?.environment || (G2A_API_URL.includes('sandboxapi.g2a.com') ? 'sandbox' : 'production');
+    const environment =
+      dbSettings?.environment ||
+      (G2A_API_URL.includes('sandboxapi.g2a.com') ? 'sandbox' : 'production');
     const isSandbox = environment === 'sandbox';
 
     // Determine base URL and token endpoint
     let baseUrl: string;
     let tokenEndpoint: string;
-    
+
     if (isSandbox) {
       baseUrl = 'https://sandboxapi.g2a.com';
       tokenEndpoint = '/v1/token';
@@ -680,7 +683,7 @@ export const createG2AClient = async (
         .createHash('sha256')
         .update(G2A_API_HASH + G2A_API_KEY + timestamp)
         .digest('hex');
-      
+
       headers['X-API-HASH'] = G2A_API_HASH;
       headers['X-API-KEY'] = G2A_API_KEY;
       headers['X-G2A-Timestamp'] = timestamp;

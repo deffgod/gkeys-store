@@ -29,10 +29,10 @@ export async function executeScript(
   options: ScriptExecutionOptions
 ): Promise<ScriptExecutionResult> {
   const { script, args = [], env = {}, timeout = 300000 } = options; // 5 minutes default timeout
-  
+
   const scriptPath = path.join(backendDir, 'scripts', script);
   const startTime = Date.now();
-  
+
   return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
@@ -68,7 +68,7 @@ export async function executeScript(
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
-        
+
         const duration = Date.now() - startTime;
         resolve({
           success: code === 0,
@@ -85,7 +85,7 @@ export async function executeScript(
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
-        
+
         const duration = Date.now() - startTime;
         resolve({
           success: false,
@@ -115,7 +115,7 @@ export async function executeScript(
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      
+
       const duration = Date.now() - startTime;
       resolve({
         success: false,

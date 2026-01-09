@@ -65,8 +65,12 @@ coverage
 
 # Backup files
 *.bak
+*.backup
 # But include latest backup for seeding
 !backend/prisma/backup-latest.json
+# Exclude old backup files
+backend/prisma/backup-*.json
+backend/prisma/backup-*.sql
 
 # Database dumps
 *.dump

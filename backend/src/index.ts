@@ -21,6 +21,7 @@ import cartRoutes from './routes/cart.routes.js';
 import wishlistRoutes from './routes/wishlist.routes.js';
 import faqRoutes from './routes/faq.routes.js';
 import g2aWebhookRoutes from './routes/g2a-webhook.routes.js';
+import g2aSettingsRoutes from './routes/admin.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -79,24 +80,27 @@ const getAllowedOrigins = (): string[] => {
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   const allowedOrigins = getAllowedOrigins();
-  
+
   // Always allow localhost in non-production
   const isLocalhost = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
   const isDev = process.env.NODE_ENV !== 'production';
-  
+
   // Check if origin is allowed
-  const isAllowed = !origin || isLocalhost || allowedOrigins.some((allowed) => {
-    const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
-    const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
-    return normalizedOrigin === normalizedAllowed || origin.endsWith('.vercel.app');
-  });
-  
+  const isAllowed =
+    !origin ||
+    isLocalhost ||
+    allowedOrigins.some((allowed) => {
+      const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+      const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+      return normalizedOrigin === normalizedAllowed || origin.endsWith('.vercel.app');
+    });
+
   if (isAllowed && origin) {
     res.header('Access-Control-Allow-Origin', origin);
   } else if (isAllowed || (isDev && isLocalhost)) {
     res.header('Access-Control-Allow-Origin', origin || '*');
   }
-  
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -104,9 +108,11 @@ app.options('*', (req, res) => {
 });
 
 // Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS configuration with proper error handling
 app.use(
@@ -126,17 +132,19 @@ app.use(
         // Always allow localhost in non-production
         const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
         const isDev = process.env.NODE_ENV !== 'production';
-        
+
         // Check if origin is allowed
-        const isAllowed = isLocalhost || allowedOrigins.some((allowed) => {
-          const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
-          return (
-            normalizedOrigin === normalizedAllowed ||
-            origin.endsWith('.vercel.app') ||
-            normalizedAllowed === normalizedOrigin
-          );
-        });
-        
+        const isAllowed =
+          isLocalhost ||
+          allowedOrigins.some((allowed) => {
+            const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+            return (
+              normalizedOrigin === normalizedAllowed ||
+              origin.endsWith('.vercel.app') ||
+              normalizedAllowed === normalizedOrigin
+            );
+          });
+
         // In development, always allow localhost
         if (isDev && isLocalhost) {
           return callback(null, true);
@@ -261,6 +269,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/g2a', g2aWebhookRoutes);
+app.use('/api/g2a/settings', g2aSettingsRoutes);
+
 
 // Error handling
 app.use(notFoundHandler);
@@ -297,7 +307,7 @@ if (!isVercel && !isServerless && !isTest) {
         startG2ASyncJob();
         startStockCheckJob();
         console.log('⏰ Scheduled jobs started');
-        
+
         // Initialize order processing queue (if Redis is available)
         (async () => {
           try {
@@ -305,7 +315,9 @@ if (!isVercel && !isServerless && !isTest) {
             if (isQueueAvailable()) {
               console.log('✅ Order processing queue initialized');
             } else {
-              console.log('⚠️  Order processing queue not available (Redis may not be configured). Orders will be processed synchronously.');
+              console.log(
+                '⚠️  Order processing queue not available (Redis may not be configured). Orders will be processed synchronously.'
+              );
             }
           } catch (error) {
             console.warn('⚠️  Failed to initialize order processing queue:', error);
