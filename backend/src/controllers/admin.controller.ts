@@ -1694,7 +1694,7 @@ export const deleteEmailSettingsController = async (
 export const testEmailSettingsController = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   try {
     const { id } = req.params;

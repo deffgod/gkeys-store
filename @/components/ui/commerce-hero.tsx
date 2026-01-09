@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+// import { cn } from "@/lib/utils"; // Reserved for future use
 
 const categories = [
   {

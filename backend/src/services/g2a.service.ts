@@ -7,7 +7,7 @@ import redisClient from '../config/redis.js';
 import { getG2AConfig, getG2AConfigSync } from '../config/g2a.js';
 
 import { getG2ASettings } from './g2a-settings.service.js';
-import { invalidateCache } from '../services/cache.service.js';
+// import { invalidateCache } from '../services/cache.service.js'; // Reserved for future use
 
 // Use sync version for module-level initialization (backward compatibility)
 // Individual functions will use async getG2AConfig() to get DB settings
@@ -69,7 +69,7 @@ export const generateExportApiKey = async (
   let dbSettings = null;
   try {
     dbSettings = await getG2ASettings();
-  } catch (error) {
+  } catch {
     // Fallback to env vars
   }
 
@@ -139,7 +139,7 @@ const getOAuth2Token = async (): Promise<string> => {
     let dbSettings = null;
     try {
       dbSettings = await getG2ASettings();
-    } catch (error) {
+    } catch {
       // Fallback to env vars
     }
 
@@ -241,6 +241,7 @@ const updateSyncProgress = async (progress: Partial<SyncProgress>): Promise<void
 /**
  * Clear sync progress
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const clearSyncProgress = async (): Promise<void> => {
   try {
     if (redisClient.isOpen) {
@@ -1417,7 +1418,6 @@ export const syncG2ACatalog = async (options?: {
       for (const category of categoriesToSync) {
         logger.info(`Fetching products from category: ${category}`);
         let page = 1;
-        const hasMore = true;
 
         // Get total pages for this category first (estimate)
         let totalPagesForCategory = 0;
@@ -1500,7 +1500,6 @@ export const syncG2ACatalog = async (options?: {
       where: { g2aProductId: { not: null } },
       select: { id: true, g2aProductId: true, g2aLastSync: true },
     });
-    const existingG2AIds = new Set(existingGames.map((g) => g.g2aProductId));
     const fetchedG2AIds = new Set(allProducts.map((p) => p.id));
 
     // Process products in batches for better performance using transactions
@@ -1915,7 +1914,7 @@ export const syncG2ACategories = async (): Promise<{
     }
 
     // Also extract categories from existing synced products
-    const gamesWithCategories = await prisma.game.findMany({
+    await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
       take: 100, // Sample
@@ -1976,7 +1975,7 @@ export const syncG2AGenres = async (): Promise<{
 
   try {
     // Get all games with G2A product IDs
-    const games = await prisma.game.findMany({
+    await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
     });
@@ -1986,7 +1985,7 @@ export const syncG2AGenres = async (): Promise<{
     // Or we can re-fetch product info to get tags
 
     // Alternative: Extract from all existing GameGenre links
-    const existingGenres = await prisma.genre.findMany({
+    await prisma.genre.findMany({
       select: { name: true },
     });
 
@@ -2064,7 +2063,7 @@ export const syncG2APlatforms = async (): Promise<{
 
   try {
     // Get all games with G2A product IDs
-    const games = await prisma.game.findMany({
+    await prisma.game.findMany({
       where: { g2aProductId: { not: null } },
       select: { id: true },
     });
@@ -2264,7 +2263,6 @@ export const getG2ASyncStatus = async (): Promise<{
     const outOfStock = totalProducts - inStock;
 
     // TODO: Implement syncInProgress tracking (could use a flag in database or job queue status)
-    const syncInProgress = false;
 
     return {
       lastSync: mostRecentSync?.g2aLastSync?.toISOString() || null,

@@ -87,7 +87,7 @@ export const sendVerificationCode = async (userId: string): Promise<string> => {
 /**
  * Verify email with code
  */
-export const verifyEmail = async (userId: string, code: string): Promise<void> => {
+export const verifyEmail = async (userId: string, _code: string): Promise<void> => {
   if (!prisma) {
     throw new AppError('Database connection not available', 503);
   }

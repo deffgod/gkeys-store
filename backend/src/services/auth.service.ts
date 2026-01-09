@@ -257,7 +257,7 @@ export const refreshToken = async (
     let decoded: TokenPayload;
     try {
       decoded = verifyRefreshToken(refreshTokenString);
-    } catch (jwtError) {
+    } catch {
       throw new AppError('Invalid or expired refresh token', 401);
     }
 

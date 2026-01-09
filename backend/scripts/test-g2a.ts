@@ -18,7 +18,7 @@ const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3001';
 const ADMIN_TOKEN = process.argv[2] || process.env.ADMIN_TOKEN || 'eyJhbGciOiJIUzI1NiJ9.e30.jBrIDEb49OUZvDk2UfwaGf_cH5YSDzR1rdaoKqOVafk';
 const G2A_API_KEY = process.env.G2A_API_KEY || 'DNvKyOKBjWTVBmEw';
 const G2A_API_HASH = process.env.G2A_API_HASH || 'rksBZDeNuUHnDkOiPCyJEdDHZUnlhydS';
-const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com';
+// const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com'; // Reserved for future use
 const G2A_API_URL = process.env.G2A_API_URL || 'https://api.g2a.com';
 const G2A_ENV = process.env.G2A_ENV || 'live';
 

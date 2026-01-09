@@ -42,7 +42,7 @@ async function main() {
       break;
 
     case 'migrate':
-    case 'migrate:dev':
+    case 'migrate:dev': {
       // Create and apply migration
       const migrationName = args[1] || 'update';
       runCommand(
@@ -50,6 +50,7 @@ async function main() {
         `Creating and applying migration: ${migrationName}`
       );
       break;
+    }
 
     case 'migrate:deploy':
       // Apply migrations (for production)
@@ -84,7 +85,7 @@ async function main() {
       break;
 
     case 'full':
-    case 'sync':
+    case 'sync': {
       // Full synchronization: generate + migrate + seed
       console.log('🔄 Full database synchronization\n');
       runCommand('npx prisma generate', 'Generating Prisma Client');
@@ -100,6 +101,7 @@ async function main() {
         }
       }
       break;
+    }
 
     case 'setup':
       // Initial setup: generate + migrate + seed

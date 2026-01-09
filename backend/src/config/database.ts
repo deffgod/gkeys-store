@@ -39,6 +39,7 @@ function createPrismaClient() {
   // and we're not forcing direct connection
   if (hasPrismaAccelerate && !useDirectConnection) {
     console.log('🚀 Using Prisma Accelerate with caching enabled');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return baseClient.$extends(withAccelerate()) as any;
   }
 
@@ -111,4 +112,5 @@ try {
 // Export with proper type - prisma is guaranteed to be initialized
 // or the process would have exited in production
 // Using 'any' type to handle both PrismaClient and Accelerate extension
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default prisma as any;

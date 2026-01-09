@@ -144,7 +144,7 @@ try {
                   if (errorCode === 'ORD03' && payError.metadata?.retryable) {
                     // Retry after delay
                     await new Promise((resolve) => setTimeout(resolve, 2000));
-                    paymentResult = await g2aClient.orders.pay(g2aOrderId);
+                    await g2aClient.orders.pay(g2aOrderId);
                   } else {
                     throw payError;
                   }

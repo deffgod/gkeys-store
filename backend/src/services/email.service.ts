@@ -289,6 +289,7 @@ export const sendBulkEmails = async (
             html,
           });
           sent++;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           failed++;
           errors.push({

@@ -127,6 +127,7 @@ export const processPaymentWebhook = async (data: PaymentWebhook): Promise<void>
       status: 'COMPLETED',
       description: `Balance top-up via ${method}`,
       transactionHash: transactionId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gatewayResponse: data as any,
     },
   });
@@ -194,6 +195,7 @@ export const processTerminalWebhook = async (data: TerminalWebhook): Promise<voi
       status: 'COMPLETED',
       description: `Terminal top-up`,
       transactionHash: transactionId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gatewayResponse: data as any,
     },
   });
@@ -390,6 +392,7 @@ export const refundTransaction = async (
             : 'PENDING',
         description: reason || `Refund for transaction ${transactionId}`,
         transactionHash: refundResult.refundId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         gatewayResponse: refundResult as any,
       },
     });

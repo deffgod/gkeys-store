@@ -7,7 +7,7 @@ import MobileMenu from './MobileMenu';
 import BottomTabBar from './BottomTabBar';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import AuthModal from './AuthModal';
 
 const theme = {

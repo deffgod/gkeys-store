@@ -61,7 +61,7 @@ export const getG2AConfig = async (): Promise<G2AConfig> => {
   let dbSettings = null;
   try {
     dbSettings = await getG2ASettings();
-  } catch (error) {
+  } catch {
     // Database might not be available, fallback to env vars
     console.debug(
       '[G2A Config] Could not load settings from database, using environment variables'

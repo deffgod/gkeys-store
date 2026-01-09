@@ -135,7 +135,7 @@ export const updateIdempotencyAttempts = async (
  */
 export const processG2AWebhook = async (
   event: G2AWebhookEvent,
-  headers: Record<string, string>
+  _headers: Record<string, string>
 ): Promise<{ success: boolean; message: string }> => {
   // Record webhook total metric
   import('./g2a-metrics.service.js')

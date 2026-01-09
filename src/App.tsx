@@ -9,47 +9,47 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminApp from './admin/AdminApp';
 import { Toaster } from './components/ui/sonner';
 
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import HomePage from './pages/HomePage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ProfilePage from './pages/ProfilePage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ProfileOrdersPage from './pages/ProfileOrdersPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ProfileWishlistPage from './pages/ProfileWishlistPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ProfileBalancePage from './pages/ProfileBalancePage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import GameDetailPage from './pages/GameDetailPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import CatalogPage from './pages/CatalogPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import CartPage from './pages/CartPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import CheckoutPage from './pages/CheckoutPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import WishlistPage from './pages/WishlistPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import SupportPage from './pages/SupportPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ProfileEditPage from './pages/ProfileEditPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import BlogPage from './pages/BlogPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ArticlePage from './pages/ArticlePage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import MediaPage from './pages/MediaPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import PrivacyPage from './pages/PrivacyPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import TermsPage from './pages/TermsPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import LoginPage from './pages/LoginPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import RegisterPage from './pages/RegisterPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
-// @ts-ignore
+// @ts-expect-error - Dynamic import
 import ComponentShowcase from './pages/ComponentShowcase';
 
 

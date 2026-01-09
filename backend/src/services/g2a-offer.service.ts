@@ -4,7 +4,7 @@ import { getG2AConfigSync } from '../config/g2a.js';
 import { createG2AClient } from './g2a.service.js';
 
 // Use sync version for module-level initialization
-const { baseUrl: G2A_API_URL } = getG2AConfigSync();
+// const { baseUrl: G2A_API_URL } = getG2AConfigSync(); // Reserved for future use
 
 /**
  * Structured logger for G2A Offer API operations

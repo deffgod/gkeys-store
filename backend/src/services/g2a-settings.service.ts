@@ -83,6 +83,7 @@ export async function getG2AToken(settings: G2ASettingsResponse): Promise<G2ATok
     });
 
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     const errorMessage =
       error.response?.data?.message ||

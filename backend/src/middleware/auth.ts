@@ -1,8 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, TokenPayload } from '../utils/jwt.js';
-import prisma from '../config/database.js';
-import { login, register, refreshToken } from '../services/auth.service.js';
-import { AppError } from './errorHandler.js';
 
 export interface AuthRequest extends Request {
   user?: TokenPayload;

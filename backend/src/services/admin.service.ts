@@ -1265,6 +1265,7 @@ export const getOrderDetails = async (id: string) => {
   }
 
   // Map keys to items by gameId
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const keysByGameId = new Map<string, any>(order.keys.map((k: any) => [k.gameId, k]));
 
   return {
@@ -1646,6 +1647,7 @@ export const getPaymentTransactions = async (
   }
 
   if (filters.status) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     where.status = filters.status as any;
   }
 

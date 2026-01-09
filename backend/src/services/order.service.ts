@@ -199,6 +199,7 @@ export const createOrder = async (
 
   if (existingOrder && 'items' in existingOrder && Array.isArray(existingOrder.items)) {
     // Check if items match (simple idempotency check)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingItemIds = existingOrder.items
       .map((i: any) => i.gameId)
       .sort()
@@ -501,8 +502,8 @@ export const createOrder = async (
                 });
                 await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
                 try {
-                  paymentResult = await g2aClient.orders.pay(g2aOrderId);
-                } catch (retryError) {
+                  await g2aClient.orders.pay(g2aOrderId);
+                } catch {
                   // Retry failed, throw original error
                   throw payError;
                 }
@@ -683,7 +684,7 @@ export const createOrder = async (
   }
   // If no G2A games, keep status as PENDING (set in transaction)
 
-  const completedOrder = await prisma.order.update({
+  await prisma.order.update({
     where: { id: order.id },
     data: {
       status: finalStatus,

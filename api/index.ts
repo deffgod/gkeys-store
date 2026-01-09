@@ -14,8 +14,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 // Use dynamic import to avoid executing server startup code
 // Note: Express type is inferred from the imported module, no need for explicit type import
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let app: any = null;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getApp(): Promise<any> {
   if (!app) {
     const distPath = '../backend/dist/index.js';

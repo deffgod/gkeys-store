@@ -19,6 +19,7 @@ const redisClient = createClient({
 });
 
 // Handle Redis connection errors gracefully - prevent process crash
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 redisClient.on('error', (err: any) => {
   // Log error but don't crash the process
   console.warn('Redis Client Error (non-fatal):', err.message || err);

@@ -23,10 +23,11 @@ dotenv.config();
 
 // Handle Redis connection errors at process level to prevent crashes
 // This catches unhandled Redis errors that might occur during long-running sync operations
-process.on('uncaughtException', (error: any) => {
+process.on('uncaughtException', (error: unknown) => {
+  const err = error as { code?: string; message?: string };
   // Check if it's a Redis connection error
-  if (error?.code === 'ECONNRESET' || error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
-    console.warn('⚠️  Redis connection error detected (non-fatal):', error.message);
+  if (err?.code === 'ECONNRESET' || err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT') {
+    console.warn('⚠️  Redis connection error detected (non-fatal):', err.message);
     console.warn('   Continuing without Redis cache...');
     // Don't exit - let the script continue
     return;
@@ -37,10 +38,11 @@ process.on('uncaughtException', (error: any) => {
 });
 
 // Handle unhandled promise rejections (Redis errors often come as rejections)
-process.on('unhandledRejection', (reason: any, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise) => {
+  const err = reason as { code?: string; message?: string };
   // Check if it's a Redis connection error
-  if (reason?.code === 'ECONNRESET' || reason?.code === 'ECONNREFUSED' || reason?.code === 'ETIMEDOUT') {
-    console.warn('⚠️  Redis connection error in promise (non-fatal):', reason?.message || reason);
+  if (err?.code === 'ECONNRESET' || err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT') {
+    console.warn('⚠️  Redis connection error in promise (non-fatal):', err?.message || reason);
     console.warn('   Continuing without Redis cache...');
     // Don't exit - let the script continue
     return;
@@ -57,7 +59,7 @@ const G2A_ENV = process.env.G2A_ENV || 'live';
 const G2A_EMAIL = process.env.G2A_EMAIL || 'welcome@nalytoo.com';
 
 const G2A_TIMEOUT_MS = process.env.G2A_TIMEOUT_MS || '8000';
-const G2A_RETRY_MAX = process.env.G2A_RETRY_MAX || '2';
+// const G2A_RETRY_MAX = process.env.G2A_RETRY_MAX || '2'; // Reserved for future use
 
 const prisma = new PrismaClient();
 
@@ -129,7 +131,7 @@ async function syncAllGames(options: SyncOptions): Promise<void> {
   console.log('');
 
   // Load G2A configuration from environment
-  let g2aEnvVars = loadG2AEnvVars();
+  const g2aEnvVars = loadG2AEnvVars();
 
   // Initialize G2A client with circuit breaker disabled for bulk sync
   const client = await G2AIntegrationClient.create({

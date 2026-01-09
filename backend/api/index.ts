@@ -7,8 +7,10 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let app: any = null;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getApp(): Promise<any> {
   if (!app) {
     try {
@@ -37,7 +39,9 @@ export default async function handler(
     const expressApp = await getApp();
     
     // Create Express-compatible request/response objects
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const expressReq = req as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const expressRes = res as any;
     
     // Vercel strips /api prefix, but Express routes expect /api prefix

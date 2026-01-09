@@ -81,6 +81,7 @@ const getOrCreateGuestUser = async (sessionId: string): Promise<string> => {
     });
 
     return newGuestUser.id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     // If user already exists (race condition), just return the sessionId
     if (error.code === 'P2002') {

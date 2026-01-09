@@ -145,6 +145,7 @@ export async function updateEmailSettings(
   }
 
   // Build update data, only include password if it's provided and not empty
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: any = {
     ...(data.host !== undefined && { host: data.host }),
     ...(data.port !== undefined && { port: data.port }),

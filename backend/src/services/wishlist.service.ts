@@ -170,6 +170,7 @@ const getOrCreateGuestUser = async (sessionId: string): Promise<string> => {
     });
 
     return newGuestUser.id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     // If user already exists (race condition), just return the sessionId
     if (error.code === 'P2002') {
@@ -362,6 +363,7 @@ export const migrateSessionWishlistToUser = async (
           console.log(
             `[Wishlist Migration] Created wishlist item for user ${userId}, game ${sessionItem.gameId}`
           );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (createError: any) {
           console.error(`[Wishlist Migration] Failed to create wishlist item:`, createError);
           // If creation fails, skip this item but continue migration
@@ -386,6 +388,7 @@ export const migrateSessionWishlistToUser = async (
         console.log(
           `[Wishlist Migration] Deleted session wishlist item for session ${sessionId}, game ${sessionItem.gameId}`
         );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (deleteError: any) {
         // If delete fails, log but continue (item might already be deleted)
         console.warn(

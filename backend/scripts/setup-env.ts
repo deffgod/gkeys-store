@@ -166,6 +166,7 @@ JWT_REFRESH_SECRET=your-refresh-secret-different-from-jwt-secret-minimum-32-char
 # DEBUG=false
 `;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateJWTSecrets(): { jwtSecret: string; refreshSecret: string } {
   // Generate random secrets (simplified version - in real scenario use crypto)
   const jwtSecret = Array.from({ length: 32 }, () =>

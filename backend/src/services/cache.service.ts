@@ -124,7 +124,9 @@ const getCachedOrFetch = async <T>(
 const invalidateAccelerateCache = async (tags: string[]): Promise<void> => {
   try {
     // Check if prisma has $accelerate method (Accelerate extension)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (prisma && typeof (prisma as any).$accelerate?.invalidate === 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma as any).$accelerate.invalidate({ tags });
       console.log(`[Accelerate Cache] Invalidated tags: ${tags.join(', ')}`);
     }
@@ -208,6 +210,7 @@ export const getBestSellers = async (genre?: string): Promise<CachedGame[]> => {
       },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let gameIds = topGames.map((g: any) => g.gameId);
 
     // If not enough top sellers, add random games
@@ -618,6 +621,7 @@ export const refreshNewInCatalog = async (): Promise<void> => {
 /**
  * Map Prisma Game to CachedGame
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapGameToCache(game: any): CachedGame {
   const price = typeof game.price === 'object' ? game.price.toNumber() : Number(game.price);
   const originalPrice = game.originalPrice
@@ -640,6 +644,7 @@ function mapGameToCache(game: any): CachedGame {
   const platform =
     game.platforms && game.platforms.length > 0 ? game.platforms[0].platform?.name || '' : '';
   const genre = game.genres && game.genres.length > 0 ? game.genres[0].genre?.name || '' : '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tags = game.tags ? game.tags.map((t: any) => t.tag?.name || '').filter(Boolean) : [];
 
   return {
