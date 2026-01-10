@@ -385,7 +385,7 @@ const G2AKeyManagerPage: React.FC = () => {
                 style={adminInputStyle}
               >
                 <option value="sandbox">Sandbox (https://sandboxapi.g2a.com)</option>
-                <option value="production">Production (https://api.g2a.com)</option>
+                <option value="production">Production (https://api.g2a.com/v1/products)</option>
               </select>
             </div>
 
